@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Github, List, Moon, Network, Search, Sun, Target } from 'lucide-react';
-import { exerciseSets, getExerciseSet } from '@fpx/exercises';
+import { manifest, manifestByTerm } from '@fpx/exercises/manifest';
 import { categoriesById, graph, meta, termsById } from './data';
 import { GraphCanvas } from './graph/GraphCanvas';
 import { Drawer } from './drawer/Drawer';
@@ -28,10 +28,10 @@ export function App() {
   /** Term id -> done/total, for the graph arcs and the header readout. */
   const progressByTerm = useMemo(() => {
     const out = new Map<string, { done: number; total: number }>();
-    for (const [termId, set] of Object.entries(exerciseSets)) {
-      out.set(termId, {
-        done: set.rungs.filter((r) => progress.isDone(termId, r.id)).length,
-        total: set.rungs.length,
+    for (const entry of manifest) {
+      out.set(entry.termId, {
+        done: entry.rungs.filter((r) => progress.isDone(entry.termId, r.id)).length,
+        total: entry.rungs.length,
       });
     }
     return out;
@@ -54,9 +54,9 @@ export function App() {
       return;
     }
     // Open straight into Practice when there is something to practice and it is unfinished.
-    const set = getExerciseSet(id);
-    const unfinished = set?.rungs.some((r) => !progress.isDone(id, r.id));
-    navigate({ termId: id, tab: set && unfinished ? 'practice' : 'learn', rungId: null });
+    const entry = manifestByTerm[id];
+    const unfinished = entry?.rungs.some((r) => !progress.isDone(id, r.id));
+    navigate({ termId: id, tab: entry && unfinished ? 'practice' : 'learn', rungId: null });
   }, []);
 
   // Keyboard: `/` opens search, Escape closes whatever is open.
@@ -83,7 +83,7 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [searchOpen, route.termId]);
 
-  const conceptCount = Object.keys(exerciseSets).length;
+  const conceptCount = manifest.length;
 
   return (
     <div className={`app${term ? ' drawer-open' : ''}`}>

@@ -49,6 +49,20 @@ import { sumType } from './terms/sum-type.js';
 import { traversal } from './terms/traversal.js';
 import { typeSignatures } from './terms/type-signatures.js';
 
+// Category & Morphisms
+import { anamorphism } from './terms/anamorphism.js';
+import { apomorphism } from './terms/apomorphism.js';
+import { catamorphism } from './terms/catamorphism.js';
+import { category } from './terms/category.js';
+import { endomorphism } from './terms/endomorphism.js';
+import { homomorphism } from './terms/homomorphism.js';
+import { hylomorphism } from './terms/hylomorphism.js';
+import { isomorphism } from './terms/isomorphism.js';
+import { morphism } from './terms/morphism.js';
+import { naturalTransformation } from './terms/natural-transformation.js';
+import { paramorphism } from './terms/paramorphism.js';
+import { semigroupoid } from './terms/semigroupoid.js';
+
 // Algebraic Structures
 import { alternative } from './terms/alternative.js';
 import { applicativeFunctor } from './terms/applicative-functor.js';
@@ -139,6 +153,19 @@ const ALL: ExerciseSet[] = [
   alternative,
   foldable,
   traversable,
+  // Category & Morphisms
+  morphism,
+  semigroupoid,
+  category,
+  endomorphism,
+  isomorphism,
+  homomorphism,
+  naturalTransformation,
+  catamorphism,
+  anamorphism,
+  hylomorphism,
+  paramorphism,
+  apomorphism,
 ];
 
 /**

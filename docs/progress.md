@@ -229,8 +229,37 @@ Two rungs had to be rewritten:
   asks for concrete counterexamples: a triple whose grouping changes the answer, and a value
   that zero fails to fix on the left.
 
-### Remaining
+### Category & Morphisms — done (12 of 12)
 
-Category & Morphisms (12).
+`anamorphism`, `apomorphism`, `catamorphism`, `category`, `endomorphism`, `homomorphism`,
+`hylomorphism`, `isomorphism`, `morphism`, `natural-transformation`, `paramorphism`,
+`semigroupoid`.
+
+Two apomorphism variants turned out not to be broken. Strict versus non-strict comparison
+gives the same sorted list, and an imperative rewrite of `insert` is simply correct: what it
+skips is `apo`, so the rung now says that directly rather than trying to detect it through a
+proxy that counted property reads.
+
+## Phase 7 complete: all 73 concepts
+
+`npm run verify`: 73 concepts, 97 code rungs, 434 variants. 148 rungs in total, broken down
+as 50 recognize, 66 implement, 23 apply, 5 break, 4 guided. Every concept has at least two
+rungs and at least one that is code-graded, and `npm run verify` now enforces both so the
+criterion cannot regress.
+
+### The bundle regression this caused, and the fix
+
+Scaling the content pushed the initial bundle from 174KB gzip to 250KB, because the shell
+imported the exercise sets directly to render the Practice tab and its count. That pulled
+every `checks` function, solution, and broken variant onto the main thread, none of which it
+runs.
+
+`scripts/build-manifest.mjs` now generates `packages/exercises/src/manifest.ts`: term ids,
+rung ids, roles, titles, and kinds, and nothing else. The shell reads that, and imports the
+real content only when a Practice tab opens. The manifest is committed and `npm run verify`
+fails if it has drifted from the sets, so there is one source of truth.
+
+Back to 174KB gzip initial, with the content a separate 75KB chunk and the editor a separate
+146KB one. Opening Learn downloads neither.
 
 ## Phase 8 (stretch): TypeScript rungs — not started

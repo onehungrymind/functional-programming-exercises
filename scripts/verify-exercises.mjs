@@ -32,7 +32,8 @@ const ENGINE = join(ROOT, 'packages/engine/src/index.ts');
 const EXERCISES = join(ROOT, 'packages/exercises/src/index.ts');
 const WORKER = join(ROOT, 'scripts/verify-worker.mjs');
 
-const { exerciseSets } = await import(new URL(`file://${EXERCISES}`).href);
+const { exerciseSets, exerciseTermIds } = await import(new URL(`file://${EXERCISES}`).href);
+const { manifest } = await import(new URL(`file://${join(ROOT, 'packages/exercises/src/manifest.ts')}`).href);
 
 const TIMEOUT_MS = 10_000;
 const MAX_HEAP_MB = 512;
@@ -101,6 +102,19 @@ function gradeInWorker(termId, rungId, code) {
 const problems = [];
 const note = (msg) => problems.push(msg);
 
+// The shell renders the Practice tab from the generated manifest rather than from the sets,
+// so that the checks and variants stay out of the initial bundle. If the two drift, the tab
+// shows a count that does not match what the learner gets.
+{
+  const fromSets = exerciseTermIds.map((termId) => ({
+    termId,
+    rungs: exerciseSets[termId].rungs.map((r) => ({ id: r.id, role: r.role, title: r.title, kind: r.kind })),
+  }));
+  if (JSON.stringify(fromSets) !== JSON.stringify(manifest)) {
+    note('packages/exercises/src/manifest.ts has drifted from the exercise sets. Run `npm run build:manifest`.');
+  }
+}
+
 let codeRungs = 0;
 let variants = 0;
 let timeouts = 0;
@@ -119,6 +133,14 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
   }
   if (termsById.get(termId).isConcept === false) {
     note(`${termId}: this is a structural section upstream, not a concept. It should not have exercises.`);
+  }
+
+  // The Phase 7 exit criterion: every concept gets at least two rungs, one code-graded.
+  if (set.rungs.length < 2) {
+    note(`${termId}: only ${set.rungs.length} rung. Every concept needs at least two.`);
+  }
+  if (!set.rungs.some((r) => r.kind === 'code')) {
+    note(`${termId}: no code-graded rung. Recognizing is not the same as writing it.`);
   }
 
   const seen = new Set();

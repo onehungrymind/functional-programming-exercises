@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { categoriesById, terms } from './data';
-import { hasExercises } from '@fpx/exercises';
+import { hasExercises } from '@fpx/exercises/manifest';
 
 /**
  * Command-palette search over titles and aliases. `/` opens it, Escape closes it,

@@ -14,7 +14,8 @@
     "typecheck": "tsc --build --force",
     "verify": "tsx scripts/verify-exercises.mjs",
     "sync:jargons": "node scripts/sync-jargons.mjs",
-    "test:e2e": "playwright test --config apps/web/playwright.config.ts"
+    "test:e2e": "playwright test --config apps/web/playwright.config.ts",
+    "build:manifest": "tsx scripts/build-manifest.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

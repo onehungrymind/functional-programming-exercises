@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { ExternalLink, Link2, X } from 'lucide-react';
-import { PracticePanel } from '@fpx/practice-react';
-import { getExerciseSet } from '@fpx/exercises';
+import { lazy, Suspense } from 'react';
+import { manifestByTerm } from '@fpx/exercises/manifest';
 import { categoriesById, neighborsOf, termsById, upstreamUrl, type Term } from '../data';
 import { progress } from '../progress';
 import { navigate, type Route } from '../routing';
@@ -20,14 +20,15 @@ export interface DrawerProps {
 
 export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }: DrawerProps) {
   const cat = categoriesById.get(term.category);
-  const exerciseSet = getExerciseSet(term.id);
+  // Metadata only. The exercises themselves arrive with PracticeTab below.
+  const entry = manifestByTerm[term.id];
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const parts = useMemo(() => parseBody(term.body), [term.body]);
   const related = useMemo(() => neighborsOf(term.id), [term.id]);
 
-  const rungTotal = exerciseSet?.rungs.length ?? 0;
-  const rungDone = exerciseSet?.rungs.filter((r) => progress.isDone(term.id, r.id)).length ?? 0;
+  const rungTotal = entry?.rungs.length ?? 0;
+  const rungDone = entry?.rungs.filter((r) => progress.isDone(term.id, r.id)).length ?? 0;
 
   // An internal `#term` link should switch concepts, not jump the page.
   useEffect(() => {
@@ -48,8 +49,8 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
   /** Prefers a connected concept that still has rungs left, then any unfinished one. */
   const nextConcept = useMemo(() => {
     const unfinished = (id: string) => {
-      const set = getExerciseSet(id);
-      return !!set && set.rungs.some((r) => !progress.isDone(id, r.id));
+      const e = manifestByTerm[id];
+      return !!e && e.rungs.some((r) => !progress.isDone(id, r.id));
     };
     const connected = related.find((n) => n.id !== term.id && unfinished(n.id));
     const pick = connected?.id ?? [...termsById.keys()].find((id) => id !== term.id && unfinished(id));
@@ -98,7 +99,7 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
           >
             Learn
           </button>
-          {exerciseSet && (
+          {entry && (
             <button
               type="button"
               role="tab"
@@ -113,7 +114,7 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
       </header>
 
       <div className="drawer-body" ref={bodyRef}>
-        {route.tab === 'learn' || !exerciseSet ? (
+        {route.tab === 'learn' || !entry ? (
           <>
             <p className="sect">
               <span>DEFINITION</span>
@@ -177,20 +178,15 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
             )}
           </>
         ) : (
-          <PracticePanel
-            termId={term.id}
-            exerciseSet={exerciseSet}
-            progress={progress}
-            rungId={route.rungId}
-            nextConcept={nextConcept}
-            createWorker={createCheckWorker}
-            renderMarkdown={renderInline}
-            onNavigate={(next) => {
-              if (next.termId) onSelectTerm(next.termId);
-              else navigate({ termId: term.id, tab: 'practice', rungId: next.rungId ?? null });
-            }}
-            onCompleteConcept={() => onConceptComplete(term.id)}
-          />
+          <Suspense fallback={<p className="results-idle">Loading the exercises...</p>}>
+            <PracticeTab
+              termId={term.id}
+              rungId={route.rungId}
+              nextConcept={nextConcept}
+              onSelectTerm={onSelectTerm}
+              onConceptComplete={onConceptComplete}
+            />
+          </Suspense>
         )}
       </div>
 
@@ -203,3 +199,49 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
     </aside>
   );
 }
+
+/**
+ * The exercise content is the largest thing this app ships, and the Learn tab never needs
+ * it. Loading it here keeps it out of the initial bundle along with the editor.
+ */
+const PracticeTab = lazy(async () => {
+  const [{ PracticePanel }, { getExerciseSet }] = await Promise.all([
+    import('@fpx/practice-react'),
+    import('@fpx/exercises'),
+  ]);
+
+  return {
+    default: function PracticeTabInner({
+      termId,
+      rungId,
+      nextConcept,
+      onSelectTerm,
+      onConceptComplete,
+    }: {
+      termId: string;
+      rungId: string | null;
+      nextConcept: { id: string; title: string } | null;
+      onSelectTerm: (id: string) => void;
+      onConceptComplete: (id: string) => void;
+    }) {
+      const exerciseSet = getExerciseSet(termId);
+      if (!exerciseSet) return null;
+      return (
+        <PracticePanel
+          termId={termId}
+          exerciseSet={exerciseSet}
+          progress={progress}
+          rungId={rungId}
+          nextConcept={nextConcept}
+          createWorker={createCheckWorker}
+          renderMarkdown={renderInline}
+          onNavigate={(next) => {
+            if (next.termId) onSelectTerm(next.termId);
+            else navigate({ termId, tab: 'practice', rungId: next.rungId ?? null });
+          }}
+          onCompleteConcept={() => onConceptComplete(termId)}
+        />
+      );
+    },
+  };
+});

@@ -13,6 +13,11 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
   may import or read from it. CI runs from a clone of this repo alone.
 - Every code rung ships `starter`, `solution`, and `broken` variants. `npm run verify` must pass
   before committing exercise changes.
+- Every concept gets at least two rungs and at least one that is code-graded. Enforced by verify.
+- A check must be safe against the mistake it is testing for. Never hand learner code an endless
+  source when the likely wrong answer would drain it.
+- After changing an exercise set, run `npm run build:manifest`. The shell renders the Practice
+  tab from the manifest so the checks stay out of the initial bundle; verify fails on drift.
 - One plan phase per session unless told otherwise. Stop at the phase exit criteria.
 
 ## Design rules
@@ -33,6 +38,7 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
 | `npm run typecheck` | `tsc --build` over all project references |
 | `npm run verify` | Every solution passes, every broken fails, every starter fails, every termId exists |
 | `npm run test:e2e` | Playwright against `apps/web`, starting the dev server itself |
+| `npm run build:manifest` | Regenerate `packages/exercises/src/manifest.ts` after changing an exercise |
 | `npm run sync:jargons` | Re-read the sibling clone into `data/`. Never commits. |
 
 ## Layout
