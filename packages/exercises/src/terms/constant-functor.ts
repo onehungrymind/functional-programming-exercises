@@ -19,6 +19,11 @@ export const constantFunctor: ExerciseSet = {
       statement:
         "Can say what Const buys you: accumulating a value while a generic traversal runs, which is how a lens getter is built.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can point at the type variable that has no value behind it, and say why that makes `map` doing nothing the only possible implementation.",
+    },
   ],
   notes: `\`Const\` is a functor whose \`map\` throws the function away and keeps what it is carrying.
 
@@ -62,6 +67,50 @@ nameLens(Const)((n) => Const(n))({ name: 'ada', age: 36 })
 
 One traversal, two behaviours, decided entirely by which functor you hand it. That is the whole
 trick behind optics libraries.`,
+  typedNotes: `Same track, second lap. In JavaScript "map does nothing" looks like a decision somebody made.
+In the types it stops being a decision.
+
+\`\`\`ts
+interface Const<A, B> {
+  value: A
+  map: <C>(f: (b: B) => C) => Const<A, C>
+}
+\`\`\`
+
+Two type variables. Now go looking for a \`B\` in that structure. There is one field, \`value\`,
+and it is an \`A\`. \`B\` appears in the type parameters and in \`f\`'s argument, and nowhere else.
+
+So consider writing \`map\`. You are handed \`f: (b: B) => C\` and you owe a \`Const<A, C>\`. To
+build one you need an \`A\`, which you have. To call \`f\` you would need a \`B\`, which does not
+exist anywhere in scope and never did. There is no cheat available either: \`B\` is a variable,
+so you cannot make one up.
+
+\`\`\`ts
+const constant = <A, B>(value: A): Const<A, B> => ({
+  value,
+  map: (f) => constant(value)    // f is unused, and cannot be otherwise
+})
+\`\`\`
+
+\`B\` is a phantom type: it exists in the signature to be tracked, with no runtime value behind
+it. The parameter changes, the contents do not.
+
+\`\`\`ts
+const c = constant<string, number>('ada')
+
+c.map((n: number) => n * 2)          // Const<string, number>
+ .map((n: number) => String(n))      // Const<string, string>
+ .value                              // 'ada', all the way through
+\`\`\`
+
+Both [functor](#functor) laws hold for free, which is worth checking against a definition
+rather than trusting. Identity: mapping \`x => x\` returns the same \`value\`, which it does
+because it returns the same \`value\` for every \`f\`. Composition: \`map(f).map(g)\` and
+\`map(g . f)\` both return the \`value\` untouched, so they agree trivially.
+
+This is what makes it useful rather than a curiosity. A [lens](#lens)'s \`view\` is \`over\` with
+Const substituted in: run the update machinery, and because the functor refuses to write
+anything back, what falls out at the end is the value it collected on the way past.`,
   rungs: [
     {
       id: 'implement',
@@ -166,6 +215,138 @@ const Const = (value) => ({
           why: 'It earns its place in optics, where the same traversal serves as both a getter and a setter depending which functor you hand it.',
         },
       ],
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['map-does-nothing', 'lawful', 'typed-signature'],
+      title: "Satisfy Const<A, B>",
+      prompt:
+        "The interface is given. Write `constant`. Read the structure first and find where a `B` is meant to come from.",
+      hints: [
+        "There is only one field, and it holds an `A`.",
+        "`map` owes a `Const<A, C>`. Building one needs an `A`, and you have one.",
+        "If you are reaching for something to pass to `f`, that is the lesson. There is nothing to pass.",
+      ],
+      exports: ['constant'],
+      starter: `interface Const<A, B> {
+  value: A
+  map: <C>(f: (b: B) => C) => Const<A, C>
+}
+
+const constant = <A, B>(value: A): Const<A, B> => ({
+  value,
+  map: (f) => constant(undefined as never)
+})
+`,
+      solution: `interface Const<A, B> {
+  value: A
+  map: <C>(f: (b: B) => C) => Const<A, C>
+}
+
+const constant = <A, B>(value: A): Const<A, B> => ({
+  value,
+  map: (f) => constant(value)
+})
+`,
+      broken: [
+        `interface Const<A, B> {
+  value: A
+  map: <C>(f: (b: B) => C) => Const<A, C>
+}
+
+const constant = <A, B>(value: A): Const<A, B> => ({
+  value,
+  map: (f) => constant((f as (b: never) => never)(value as never))
+})
+`,
+        `interface Const<A, B> {
+  value: A
+  map: <C>(f: (b: B) => C) => Const<A, C>
+}
+
+const constant = <A, B>(value: A): Const<A, B> => ({
+  value,
+  map: (f) => ({ value }) as never
+})
+`,
+        `interface Const<A, B> {
+  value: A
+  map: <C>(f: (b: B) => C) => Const<A, C>
+}
+
+const constant = <A, B>(value: A): Const<A, B> => ({
+  value,
+  map: (f) => {
+    ;(f as (b: never) => never)(value as never)
+    return constant(value)
+  }
+})
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        T.check('The Const interface is still there to satisfy', () => {
+          return /interface\s+Const/.test(T.src) || 'The Const interface has gone. It is the thing being satisfied.';
+        });
+        const constant = exp.constant;
+
+        T.check('The value is readable', () => {
+          const c = constant('ada');
+          return c.value === 'ada' || `A Const of 'ada' read back as ${T.fmt(c.value)}.`;
+        });
+
+        T.check('map never calls the function', () => {
+          let ran = false;
+          constant('ada').map(() => { ran = true; return 1; });
+          return !ran || 'The function ran. There is no B anywhere in the structure, so there was nothing to hand it.';
+        });
+
+        T.check('The value survives a map', () => {
+          const r = constant('ada').map((n: number) => n * 2);
+          return r.value === 'ada' || `After mapping, the value read ${T.fmt(r.value)}.`;
+        });
+
+        T.check('map gives back something you can map again', () => {
+          const r = constant('ada').map((n: number) => n * 2);
+          return typeof r.map === 'function' || `Mapping gave ${T.fmt(r)}, which cannot be mapped again.`;
+        });
+
+        T.check('The value survives any number of maps', () => {
+          const r = constant('ada')
+            .map((n: number) => n * 2)
+            .map((n: number) => String(n))
+            .map((s: string) => s.length);
+          return r.value === 'ada' || `After three maps the value read ${T.fmt(r.value)}.`;
+        });
+
+        T.law('Identity: mapping with x => x changes nothing', 60, (G) => {
+          const v = G.int();
+          const r = constant(v).map((x: number) => x).value;
+          return r === v || `${v} came back as ${T.fmt(r)}.`;
+        });
+
+        T.law('Composition: two maps agree with one, trivially', 60, (G) => {
+          const v = G.str();
+          const f = G.fn();
+          const g = G.fn();
+          const twice = constant(v).map(f.f).map(g.f).value;
+          const once = constant(v).map((x: number) => g.f(f.f(x))).value;
+          return (
+            twice === once && twice === v ||
+            `With ${f.name} and ${g.name} over ${T.fmt(v)}: ${T.fmt(twice)} against ${T.fmt(once)}.`
+          );
+        });
+      },
     },
   ],
 };

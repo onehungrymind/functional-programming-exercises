@@ -19,6 +19,11 @@ export const comonad: ExerciseSet = {
       statement:
         "Can check the two identity laws and associativity for a comonad instance.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can put a monad's signatures next to a comonad's and show that every arrow has turned around.",
+    },
   ],
   notes: `A comonad is a monad with every arrow turned round. Put the signatures side by side:
 
@@ -64,6 +69,55 @@ w.extend((w) => w.extract())          // equals w
 w.extend(f).extract()                 // equals f(w)
 w.extend(f).extend(g)                 // equals w.extend((w) => g(w.extend(f)))
 \`\`\``,
+  typedNotes: `Same track, second lap. "The arrows are reversed" is the standard line about comonads, and
+until you write the types down it is just a line.
+
+\`\`\`ts
+interface Monad<A> {
+  of:    (a: A)                    => Monad<A>    // value  ->  wrapped
+  chain: <B>(f: (a: A) => Monad<B>) => Monad<B>
+}
+
+interface Comonad<A> {
+  extract: ()                          => A       // wrapped  ->  value
+  extend:  <B>(f: (w: Comonad<A>) => B) => Comonad<B>
+}
+\`\`\`
+
+Two reversals, and they are both literal. \`of\` goes value to wrapped; \`extract\` goes wrapped
+to value, the same arrow read backwards. \`chain\`'s function takes a bare \`A\` and returns a
+wrapped \`B\`; \`extend\`'s function takes a **wrapped** \`A\` and returns a bare \`B\`. Cover the
+names and you could not tell which one you were looking at except by which end the wrapper
+sits on.
+
+\`\`\`ts
+interface CoIdentity<A> {
+  value: A
+  extract: () => A
+  extend: <B>(f: (w: CoIdentity<A>) => B) => CoIdentity<B>
+}
+
+const coidentity = <A>(value: A): CoIdentity<A> => ({
+  value,
+  extract: () => value,
+  extend: (f) => coidentity(f(coidentity(value)))
+})
+\`\`\`
+
+The consequence is what \`extend\` can see. \`map\`'s function is handed the value and nothing
+else. \`extend\`'s function is handed the whole container, so it can look at the surroundings
+and not only the thing in focus:
+
+\`\`\`ts
+const w = coidentity(5)
+
+w.extend((c) => c.extract() * 2).extract()   // 10, used the value
+w.extend((c) => typeof c.extract()).extract() // 'number', asked about it
+\`\`\`
+
+On CoIdentity there is no surrounding context to speak of, which is exactly why it is the one
+to learn on: the shape is visible without the payoff getting in the way. On a zipper or a
+grid, \`f\` seeing the whole container is the difference between a cell and its neighbours.`,
   rungs: [
     {
       id: 'implement',
@@ -189,6 +243,147 @@ const CoIdentity = (value) => ({
           why: 'Functor and Apply. Every comonad is a functor, but these are not what makes it one.',
         },
       ],
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['arrows-reversed', 'extend-sees-context', 'typed-signature'],
+      title: "Satisfy CoIdentity<A>",
+      prompt:
+        "The interface is given. Write `coidentity` so `extract` takes the value out and `extend` hands the whole container to its function.",
+      hints: [
+        "`extract` returns `A`. It is the mirror of a monad's `of`, which takes one.",
+        "`extend`'s `f` is typed `(w: CoIdentity<A>) => B`. It wants the container, not the value.",
+        "`f` returns a bare `B`, and `extend` owes a `CoIdentity<B>`, so that result gets wrapped.",
+      ],
+      exports: ['coidentity'],
+      starter: `interface CoIdentity<A> {
+  value: A
+  extract: () => A
+  extend: <B>(f: (w: CoIdentity<A>) => B) => CoIdentity<B>
+}
+
+const coidentity = <A>(value: A): CoIdentity<A> => ({
+  value,
+  extract: () => value,
+  extend: (f) => coidentity(value) as never
+})
+`,
+      solution: `interface CoIdentity<A> {
+  value: A
+  extract: () => A
+  extend: <B>(f: (w: CoIdentity<A>) => B) => CoIdentity<B>
+}
+
+const coidentity = <A>(value: A): CoIdentity<A> => ({
+  value,
+  extract: () => value,
+  extend: (f) => coidentity(f(coidentity(value)))
+})
+`,
+      broken: [
+        `interface CoIdentity<A> {
+  value: A
+  extract: () => A
+  extend: <B>(f: (w: CoIdentity<A>) => B) => CoIdentity<B>
+}
+
+const coidentity = <A>(value: A): CoIdentity<A> => ({
+  value,
+  extract: () => value,
+  extend: (f) => coidentity((f as (v: never) => never)(value as never))
+})
+`,
+        `interface CoIdentity<A> {
+  value: A
+  extract: () => A
+  extend: <B>(f: (w: CoIdentity<A>) => B) => CoIdentity<B>
+}
+
+const coidentity = <A>(value: A): CoIdentity<A> => ({
+  value,
+  extract: () => value,
+  extend: (f) => f(coidentity(value)) as never
+})
+`,
+        `interface CoIdentity<A> {
+  value: A
+  extract: () => A
+  extend: <B>(f: (w: CoIdentity<A>) => B) => CoIdentity<B>
+}
+
+const coidentity = <A>(value: A): CoIdentity<A> => ({
+  value,
+  extract: () => value,
+  extend: (f) => coidentity(value) as never
+})
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        T.check('The CoIdentity interface is still there to satisfy', () => {
+          return /interface\s+CoIdentity/.test(T.src) || 'The CoIdentity interface has gone. It is the thing being satisfied.';
+        });
+        const co = exp.coidentity;
+
+        T.check('extract takes the value back out', () => {
+          const r = co(5).extract();
+          return r === 5 || `extract on a CoIdentity of 5 gave ${T.fmt(r)}.`;
+        });
+
+        T.check('extend hands its function the container, not the value', () => {
+          let seen: { extract?: unknown } | undefined;
+          co(5).extend((w: { extract: () => number }) => { seen = w; return 0; });
+          return (
+            (typeof seen?.extract === 'function') ||
+            `The function was handed ${T.fmt(seen)}. \`f\` is typed to take the whole container, which is the difference from map.`
+          );
+        });
+
+        T.check('extend wraps what the function gives back', () => {
+          const r = co(5).extend((w: { extract: () => number }) => w.extract() * 2);
+          return (
+            (r && typeof r.extract === 'function' && r.extract() === 10) ||
+            `Doubling through extend gave ${T.fmt(r)}. It owes a CoIdentity, so the bare result gets wrapped.`
+          );
+        });
+
+        T.check('Extending twice keeps working', () => {
+          const r = co(5)
+            .extend((w: { extract: () => number }) => w.extract() + 1)
+            .extend((w: { extract: () => number }) => w.extract() * 10);
+          return r.extract() === 60 || `Two extends gave ${T.fmt(r.extract())}, expected 60.`;
+        });
+
+        T.check('The function can ask about the value, not just use it', () => {
+          const r = co(5).extend((w: { extract: () => number }) => typeof w.extract());
+          return r.extract() === 'number' || `Asking the type through extend gave ${T.fmt(r.extract())}.`;
+        });
+
+        T.law('Extending with extract changes nothing', 60, (G) => {
+          const n = G.int();
+          const r = co(n).extend((w: { extract: () => number }) => w.extract()).extract();
+          return r === n || `${n} came back as ${T.fmt(r)}.`;
+        });
+
+        T.law('Extracting after an extend is just running the function', 60, (G) => {
+          const n = G.int();
+          const f = G.fn();
+          const run = (w: { extract: () => number }) => f.f(w.extract());
+          const a = co(n).extend(run).extract();
+          const b = run(co(n));
+          return a === b || `With ${f.name} at ${n}: ${T.fmt(a)} against ${T.fmt(b)}.`;
+        });
+      },
     },
   ],
 };

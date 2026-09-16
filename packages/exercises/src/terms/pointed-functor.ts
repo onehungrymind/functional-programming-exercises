@@ -19,6 +19,11 @@ export const pointedFunctor: ExerciseSet = {
       statement:
         "Can say what of is for: a known starting point that the applicative and monad laws are stated against.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can read `of`'s type and explain why being fully generic means it cannot inspect, change, or decide anything about the value.",
+    },
   ],
   notes: `A Pointed Functor is a functor with an \`of\`: a way into the container that does the **least
 interesting thing possible**.
@@ -62,6 +67,51 @@ A useful consequence: lifting then mapping is the same as applying then lifting.
 \`\`\`js
 Box.of(n).map(f)      // equals Box.of(f(n))
 \`\`\``,
+  typedNotes: `Same track, second lap. \`of\` has one of the most constrained types in the whole glossary, and
+the constraint is the point.
+
+\`\`\`ts
+interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+
+const of = <A>(a: A): Box<A> => ({ ... })
+\`\`\`
+
+Read \`of\`'s type on its own: \`<A>(a: A) => Box<A>\`. \`A\` is a variable, not a type. The body
+does not know whether it is holding a number, a user record, or a function, so there is
+nothing it can do with the value except put it somewhere. It cannot branch on it, cannot
+default it, cannot validate it. Being neutral is not restraint, it is the only behaviour the
+signature leaves available.
+
+\`\`\`ts
+const of = <A>(a: A): Box<A> => ({
+  value: a,
+  map: (f) => of(f(a))
+})
+\`\`\`
+
+Compare a lift that is not generic, and watch the freedom appear:
+
+\`\`\`ts
+const ofNumber = (a: number): Box<number> =>
+  of(a < 0 ? 0 : a)   // it can do this, because it knows what it has
+\`\`\`
+
+That typechecks fine, and it is no longer a pointed functor's \`of\`. The moment the type
+variable becomes a concrete type, the function is allowed to have opinions.
+
+This is what makes \`of\` the entry point everything else assumes. The [applicative](#applicative-functor)
+laws, the [monad](#monad) laws, \`chain\`'s left identity: they all say "wrapping and then doing
+X is the same as doing X", and none of them hold if wrapping is allowed to change things.
+
+\`\`\`ts
+of(5).map((n) => n * 2).value   // 10, and of contributed nothing
+\`\`\`
+
+The other half of the type is \`map\` returning \`Box<B>\` rather than a bare \`B\`. A pointed
+functor gives you the door in and keeps you inside once you are through.`,
   rungs: [
     {
       id: 'implement',
@@ -188,6 +238,137 @@ Box.of = (value) => (value && value.map ? value : Box(value))
           why: 'Tempting for something like Either, but of has to be predictable. It always goes to the same side.',
         },
       ],
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['of-lifts', 'neutral', 'typed-signature'],
+      title: "Satisfy Box<A>",
+      prompt:
+        "The interface is given. Write `of` so it lifts any value at all without touching it, and `map` so it stays inside the box.",
+      hints: [
+        "`of` is typed `<A>(a: A) => Box<A>`. It cannot look at the value, so it should not try.",
+        "`map` owes a `Box<B>`, and `f` gives a bare `B`, so wrap the result.",
+        "No defaulting, no coercing, no special case for anything.",
+      ],
+      exports: ['of'],
+      starter: `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+
+const of = <A>(a: A): Box<A> => ({
+  value: a,
+  map: (f) => of(a) as never
+})
+`,
+      solution: `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+
+const of = <A>(a: A): Box<A> => ({
+  value: a,
+  map: (f) => of(f(a))
+})
+`,
+      broken: [
+        `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+
+const of = <A>(a: A): Box<A> => ({
+  value: (a === null || a === undefined ? 0 : a) as A,
+  map: (f) => of(f(a))
+})
+`,
+        `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+
+const of = <A>(a: A): Box<A> => ({
+  value: a,
+  map: (f) => f(a) as never
+})
+`,
+        `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+
+const of = <A>(a: A): Box<A> => ({
+  value: (typeof a === 'number' ? (a as number) * 1 : a) as A,
+  map: (f) => of(a) as never
+})
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        T.check('The Box interface is still there to satisfy', () => {
+          return /interface\s+Box/.test(T.src) || 'The Box interface has gone. It is the thing being satisfied.';
+        });
+        const of = exp.of;
+
+        T.check('of puts the value where you can read it', () => {
+          const b = of(5);
+          return b.value === 5 || `of(5) gave a box holding ${T.fmt(b.value)}.`;
+        });
+
+        T.check('of lifts anything at all, without opinions', () => {
+          const cases: unknown[] = [0, '', false, null, undefined, NaN];
+          for (const c of cases) {
+            const got = of(c).value;
+            const same = Number.isNaN(c as number) ? Number.isNaN(got as number) : got === c;
+            if (!same) {
+              return `of(${T.fmt(c)}) gave a box holding ${T.fmt(got)}. The type variable means \`of\` cannot know what it has, so it cannot treat any value specially.`;
+            }
+          }
+          return true;
+        });
+
+        T.check('An object goes in as itself, not a copy', () => {
+          const o = { name: 'ada' };
+          return of(o).value === o || 'The object was rebuilt on the way in. Lifting is not copying.';
+        });
+
+        T.check('map stays inside the box', () => {
+          const r = of(5).map((n: number) => n * 2);
+          return (
+            (r && typeof r.map === 'function' && r.value === 10) ||
+            `Mapping gave ${T.fmt(r)}, which should be another Box so it can be mapped again.`
+          );
+        });
+
+        T.check('Mapping twice works', () => {
+          const r = of(5).map((n: number) => n + 1).map((n: number) => n * 10);
+          return r.value === 60 || `Two maps gave ${T.fmt(r.value)}, expected 60.`;
+        });
+
+        T.law('Lifting then mapping is the same as lifting the result', 60, (G) => {
+          const n = G.int();
+          const f = G.fn();
+          const a = of(n).map(f.f).value;
+          const b = of(f.f(n)).value;
+          return a === b || `With ${f.name} at ${n}: ${T.fmt(a)} against ${T.fmt(b)}. This is the law that fails first when \`of\` is not neutral.`;
+        });
+
+        T.law('Mapping with identity changes nothing', 60, (G) => {
+          const n = G.int();
+          const r = of(n).map((x: number) => x).value;
+          return r === n || `${n} came back as ${T.fmt(r)}.`;
+        });
+      },
     },
   ],
 };

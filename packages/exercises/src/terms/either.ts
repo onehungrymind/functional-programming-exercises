@@ -18,6 +18,11 @@ export const either: ExerciseSet = {
       statement:
         "Can build a pipeline where each step fails with its own message, and the first failure ends it.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can read `Either<E, A>` and point at where right-bias lives: `map` names only `A` in its signature, so the failure side cannot be touched.",
+    },
   ],
   notes: `Either is Option that **says why**. A failure carries a value, so the caller learns which step
 went wrong.
@@ -71,6 +76,51 @@ parseAge('{"age": -1}')     // Left('age must be positive')
 \`\`\`
 
 Three different failures, three different messages, and no try/catch at the call site.`,
+  typedNotes: `Same track, second lap. [Option](#option) tells you something is missing. Either tells you
+what went wrong, and the second type variable is that difference.
+
+\`\`\`ts
+type Either<E, A> =
+  | { tag: 'left', left: E }
+  | { tag: 'right', right: A }
+\`\`\`
+
+\`E\` is the reason, \`A\` is the result. Two variables rather than one, which is the whole
+upgrade: a \`none\` is interchangeable with every other \`none\`, while a \`Left<string>\` and a
+\`Left<ValidationError>\` are different types and the compiler keeps them apart.
+
+Now the bit that is worth staring at. Here is \`map\`:
+
+\`\`\`ts
+const map = <E, A, B>(f: (a: A) => B, e: Either<E, A>): Either<E, B> =>
+  e.tag === 'right' ? { tag: 'right', right: f(e.right) } : e
+\`\`\`
+
+\`A\` becomes \`B\`. \`E\` goes in as \`E\` and comes out as \`E\`, untouched. Right-bias is not a
+convention someone agreed on, it is written into the signature: there is no \`f\` you could pass
+to \`map\` that would change the left, because \`f\` is typed \`(a: A) => B\` and the left is not an
+\`A\`. If you want the other side you need a different function, and its type says so:
+
+\`\`\`ts
+const mapLeft = <E, A, F>(f: (e: E) => F, e: Either<E, A>): Either<F, A> =>
+  e.tag === 'left' ? { tag: 'left', left: f(e.left) } : e
+\`\`\`
+
+\`E\` becomes \`F\` and \`A\` is the one held fixed. Exactly mirrored.
+
+Getting out is \`fold\`, and its return type is the interesting part:
+
+\`\`\`ts
+const fold = <E, A, B>(onLeft: (e: E) => B, onRight: (a: A) => B, e: Either<E, A>): B =>
+  e.tag === 'left' ? onLeft(e.left) : onRight(e.right)
+
+const describe = (e: Either<string, number>) =>
+  fold((err) => 'failed: ' + err, (n) => 'got ' + n, e)
+\`\`\`
+
+Both handlers return \`B\`, the same \`B\`, and \`fold\` returns a bare \`B\` with no Either in sight.
+That shared variable is the type system making you decide what the two branches have in
+common before it will let you leave.`,
   rungs: [
     {
       id: 'implement',
@@ -357,6 +407,150 @@ const parseAge = (json) => {
             new Set(messages).size === 3 ||
             `The three failures gave ${T.fmt(messages)}. Either exists so the caller learns which step failed.`
           );
+        });
+      },
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['carries-the-reason', 'right-biased', 'typed-signature'],
+      title: "Satisfy Either<E, A>",
+      prompt:
+        "The type is given. Write `map`, `mapLeft` and `fold` so each one touches only the side its signature names.",
+      hints: [
+        "`map` returns `Either<E, B>`. `E` is unchanged, so a left passes through exactly as it arrived.",
+        "`mapLeft` is the mirror image. Same shape, other tag.",
+        "`fold` returns a bare `B`. Both handlers produce one, which is why there is nothing left to unwrap.",
+      ],
+      exports: ['map', 'mapLeft', 'fold'],
+      starter: `type Either<E, A> =
+  | { tag: 'left', left: E }
+  | { tag: 'right', right: A }
+
+const map = <E, A, B>(f: (a: A) => B, e: Either<E, A>): Either<E, B> => e as never
+
+const mapLeft = <E, A, F>(f: (e: E) => F, e: Either<E, A>): Either<F, A> => e as never
+
+const fold = <E, A, B>(onLeft: (e: E) => B, onRight: (a: A) => B, e: Either<E, A>): B =>
+  undefined as never
+`,
+      solution: `type Either<E, A> =
+  | { tag: 'left', left: E }
+  | { tag: 'right', right: A }
+
+const map = <E, A, B>(f: (a: A) => B, e: Either<E, A>): Either<E, B> =>
+  e.tag === 'right' ? { tag: 'right', right: f(e.right) } : e
+
+const mapLeft = <E, A, F>(f: (e: E) => F, e: Either<E, A>): Either<F, A> =>
+  e.tag === 'left' ? { tag: 'left', left: f(e.left) } : e
+
+const fold = <E, A, B>(onLeft: (e: E) => B, onRight: (a: A) => B, e: Either<E, A>): B =>
+  e.tag === 'left' ? onLeft(e.left) : onRight(e.right)
+`,
+      broken: [
+        `type Either<E, A> =
+  | { tag: 'left', left: E }
+  | { tag: 'right', right: A }
+
+const map = <E, A, B>(f: (a: A) => B, e: Either<E, A>): Either<E, B> =>
+  e.tag === 'right'
+    ? { tag: 'right', right: f(e.right) }
+    : { tag: 'left', left: f(e.left as never) as never }
+
+const mapLeft = <E, A, F>(f: (e: E) => F, e: Either<E, A>): Either<F, A> =>
+  e.tag === 'left' ? { tag: 'left', left: f(e.left) } : e
+
+const fold = <E, A, B>(onLeft: (e: E) => B, onRight: (a: A) => B, e: Either<E, A>): B =>
+  e.tag === 'left' ? onLeft(e.left) : onRight(e.right)
+`,
+        `type Either<E, A> =
+  | { tag: 'left', left: E }
+  | { tag: 'right', right: A }
+
+const map = <E, A, B>(f: (a: A) => B, e: Either<E, A>): Either<E, B> =>
+  e.tag === 'right' ? { tag: 'right', right: f(e.right) } : e
+
+const mapLeft = <E, A, F>(f: (e: E) => F, e: Either<E, A>): Either<F, A> =>
+  e.tag === 'right' ? { tag: 'right', right: f(e.right as never) as never } : e as never
+
+const fold = <E, A, B>(onLeft: (e: E) => B, onRight: (a: A) => B, e: Either<E, A>): B =>
+  e.tag === 'left' ? onLeft(e.left) : onRight(e.right)
+`,
+        `type Either<E, A> =
+  | { tag: 'left', left: E }
+  | { tag: 'right', right: A }
+
+const map = <E, A, B>(f: (a: A) => B, e: Either<E, A>): Either<E, B> =>
+  e.tag === 'right' ? { tag: 'right', right: f(e.right) } : e
+
+const mapLeft = <E, A, F>(f: (e: E) => F, e: Either<E, A>): Either<F, A> =>
+  e.tag === 'left' ? { tag: 'left', left: f(e.left) } : e
+
+const fold = <E, A, B>(onLeft: (e: E) => B, onRight: (a: A) => B, e: Either<E, A>): B =>
+  onRight((e as { right: A }).right)
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        const { map, mapLeft, fold } = exp;
+        const left = (v: unknown) => ({ tag: 'left', left: v });
+        const right = (v: unknown) => ({ tag: 'right', right: v });
+
+        T.check('map reaches the right', () => {
+          const r = map((n: number) => n * 2, right(21));
+          return T.eq(r, right(42)) || `Doubling a right gave ${T.fmt(r)}.`;
+        });
+
+        T.check('map leaves the left alone, reason and all', () => {
+          let ran = false;
+          const r = map((n: number) => { ran = true; return n * 2; }, left('bad input'));
+          if (ran) return 'The function ran on a left. `f` is typed to take the right, so there is nothing on a left to hand it.';
+          return T.eq(r, left('bad input')) || `Mapping a left gave ${T.fmt(r)}. The reason has to survive untouched.`;
+        });
+
+        T.check('mapLeft is the mirror image', () => {
+          const r = mapLeft((s: string) => s.toUpperCase(), left('bad'));
+          return T.eq(r, left('BAD')) || `mapLeft over a left gave ${T.fmt(r)}.`;
+        });
+
+        T.check('mapLeft leaves a right alone', () => {
+          let ran = false;
+          const r = mapLeft((s: string) => { ran = true; return s; }, right(1));
+          if (ran) return 'mapLeft ran its function on a right. It only names `E` in its signature.';
+          return T.eq(r, right(1)) || `mapLeft over a right gave ${T.fmt(r)}.`;
+        });
+
+        T.check('fold picks the right handler and returns a bare value', () => {
+          const describe = (e: unknown) => fold((err: string) => 'failed: ' + err, (n: number) => 'got ' + n, e);
+          const a = describe(right(3));
+          const b = describe(left('nope'));
+          return (a === 'got 3' && b === 'failed: nope') || `fold gave ${T.fmt(a)} and ${T.fmt(b)}.`;
+        });
+
+        T.check('The two sides stay distinguishable', () => {
+          const r = fold(() => 'L', () => 'R', left('x'));
+          return r === 'L' || `Folding a left ran the right handler. The tag is the only thing that decides.`;
+        });
+
+        T.law('Mapping with identity changes nothing, on either side', 60, (G) => {
+          const e = G.bool() ? right(G.int()) : left(G.str());
+          const r = map((x: number) => x, e);
+          return T.eq(r, e) || `${T.fmt(e)} came back as ${T.fmt(r)}.`;
+        });
+
+        T.law('A left survives any number of maps', 60, (G) => {
+          const reason = G.str();
+          const r = map(G.fn().f, map(G.fn().f, left(reason)));
+          return T.eq(r, left(reason)) || `After two maps the left read ${T.fmt(r)}.`;
         });
       },
     },

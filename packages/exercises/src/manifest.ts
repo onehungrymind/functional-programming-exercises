@@ -771,7 +771,7 @@ export const manifest: ManifestEntry[] = [
   {
     "termId": "option",
     "notes": "Option puts \"there might be nothing here\" into the type, so the check happens once at the end\nrather than at every step.\n\n```js\nconst Some = (value) => ({\n  isSome: true, value,\n  map: (f) => Some(f(value)),\n  chain: (f) => f(value),\n  getOrElse: () => value\n})\nconst None = () => ({\n  isSome: false,\n  map: () => None(),        // f never runs\n  chain: () => None(),\n  getOrElse: (fallback) => fallback\n})\n```\n\n`map` is for a plain function; `chain` is for one that already returns an Option. Using map\nwhere chain belongs leaves you holding an Option of an Option:\n\n```js\nconst prop = (k) => (o) => (o != null && o[k] != null ? Some(o[k]) : None())\n\nSome(user).map(prop('address'))    // Some(Some({...}))\nSome(user).chain(prop('address'))  // Some({...})\n```\n\nThe payoff is a chain that short-circuits on the first miss, with no null checks in between:\n\n```js\nconst cityOf = (user) =>\n  prop('address')(user).chain(prop('city')).getOrElse('unknown')\n\ncityOf({ address: { city: 'Paris' } })   // 'Paris'\ncityOf({ address: {} })                  // 'unknown'\ncityOf({})                               // 'unknown'\ncityOf(null)                             // 'unknown'\n```\n\nCompare that with the version it replaces:\n\n```js\nconst cityOf = (user) => {\n  if (user == null) return 'unknown'\n  if (user.address == null) return 'unknown'\n  if (user.address.city == null) return 'unknown'\n  return user.address.city\n}\n```\n\n`getOrElse` is the way out, and it belongs **last**. Reaching for `.value` partway through\nthrows the whole thing away.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. Option is the concept that was invented for a type system, so this is\nwhere it finally reads the way it was meant to.\n\n```ts\ntype Option<A> =\n  | { tag: 'some', value: A }\n  | { tag: 'none' }\n```\n\nA union of two shapes, told apart by a tag. Notice what is NOT there: the `none` case has no\n`value` field at all. Absence is not a null sitting in the slot, it is a shape with no slot.\n\nThat is what makes the compiler useful here. Reach for `.value` without checking the tag and\nit is an error, because the `none` half does not have one:\n\n```ts\nconst shout = (o: Option<string>) => o.value.toUpperCase()  // error\n\nconst shout = (o: Option<string>) =>\n  o.tag === 'some' ? o.value.toUpperCase() : 'nothing'      // fine\n```\n\nThe `o.tag === 'some'` test narrows the union to the half that has a value. You cannot forget\nthe empty case, because forgetting it does not compile. That is the whole pitch.\n\nNow the three operations, and the thing to read is what each one gives back:\n\n```ts\nconst fromNullable = <A>(a: A | null | undefined): Option<A> =>\n  a === null || a === undefined ? { tag: 'none' } : { tag: 'some', value: a }\n\nconst map = <A, B>(f: (a: A) => B, o: Option<A>): Option<B> =>\n  o.tag === 'some' ? { tag: 'some', value: f(o.value) } : o\n\nconst getOrElse = <A>(fallback: A, o: Option<A>): A =>\n  o.tag === 'some' ? o.value : fallback\n```\n\n`map` returns `Option<B>`, still wrapped, so it can be chained forever. `getOrElse` returns\nplain `A`. It is the only one of the three whose return type has no Option in it, and that is\nwhat \"one exit\" means: the type tells you where the optionality stops.\n\n`fromNullable` is the door in, and its argument type `A | null | undefined` is doing the\nnarrowing. Everything downstream gets an `A` that really is an `A`.",
     "rungs": [
       {
         "id": "implement",
@@ -786,13 +786,20 @@ export const manifest: ManifestEntry[] = [
         "title": "Read a nested field safely",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Option<A>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
   {
     "termId": "either",
     "notes": "Either is Option that **says why**. A failure carries a value, so the caller learns which step\nwent wrong.\n\n```js\nconst Left = (error) => ({\n  isRight: false,\n  map: () => Left(error),        // the failure passes straight through\n  chain: () => Left(error),\n  fold: (onLeft, onRight) => onLeft(error)\n})\nconst Right = (value) => ({\n  isRight: true,\n  map: (f) => Right(f(value)),\n  chain: (f) => f(value),\n  fold: (onLeft, onRight) => onRight(value)\n})\n```\n\nIt is **right-biased**: map and chain only ever touch the success side, which is what lets a\nfailure travel the length of a pipeline without being handled at every step.\n\n```js\nLeft('not found').map((n) => n * 100).map((n) => n + 1)\n// Left('not found'), and neither function ran\n```\n\n`fold` is the way out, and exactly one branch runs:\n\n```js\nresult.fold(\n  (err) => `failed: ${err}`,\n  (val) => `ok: ${val}`\n)\n```\n\nThe reason to prefer it over throwing is that each step keeps its own message, and the whole\nthing stays a value:\n\n```js\nconst parseJson = (s) => { try { return Right(JSON.parse(s)) } catch { return Left('not json') } }\nconst getAge = (o) => ('age' in o ? Right(o.age) : Left('no age'))\nconst checkPositive = (n) => (typeof n === 'number' && n > 0 ? Right(n) : Left('age must be positive'))\n\nconst parseAge = (json) => parseJson(json).chain(getAge).chain(checkPositive)\n\nparseAge('{\"age\": 30}')     // Right(30)\nparseAge('nope')            // Left('not json')\nparseAge('{\"name\":\"ada\"}')  // Left('no age')\nparseAge('{\"age\": -1}')     // Left('age must be positive')\n```\n\nThree different failures, three different messages, and no try/catch at the call site.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. [Option](#option) tells you something is missing. Either tells you\nwhat went wrong, and the second type variable is that difference.\n\n```ts\ntype Either<E, A> =\n  | { tag: 'left', left: E }\n  | { tag: 'right', right: A }\n```\n\n`E` is the reason, `A` is the result. Two variables rather than one, which is the whole\nupgrade: a `none` is interchangeable with every other `none`, while a `Left<string>` and a\n`Left<ValidationError>` are different types and the compiler keeps them apart.\n\nNow the bit that is worth staring at. Here is `map`:\n\n```ts\nconst map = <E, A, B>(f: (a: A) => B, e: Either<E, A>): Either<E, B> =>\n  e.tag === 'right' ? { tag: 'right', right: f(e.right) } : e\n```\n\n`A` becomes `B`. `E` goes in as `E` and comes out as `E`, untouched. Right-bias is not a\nconvention someone agreed on, it is written into the signature: there is no `f` you could pass\nto `map` that would change the left, because `f` is typed `(a: A) => B` and the left is not an\n`A`. If you want the other side you need a different function, and its type says so:\n\n```ts\nconst mapLeft = <E, A, F>(f: (e: E) => F, e: Either<E, A>): Either<F, A> =>\n  e.tag === 'left' ? { tag: 'left', left: f(e.left) } : e\n```\n\n`E` becomes `F` and `A` is the one held fixed. Exactly mirrored.\n\nGetting out is `fold`, and its return type is the interesting part:\n\n```ts\nconst fold = <E, A, B>(onLeft: (e: E) => B, onRight: (a: A) => B, e: Either<E, A>): B =>\n  e.tag === 'left' ? onLeft(e.left) : onRight(e.right)\n\nconst describe = (e: Either<string, number>) =>\n  fold((err) => 'failed: ' + err, (n) => 'got ' + n, e)\n```\n\nBoth handlers return `B`, the same `B`, and `fold` returns a bare `B` with no Either in sight.\nThat shared variable is the type system making you decide what the two branches have in\ncommon before it will let you leave.",
     "rungs": [
       {
         "id": "implement",
@@ -807,6 +814,13 @@ export const manifest: ManifestEntry[] = [
         "title": "A parse pipeline that reports why it failed",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Either<E, A>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
@@ -1044,7 +1058,7 @@ export const manifest: ManifestEntry[] = [
   {
     "termId": "pointed-functor",
     "notes": "A Pointed Functor is a functor with an `of`: a way into the container that does the **least\ninteresting thing possible**.\n\n```js\nBox.of = (value) => Box(value)\n\nBox.of(3)   // Box(3)\n```\n\nThat sounds too small to name, and the rules are what make it worth naming. `of` must add\nnothing:\n\n```js\nBox.of = (value) => Box(value * 2)      // no\nBox.of = (value) => value               // no, that is not a Box\n```\n\nAnd it must not be clever about what it is handed. Lifting a container gives you a container in\na container, and that is correct:\n\n```js\nBox.of(Box(1))                                  // Box(Box(1))\nBox.of = (v) => (v && v.map ? v : Box(v))       // wrong: of always adds exactly one layer\n```\n\nFlattening is [chain](#monad)'s job, not `of`'s.\n\nThe reason it earns a name is that everything above it is **stated in terms of it**. The\napplicative and monad laws all mention `of`, so without a predictable one there is nothing to\nstate them against:\n\n```js\nM.of(a).chain(f)      // has to equal f(a)              left identity\nm.chain(M.of)         // has to equal m                 right identity\nA.of((x) => x).ap(v)  // has to equal v                 applicative identity\n```\n\nA useful consequence: lifting then mapping is the same as applying then lifting.\n\n```js\nBox.of(n).map(f)      // equals Box.of(f(n))\n```",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. `of` has one of the most constrained types in the whole glossary, and\nthe constraint is the point.\n\n```ts\ninterface Box<A> {\n  value: A\n  map: <B>(f: (a: A) => B) => Box<B>\n}\n\nconst of = <A>(a: A): Box<A> => ({ ... })\n```\n\nRead `of`'s type on its own: `<A>(a: A) => Box<A>`. `A` is a variable, not a type. The body\ndoes not know whether it is holding a number, a user record, or a function, so there is\nnothing it can do with the value except put it somewhere. It cannot branch on it, cannot\ndefault it, cannot validate it. Being neutral is not restraint, it is the only behaviour the\nsignature leaves available.\n\n```ts\nconst of = <A>(a: A): Box<A> => ({\n  value: a,\n  map: (f) => of(f(a))\n})\n```\n\nCompare a lift that is not generic, and watch the freedom appear:\n\n```ts\nconst ofNumber = (a: number): Box<number> =>\n  of(a < 0 ? 0 : a)   // it can do this, because it knows what it has\n```\n\nThat typechecks fine, and it is no longer a pointed functor's `of`. The moment the type\nvariable becomes a concrete type, the function is allowed to have opinions.\n\nThis is what makes `of` the entry point everything else assumes. The [applicative](#applicative-functor)\nlaws, the [monad](#monad) laws, `chain`'s left identity: they all say \"wrapping and then doing\nX is the same as doing X\", and none of them hold if wrapping is allowed to change things.\n\n```ts\nof(5).map((n) => n * 2).value   // 10, and of contributed nothing\n```\n\nThe other half of the type is `map` returning `Box<B>` rather than a bare `B`. A pointed\nfunctor gives you the door in and keeps you inside once you are through.",
     "rungs": [
       {
         "id": "implement",
@@ -1059,13 +1073,20 @@ export const manifest: ManifestEntry[] = [
         "title": "What is of allowed to do?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Box<A>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
   {
     "termId": "constant-functor",
     "notes": "`Const` is a functor whose `map` throws the function away and keeps what it is carrying.\n\n```js\nconst Const = (value) => ({\n  value,\n  map: (f) => Const(value)      // f is never called\n})\n\nConst(5).map((n) => n * 100)    // Const(5)\nConst('kept').map(() => 'replaced').map(() => 'again')   // Const('kept')\n```\n\nBoth functor laws hold, and they hold **because** nothing happens:\n\n```js\nConst(5).map((x) => x)              // Const(5). Identity, trivially.\nConst(5).map(f).map(g)              // Const(5)\nConst(5).map((x) => g(f(x)))        // Const(5). Composition, trivially.\n```\n\nThat makes it sound useless, and its use is genuinely non-obvious: it is how you get a **getter\nout of a setter**.\n\nA van Laarhoven lens is one function parameterized by a functor. Run it with a functor that\napplies its function and you get a setter. Run the very same code with `Const` and the\nmapping does nothing while the payload travels back out:\n\n```js\n// one definition\nconst nameLens = (F) => (f) => (s) => f(s.name).map((name) => ({ ...s, name }))\n\n// with Identity: a setter\nnameLens(Identity)((n) => Identity(n.toUpperCase()))({ name: 'ada', age: 36 })\n// Identity({ name: 'ADA', age: 36 })\n\n// with Const: a getter, because the rebuild is discarded\nnameLens(Const)((n) => Const(n))({ name: 'ada', age: 36 })\n// Const('ada')\n```\n\nOne traversal, two behaviours, decided entirely by which functor you hand it. That is the whole\ntrick behind optics libraries.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. In JavaScript \"map does nothing\" looks like a decision somebody made.\nIn the types it stops being a decision.\n\n```ts\ninterface Const<A, B> {\n  value: A\n  map: <C>(f: (b: B) => C) => Const<A, C>\n}\n```\n\nTwo type variables. Now go looking for a `B` in that structure. There is one field, `value`,\nand it is an `A`. `B` appears in the type parameters and in `f`'s argument, and nowhere else.\n\nSo consider writing `map`. You are handed `f: (b: B) => C` and you owe a `Const<A, C>`. To\nbuild one you need an `A`, which you have. To call `f` you would need a `B`, which does not\nexist anywhere in scope and never did. There is no cheat available either: `B` is a variable,\nso you cannot make one up.\n\n```ts\nconst constant = <A, B>(value: A): Const<A, B> => ({\n  value,\n  map: (f) => constant(value)    // f is unused, and cannot be otherwise\n})\n```\n\n`B` is a phantom type: it exists in the signature to be tracked, with no runtime value behind\nit. The parameter changes, the contents do not.\n\n```ts\nconst c = constant<string, number>('ada')\n\nc.map((n: number) => n * 2)          // Const<string, number>\n .map((n: number) => String(n))      // Const<string, string>\n .value                              // 'ada', all the way through\n```\n\nBoth [functor](#functor) laws hold for free, which is worth checking against a definition\nrather than trusting. Identity: mapping `x => x` returns the same `value`, which it does\nbecause it returns the same `value` for every `f`. Composition: `map(f).map(g)` and\n`map(g . f)` both return the `value` untouched, so they agree trivially.\n\nThis is what makes it useful rather than a curiosity. A [lens](#lens)'s `view` is `over` with\nConst substituted in: run the update machinery, and because the functor refuses to write\nanything back, what falls out at the end is the value it collected on the way past.",
     "rungs": [
       {
         "id": "implement",
@@ -1080,6 +1101,13 @@ export const manifest: ManifestEntry[] = [
         "title": "What is Const good for?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Const<A, B>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
@@ -1149,7 +1177,7 @@ export const manifest: ManifestEntry[] = [
   {
     "termId": "monad",
     "notes": "A monad is a pointed functor with `chain`. The difference from `map` is one thing: the\nfunction you give it **already returns a container**, so chain must not wrap again.\n\n```js\nconst Just = (value) => ({\n  isNothing: false, value,\n  map: (f) => Just(f(value)),      // f returns a plain value\n  chain: (f) => f(value)            // f returns a Maybe. Hand it straight back.\n})\n\nJust(2).map((n) => Just(n * 10))    // Just(Just(20))   nested\nJust(2).chain((n) => Just(n * 10))  // Just(20)\n```\n\nIt flattens **exactly one** level, which matters when the values are themselves containers:\n\n```js\nconst chain = (f, xs) => xs.reduce((acc, x) => acc.concat(f(x)), [])\n\nchain((n) => [n, n * 10], [1, 2])   // [1, 10, 2, 20]\nchain((n) => [[n]], [1, 2])         // [[1], [2]]   one layer off, not all of them\n[[1], [2]].flat(Infinity)           // [1, 2]       which is a different operation\n```\n\nThe reason to want it is short-circuiting. A step that fails ends the chain, and nothing after\nit runs:\n\n```js\nJust(1)\n  .chain(() => Nothing())\n  .chain((n) => Just(n * 100))   // never called\n// Nothing\n```\n\nThree laws. The identities say `of` is neutral on both sides, and associativity says nesting\nthe chains does not matter:\n\n```js\nM.of(a).chain(f)                        // equals f(a)\nm.chain(M.of)                           // equals m\nm.chain(f).chain(g)                     // equals m.chain((x) => f(x).chain(g))\n```\n\nThat last one is what lets you extract a middle section of a pipeline into its own named\nfunction without changing the result.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. Everything this concept is about fits in the gap between two lines.\n\n```ts\ninterface Maybe<A> {\n  map:   <B>(f: (a: A) => B)        => Maybe<B>\n  chain: <B>(f: (a: A) => Maybe<B>) => Maybe<B>\n}\n```\n\nRead only the `f`s. `map` takes a function that returns a bare `B`. `chain` takes one that\nreturns a `Maybe<B>`, already wrapped. Now read only the return types: **both are `Maybe<B>`**.\n\nThat is the flattening, and you can see it without running anything. If `chain` behaved like\n`map`, its return type would have to be `Maybe<Maybe<B>>`, because `f` already produced a\n`Maybe` and wrapping it again adds a layer. Chain returns one layer, so chain must be\nunwrapping exactly one. There is nowhere else for the layer to go.\n\n```ts\nconst just = <A>(value: A): Maybe<A> => ({\n  map:   (f) => just(f(value)),\n  chain: (f) => f(value),        // no wrapping, f already did it\n  getOrElse: () => value\n})\n\nconst nothing = <A>(): Maybe<A> => ({\n  map:   () => nothing(),\n  chain: () => nothing(),        // f never runs\n  getOrElse: (fallback) => fallback\n})\n```\n\n`chain`'s body is `f(value)`. Not `just(f(value))`. The absence of a constructor call there is\nthe entire concept.\n\nWhere it pays off is functions that can fail. Each step returns a `Maybe`, so with `map` you\nwould be stacking layers and with `chain` you are not:\n\n```ts\nconst head = <A>(xs: A[]): Maybe<A> => xs.length ? just(xs[0]) : nothing()\n\nhead([[1, 2], [3]]).map(head)     // Maybe<Maybe<number>>  two layers\nhead([[1, 2], [3]]).chain(head)   // Maybe<number>         one\n```\n\nThe short-circuit falls out of the same place. `nothing`'s `chain` ignores `f` entirely, and\nthe type permits that: it owes you a `Maybe<B>`, and `nothing<B>()` is one.",
     "rungs": [
       {
         "id": "implement",
@@ -1164,6 +1192,13 @@ export const manifest: ManifestEntry[] = [
         "title": "chain for Array",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Maybe<A>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
@@ -1191,7 +1226,7 @@ export const manifest: ManifestEntry[] = [
   {
     "termId": "comonad",
     "notes": "A comonad is a monad with every arrow turned round. Put the signatures side by side:\n\n```js\n// Monad                          Comonad\n// of      :: a -> m a            extract :: w a -> a\n// chain   :: (a -> m b)          extend  :: (w a -> b)\n//            -> m a -> m b                  -> w a -> w b\n```\n\n`of` puts a value in; `extract` takes one out. `chain` takes a function that **produces**\na container; `extend` takes one that **consumes** a container.\n\n```js\nconst CoIdentity = (value) => ({\n  value,\n  map: (f) => CoIdentity(f(value)),\n  extract: () => value,\n  extend: (f) => CoIdentity(f(CoIdentity(value)))\n})\n```\n\nThe part that catches people is that `extend` hands the function the **whole container**, not\nthe value:\n\n```js\nCoIdentity(3).extend((w) => w.extract() + 1)   // CoIdentity(4)\n//                    ^ w is a CoIdentity, not 3\n\nextend: (f) => CoIdentity(f(value))            // wrong: f gets the bare value\n```\n\nThat is the whole point of the shape: `f` can look at the **context**, not just the value. For\nCoIdentity there is no context to look at, which is why the interesting comonads are things like\na zipper over a list, where `extract` is the element under the cursor and `extend` runs a\nfunction at every position with its neighbours available. A blur filter is an extend over an\nimage.\n\nThe laws mirror the monad laws exactly:\n\n```js\nw.extend((w) => w.extract())          // equals w\nw.extend(f).extract()                 // equals f(w)\nw.extend(f).extend(g)                 // equals w.extend((w) => g(w.extend(f)))\n```",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. \"The arrows are reversed\" is the standard line about comonads, and\nuntil you write the types down it is just a line.\n\n```ts\ninterface Monad<A> {\n  of:    (a: A)                    => Monad<A>    // value  ->  wrapped\n  chain: <B>(f: (a: A) => Monad<B>) => Monad<B>\n}\n\ninterface Comonad<A> {\n  extract: ()                          => A       // wrapped  ->  value\n  extend:  <B>(f: (w: Comonad<A>) => B) => Comonad<B>\n}\n```\n\nTwo reversals, and they are both literal. `of` goes value to wrapped; `extract` goes wrapped\nto value, the same arrow read backwards. `chain`'s function takes a bare `A` and returns a\nwrapped `B`; `extend`'s function takes a **wrapped** `A` and returns a bare `B`. Cover the\nnames and you could not tell which one you were looking at except by which end the wrapper\nsits on.\n\n```ts\ninterface CoIdentity<A> {\n  value: A\n  extract: () => A\n  extend: <B>(f: (w: CoIdentity<A>) => B) => CoIdentity<B>\n}\n\nconst coidentity = <A>(value: A): CoIdentity<A> => ({\n  value,\n  extract: () => value,\n  extend: (f) => coidentity(f(coidentity(value)))\n})\n```\n\nThe consequence is what `extend` can see. `map`'s function is handed the value and nothing\nelse. `extend`'s function is handed the whole container, so it can look at the surroundings\nand not only the thing in focus:\n\n```ts\nconst w = coidentity(5)\n\nw.extend((c) => c.extract() * 2).extract()   // 10, used the value\nw.extend((c) => typeof c.extract()).extract() // 'number', asked about it\n```\n\nOn CoIdentity there is no surrounding context to speak of, which is exactly why it is the one\nto learn on: the shape is visible without the payoff getting in the way. On a zipper or a\ngrid, `f` seeing the whole container is the difference between a cell and its neighbours.",
     "rungs": [
       {
         "id": "implement",
@@ -1206,6 +1241,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Monad or comonad?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy CoIdentity<A>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
