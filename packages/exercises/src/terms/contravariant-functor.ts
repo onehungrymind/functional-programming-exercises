@@ -19,6 +19,11 @@ export const contravariantFunctor: ExerciseSet = {
       statement:
         "Knows two of these are compared by what they do on sample inputs, because their whole content is a function.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can read `contramap`'s type and see the arrow pointing the other way, `(b: B) => A` where map would have `(a: A) => B`.",
+    },
   ],
   notes: `A functor maps the **output**. A contravariant functor maps the **input**.
 
@@ -64,6 +69,55 @@ const same = (a, b) => [-7, -1, 0, 1, 5].every((x) => a.run(x) === b.run(x))
 
 Comparators, serializers, and anything else shaped \`a -> something\` are contravariant in
 \`a\` for the same reason.`,
+  typedNotes: `Same track, second lap. This is the concept where the types stop being decoration. The whole
+idea is one arrow pointing the other way, and in JavaScript you had to take that on faith.
+
+\`\`\`ts
+interface Functor<A>   { map:       <B>(f: (a: A) => B) => Functor<B> }
+interface Predicate<A> { contramap: <B>(f: (b: B) => A) => Predicate<B> }
+\`\`\`
+
+Put your finger on the two \`f\`s. \`map\` takes \`(a: A) => B\`: it starts where you are and goes
+where you want. \`contramap\` takes \`(b: B) => A\`: it starts where you want and comes back to
+where you are. Both return a thing parameterised by \`B\`. Same destination, opposite arrow.
+
+The reason is sitting in what a predicate is made of:
+
+\`\`\`ts
+interface Predicate<A> {
+  run: (a: A) => boolean
+  contramap: <B>(f: (b: B) => A) => Predicate<B>
+}
+
+const predicate = <A>(run: (a: A) => boolean): Predicate<A> => ({
+  run,
+  contramap: (f) => predicate((b) => run(f(b)))
+})
+\`\`\`
+
+\`A\` only ever appears as an argument. To end up with something that accepts \`B\`, you need a
+way to turn a \`B\` into an \`A\` before \`run\` ever sees it, so the function has to point inward.
+There is no other way to write a body that typechecks.
+
+\`\`\`ts
+const isLong: Predicate<string> = predicate((s) => s.length > 3)
+
+const nameIsLong: Predicate<{ name: string }> = isLong.contramap((p) => p.name)
+nameIsLong.run({ name: 'Ada' })       // false
+nameIsLong.run({ name: 'Grace' })     // true
+\`\`\`
+
+TypeScript can be told about this directly. Since 4.7 you can annotate a type parameter with
+\`in\` for contravariant and \`out\` for covariant, and the compiler will reject a definition that
+does not match:
+
+\`\`\`ts
+interface Predicate<in A>  { run: (a: A) => boolean }   // A only goes in
+interface Box<out A>       { value: A }                 // A only comes out
+\`\`\`
+
+Write \`interface Predicate<out A>\` on that first one and it is an error, because \`A\` is in an
+argument position. That is the variance you were reasoning about by hand, checked.`,
   rungs: [
     {
       id: 'implement',
@@ -177,6 +231,134 @@ const Predicate = (run) => ({
           why: 'There is, and it is the reversed one. Both laws mirror the functor laws exactly.',
         },
       ],
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['maps-the-input', 'order-reverses', 'typed-signature'],
+      title: "Satisfy Predicate<A>",
+      prompt:
+        "The interface is given. Fill in `predicate` so `contramap` builds a predicate over a new type by converting into the old one first.",
+      hints: [
+        "`f` is typed `(b: B) => A`. It runs before `run` does, not after.",
+        "The result is a `Predicate<B>`, so build one with `predicate` again.",
+        "If you find yourself wanting to call `f` on the result of `run`, check the arrow direction again. `run` gives a boolean, and `f` does not take one.",
+      ],
+      exports: ['predicate'],
+      starter: `interface Predicate<A> {
+  run: (a: A) => boolean
+  contramap: <B>(f: (b: B) => A) => Predicate<B>
+}
+
+const predicate = <A>(run: (a: A) => boolean): Predicate<A> => ({
+  run,
+  contramap: (f) => predicate(run) as never
+})
+`,
+      solution: `interface Predicate<A> {
+  run: (a: A) => boolean
+  contramap: <B>(f: (b: B) => A) => Predicate<B>
+}
+
+const predicate = <A>(run: (a: A) => boolean): Predicate<A> => ({
+  run,
+  contramap: (f) => predicate((b) => run(f(b)))
+})
+`,
+      broken: [
+        `interface Predicate<A> {
+  run: (a: A) => boolean
+  contramap: <B>(f: (b: B) => A) => Predicate<B>
+}
+
+const predicate = <A>(run: (a: A) => boolean): Predicate<A> => ({
+  run,
+  contramap: (f) => predicate((b: never) => f(run(b) as never) as never) as never
+})
+`,
+        `interface Predicate<A> {
+  run: (a: A) => boolean
+  contramap: <B>(f: (b: B) => A) => Predicate<B>
+}
+
+const predicate = <A>(run: (a: A) => boolean): Predicate<A> => ({
+  run,
+  contramap: (f) => predicate(run) as never
+})
+`,
+        `interface Predicate<A> {
+  run: (a: A) => boolean
+  contramap: <B>(f: (b: B) => A) => Predicate<B>
+}
+
+const predicate = <A>(run: (a: A) => boolean): Predicate<A> => ({
+  run,
+  contramap: (f) => predicate((b: never) => !run(f(b))) as never
+})
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        T.check('The Predicate interface is still there to satisfy', () => {
+          return /interface\s+Predicate/.test(T.src) || 'The Predicate interface has gone. It is the thing being satisfied.';
+        });
+        const predicate = exp.predicate;
+
+        T.check('A predicate runs', () => {
+          const p = predicate((s: string) => s.length > 3);
+          return (p.run('Grace') === true && p.run('Ada') === false) || `'Grace' and 'Ada' gave ${T.fmt(p.run('Grace'))} and ${T.fmt(p.run('Ada'))}.`;
+        });
+
+        T.check('contramap gives back a predicate over the new type', () => {
+          const p = predicate((s: string) => s.length > 3).contramap((o: { name: string }) => o.name);
+          return typeof p.run === 'function' || `contramap gave ${T.fmt(p)}, which has nothing to run.`;
+        });
+
+        T.check('The function runs on the way in, before the predicate does', () => {
+          const isLong = predicate((s: string) => s.length > 3);
+          const nameIsLong = isLong.contramap((o: { name: string }) => o.name);
+          return (
+            (nameIsLong.run({ name: 'Grace' }) === true && nameIsLong.run({ name: 'Ada' }) === false) ||
+            `Grace and Ada gave ${T.fmt(nameIsLong.run({ name: 'Grace' }))} and ${T.fmt(nameIsLong.run({ name: 'Ada' }))}. The conversion has to happen before the test, not after.`
+          );
+        });
+
+        T.check('The answer is not just inverted', () => {
+          const isPos = predicate((n: number) => n > 0);
+          const q = isPos.contramap((n: number) => n);
+          return q.run(5) === true || `Contramapping with identity flipped the answer. contramap changes what goes in, never what comes out.`;
+        });
+
+        T.law('Contramapping with identity changes nothing', 60, (G) => {
+          const f = G.pred();
+          const n = G.int();
+          const p = predicate(f.f);
+          const q = p.contramap((x: number) => x);
+          return q.run(n) === p.run(n) || `With ${f.name} at ${n}, identity contramap gave ${T.fmt(q.run(n))} instead of ${T.fmt(p.run(n))}.`;
+        });
+
+        T.law('Two contramaps compose in reverse order', 60, (G) => {
+          const p = G.pred();
+          const f = G.fn();
+          const g = G.fn();
+          const n = G.int();
+          const twice = predicate(p.f).contramap(f.f).contramap(g.f);
+          const once = predicate(p.f).contramap((x: number) => f.f(g.f(x)));
+          return (
+            twice.run(n) === once.run(n) ||
+            `With ${p.name}, ${f.name} and ${g.name} at ${n}: contramapping one at a time gave ${T.fmt(twice.run(n))}, and contramapping with f after g gave ${T.fmt(once.run(n))}. The order reverses.`
+          );
+        });
+      },
     },
   ],
 };

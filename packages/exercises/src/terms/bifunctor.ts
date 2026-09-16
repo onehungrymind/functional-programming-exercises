@@ -19,6 +19,11 @@ export const bifunctor: ExerciseSet = {
       statement:
         "Can use bimap on Either to adjust the failure without touching the success path.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can read `bimap`'s type and see that the two functions cannot be crossed, because each one names a different type variable.",
+    },
   ],
   notes: `A Bifunctor has two positions, and \`bimap\` maps each with its own function.
 
@@ -63,6 +68,49 @@ withContext(Right(42))           // Right(42), untouched
 
 Mapping over a Right only is \`map\`; a bifunctor is what gives you access to the other side
 without unwrapping and rebuilding.`,
+  typedNotes: `Same track, second lap. A bifunctor has two slots, and once the type variables are written
+down it becomes impossible to describe crossing them.
+
+\`\`\`ts
+interface Pair<A, B> {
+  left: A
+  right: B
+  bimap: <C, D>(f: (a: A) => C, g: (b: B) => D) => Pair<C, D>
+}
+\`\`\`
+
+Read \`bimap\` slowly. \`f\` is \`(a: A) => C\`, so it can only ever be handed the left. \`g\` is
+\`(b: B) => D\`, so it can only ever be handed the right. The result is \`Pair<C, D>\` in that
+order. There is no arrangement of those variables that lets \`f\` touch the right slot. The
+"slots stay put" rule is not a convention here, it is the only thing that typechecks.
+
+\`\`\`ts
+const pair = <A, B>(left: A, right: B): Pair<A, B> => ({
+  left,
+  right,
+  bimap: (f, g) => pair(f(left), g(right))
+})
+
+pair('ada', 36).bimap((s) => s.length, (n) => n * 2)  // Pair<number, number>
+pair('ada', 36).bimap((s) => s.toUpperCase(), String) // Pair<string, string>
+\`\`\`
+
+Both slots can change type, and they change independently. \`C\` and \`D\` are separate variables
+precisely so that mapping the left has nothing to say about the right.
+
+A [functor](#functor) is the one-slot version, and putting them side by side is the fastest
+way to see what "bi" bought you:
+
+\`\`\`ts
+interface Functor<A>      { map:   <B>(f: (a: A) => B) => Functor<B> }
+interface Pair<A, B>      { bimap: <C, D>(f: (a: A) => C, g: (b: B) => D) => Pair<C, D> }
+\`\`\`
+
+[Either](#either) is the other famous one, and its type is where the error-handling habit
+comes from. \`Either<E, A>\` maps \`E\` on the failure side and \`A\` on the success side, so
+\`bimap(annotate, double)\` touches exactly one of them depending on which case you are holding.
+The unused function is still required by the signature, which is the type system insisting you
+say what happens in both cases.`,
   rungs: [
     {
       id: 'implement',
@@ -234,6 +282,150 @@ const Right = (value) => ({ isRight: true, bimap: (f, g) => Right(g(value)), fol
             T.eq(failed, { left: 'error: not found' }) && T.eq(ok, { right: 42 }) ||
             `Got ${T.fmt(failed)} and ${T.fmt(ok)}.`
           );
+        });
+      },
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['two-slots', 'slots-stay-put', 'typed-signature'],
+      title: "Satisfy Pair<A, B>",
+      prompt:
+        "The interface is given. Fill in `pair` so `bimap` moves each slot with its own function and hands back a new pair.",
+      hints: [
+        "`f` is typed `(a: A) => C`. The only value in scope with type `A` is the left one.",
+        "`bimap` returns `Pair<C, D>`, which is another pair, so build one with `pair` again.",
+        "Nothing is allowed to write into the pair you already made.",
+      ],
+      exports: ['pair'],
+      starter: `interface Pair<A, B> {
+  left: A
+  right: B
+  bimap: <C, D>(f: (a: A) => C, g: (b: B) => D) => Pair<C, D>
+}
+
+const pair = <A, B>(left: A, right: B): Pair<A, B> => ({
+  left,
+  right,
+  bimap: (f, g) => pair(left, right) as never
+})
+`,
+      solution: `interface Pair<A, B> {
+  left: A
+  right: B
+  bimap: <C, D>(f: (a: A) => C, g: (b: B) => D) => Pair<C, D>
+}
+
+const pair = <A, B>(left: A, right: B): Pair<A, B> => ({
+  left,
+  right,
+  bimap: (f, g) => pair(f(left), g(right))
+})
+`,
+      broken: [
+        `interface Pair<A, B> {
+  left: A
+  right: B
+  bimap: <C, D>(f: (a: A) => C, g: (b: B) => D) => Pair<C, D>
+}
+
+const pair = <A, B>(left: A, right: B): Pair<A, B> => ({
+  left,
+  right,
+  bimap: (f, g) => pair(g(right), f(left)) as never
+})
+`,
+        `interface Pair<A, B> {
+  left: A
+  right: B
+  bimap: <C, D>(f: (a: A) => C, g: (b: B) => D) => Pair<C, D>
+}
+
+const pair = <A, B>(left: A, right: B): Pair<A, B> => ({
+  left,
+  right,
+  bimap: (f, g) => pair(f(left), f(right as never)) as never
+})
+`,
+        `interface Pair<A, B> {
+  left: A
+  right: B
+  bimap: <C, D>(f: (a: A) => C, g: (b: B) => D) => Pair<C, D>
+}
+
+const pair = <A, B>(left: A, right: B): Pair<A, B> => ({
+  left,
+  right,
+  bimap: (f, g) => pair(f(left), right) as never
+})
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        T.check('The Pair interface is still there to satisfy', () => {
+          return /interface\s+Pair/.test(T.src) || 'The Pair interface has gone. It is the thing being satisfied.';
+        });
+        const pair = exp.pair;
+
+        T.check('The slots are readable', () => {
+          const p = pair('ada', 36);
+          return (p.left === 'ada' && p.right === 36) || `A pair of 'ada' and 36 read back as ${T.fmt(p.left)} and ${T.fmt(p.right)}.`;
+        });
+
+        T.check('Each function lands on its own slot', () => {
+          const p = pair('ada', 36).bimap((s: string) => s.length, (n: number) => n * 2);
+          return (
+            (p.left === 3 && p.right === 72) ||
+            `Mapping length on the left and doubling on the right gave ${T.fmt(p.left)} and ${T.fmt(p.right)}. The two functions ended up on the wrong slots.`
+          );
+        });
+
+        T.check('Both slots can come out a different type', () => {
+          const p = pair(3, 5).bimap((n: number) => String(n), (n: number) => n > 4);
+          return (
+            (p.left === '3' && p.right === true) ||
+            `Changing both types gave ${T.fmt(p.left)} and ${T.fmt(p.right)}.`
+          );
+        });
+
+        T.check('bimap gives back something you can map again', () => {
+          const p = pair(1, 2).bimap((n: number) => n + 1, (n: number) => n + 1).bimap((n: number) => n * 10, (n: number) => n * 10);
+          return (p.left === 20 && p.right === 30) || `Mapping twice gave ${T.fmt(p.left)} and ${T.fmt(p.right)}.`;
+        });
+
+        T.law('Mapping with identity on both sides changes nothing', 60, (G) => {
+          const a = G.int();
+          const b = G.str();
+          const p = pair(a, b).bimap((x: number) => x, (x: string) => x);
+          return (p.left === a && p.right === b) || `${T.fmt([a, b])} came back as ${T.fmt([p.left, p.right])}.`;
+        });
+
+        T.law('Two bimaps in a row are one bimap of the compositions', 60, (G) => {
+          const a = G.int();
+          const b = G.int();
+          const f = G.fn();
+          const g = G.fn();
+          const twice = pair(a, b).bimap(f.f, f.f).bimap(g.f, g.f);
+          const once = pair(a, b).bimap((x: number) => g.f(f.f(x)), (x: number) => g.f(f.f(x)));
+          return (
+            (twice.left === once.left && twice.right === once.right) ||
+            `With ${f.name} then ${g.name} on ${T.fmt([a, b])}, separately gave ${T.fmt([twice.left, twice.right])} and together gave ${T.fmt([once.left, once.right])}.`
+          );
+        });
+
+        T.check('The pair you started with is left as it was', () => {
+          const p = pair(1, 2);
+          p.bimap((n: number) => n * 100, (n: number) => n * 100);
+          return (p.left === 1 && p.right === 2) || `After mapping, the original read ${T.fmt(p.left)} and ${T.fmt(p.right)}.`;
         });
       },
     },

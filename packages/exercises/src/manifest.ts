@@ -1254,7 +1254,7 @@ export const manifest: ManifestEntry[] = [
   {
     "termId": "bifunctor",
     "notes": "A Bifunctor has two positions, and `bimap` maps each with its own function.\n\n```js\nconst Pair = (first, second) => ({\n  first, second,\n  bimap: (f, g) => Pair(f(first), g(second))\n})\n\nPair(2, 'ab').bimap((n) => n * 10, (s) => s.toUpperCase())   // Pair(20, 'AB')\n```\n\nThe first function belongs to the first slot. Swapping them is a different function, and a\nsilent one if both slots happen to hold the same type:\n\n```js\nbimap: (f, g) => Pair(g(second), f(first))   // the slots have traded places\n```\n\nIt maps the **contents**, never the structure. A Left stays a Left:\n\n```js\nconst Left = (error) => ({\n  isRight: false,\n  bimap: (f, g) => Left(f(error))      // still a Left\n})\nconst Right = (value) => ({\n  isRight: true,\n  bimap: (f, g) => Right(g(value))     // still a Right\n})\n```\n\nOn Either exactly one of the two functions runs, which is what makes it the natural way to\ndecorate an error without disturbing the happy path:\n\n```js\nconst withContext = (e) => e.bimap((msg) => `while loading user: ${msg}`, (v) => v)\n\nwithContext(Left('not found'))   // Left('while loading user: not found')\nwithContext(Right(42))           // Right(42), untouched\n```\n\nMapping over a Right only is `map`; a bifunctor is what gives you access to the other side\nwithout unwrapping and rebuilding.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. A bifunctor has two slots, and once the type variables are written\ndown it becomes impossible to describe crossing them.\n\n```ts\ninterface Pair<A, B> {\n  left: A\n  right: B\n  bimap: <C, D>(f: (a: A) => C, g: (b: B) => D) => Pair<C, D>\n}\n```\n\nRead `bimap` slowly. `f` is `(a: A) => C`, so it can only ever be handed the left. `g` is\n`(b: B) => D`, so it can only ever be handed the right. The result is `Pair<C, D>` in that\norder. There is no arrangement of those variables that lets `f` touch the right slot. The\n\"slots stay put\" rule is not a convention here, it is the only thing that typechecks.\n\n```ts\nconst pair = <A, B>(left: A, right: B): Pair<A, B> => ({\n  left,\n  right,\n  bimap: (f, g) => pair(f(left), g(right))\n})\n\npair('ada', 36).bimap((s) => s.length, (n) => n * 2)  // Pair<number, number>\npair('ada', 36).bimap((s) => s.toUpperCase(), String) // Pair<string, string>\n```\n\nBoth slots can change type, and they change independently. `C` and `D` are separate variables\nprecisely so that mapping the left has nothing to say about the right.\n\nA [functor](#functor) is the one-slot version, and putting them side by side is the fastest\nway to see what \"bi\" bought you:\n\n```ts\ninterface Functor<A>      { map:   <B>(f: (a: A) => B) => Functor<B> }\ninterface Pair<A, B>      { bimap: <C, D>(f: (a: A) => C, g: (b: B) => D) => Pair<C, D> }\n```\n\n[Either](#either) is the other famous one, and its type is where the error-handling habit\ncomes from. `Either<E, A>` maps `E` on the failure side and `A` on the success side, so\n`bimap(annotate, double)` touches exactly one of them depending on which case you are holding.\nThe unused function is still required by the signature, which is the type system insisting you\nsay what happens in both cases.",
     "rungs": [
       {
         "id": "implement",
@@ -1269,13 +1269,20 @@ export const manifest: ManifestEntry[] = [
         "title": "bimap for Either",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Pair<A, B>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
   {
     "termId": "contravariant-functor",
     "notes": "A functor maps the **output**. A contravariant functor maps the **input**.\n\n```js\nconst Predicate = (run) => ({\n  run,\n  contramap: (f) => Predicate((x) => run(f(x)))   // f runs first, on the way in\n})\n\nconst isLong = Predicate((n) => n > 3)\nconst isLongString = isLong.contramap((s) => s.length)\n\nisLongString.run('hi')      // false\nisLongString.run('hello')   // true\n```\n\nA Predicate **consumes**; there is no output to map. Adapting it means adapting what it will\naccept, which is what turns a predicate about numbers into one about strings.\n\nThe composition law runs backwards, and this is the part worth committing to memory:\n\n```js\nu.map(f).map(g)                    // equals u.map((x) => g(f(x)))\nu.contramap(f).contramap(g)        // equals u.contramap((x) => f(g(x)))\n//                                                              ^^^^^^^ reversed\n```\n\nIt follows from the shape. Each `contramap` adds a step **earlier** in the pipeline, so the\nlast one added is the first to run.\n\nOne practical trap when testing these: structural equality is useless here. A Predicate's entire\ncontent is a closure, so comparing two of them compares nothing and every law passes:\n\n```js\ndeepEqual(Predicate(f), Predicate(g))   // true for any f and g\n```\n\nThey have to be judged by behaviour:\n\n```js\nconst same = (a, b) => [-7, -1, 0, 1, 5].every((x) => a.run(x) === b.run(x))\n```\n\nComparators, serializers, and anything else shaped `a -> something` are contravariant in\n`a` for the same reason.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. This is the concept where the types stop being decoration. The whole\nidea is one arrow pointing the other way, and in JavaScript you had to take that on faith.\n\n```ts\ninterface Functor<A>   { map:       <B>(f: (a: A) => B) => Functor<B> }\ninterface Predicate<A> { contramap: <B>(f: (b: B) => A) => Predicate<B> }\n```\n\nPut your finger on the two `f`s. `map` takes `(a: A) => B`: it starts where you are and goes\nwhere you want. `contramap` takes `(b: B) => A`: it starts where you want and comes back to\nwhere you are. Both return a thing parameterised by `B`. Same destination, opposite arrow.\n\nThe reason is sitting in what a predicate is made of:\n\n```ts\ninterface Predicate<A> {\n  run: (a: A) => boolean\n  contramap: <B>(f: (b: B) => A) => Predicate<B>\n}\n\nconst predicate = <A>(run: (a: A) => boolean): Predicate<A> => ({\n  run,\n  contramap: (f) => predicate((b) => run(f(b)))\n})\n```\n\n`A` only ever appears as an argument. To end up with something that accepts `B`, you need a\nway to turn a `B` into an `A` before `run` ever sees it, so the function has to point inward.\nThere is no other way to write a body that typechecks.\n\n```ts\nconst isLong: Predicate<string> = predicate((s) => s.length > 3)\n\nconst nameIsLong: Predicate<{ name: string }> = isLong.contramap((p) => p.name)\nnameIsLong.run({ name: 'Ada' })       // false\nnameIsLong.run({ name: 'Grace' })     // true\n```\n\nTypeScript can be told about this directly. Since 4.7 you can annotate a type parameter with\n`in` for contravariant and `out` for covariant, and the compiler will reject a definition that\ndoes not match:\n\n```ts\ninterface Predicate<in A>  { run: (a: A) => boolean }   // A only goes in\ninterface Box<out A>       { value: A }                 // A only comes out\n```\n\nWrite `interface Predicate<out A>` on that first one and it is an error, because `A` is in an\nargument position. That is the variance you were reasoning about by hand, checked.",
     "rungs": [
       {
         "id": "implement",
@@ -1290,13 +1297,20 @@ export const manifest: ManifestEntry[] = [
         "title": "Which way does composition go?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Predicate<A>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
   {
     "termId": "profunctor",
     "notes": "A profunctor consumes on one side and produces on the other, so it can be adapted at both ends\nat once.\n\n```js\nconst Fn = (run) => ({\n  run,\n  promap: (f, g) => Fn((x) => g(run(f(x))))\n//                        ^^^^^^^^^^^^^^^ f on the way in, g on the way out\n})\n\nconst length = Fn((s) => s.length)\n\nconst trimmedIsEven = length.promap(\n  (s) => s.trim(),          // pre-process the input\n  (n) => n % 2 === 0        // post-process the output\n)\n\ntrimmedIsEven.run('  code  ')   // true   trims to 'code', length 4\ntrimmedIsEven.run(' hello ')    // false  trims to 'hello', length 5\n```\n\nOrder matters and is easy to get backwards. Running both functions on the output is a common\nslip and it silently changes what the thing means:\n\n```js\npromap: (f, g) => Fn((x) => g(f(run(x))))   // trims a number\n```\n\nThe variance follows from the direction of travel. The input side is\n[contravariant](#contravariant-functor), because adapting it means accepting a **wider** set of\nthings by converting them first. The output side is covariant, the ordinary kind.\n\nSo the composition law is mixed:\n\n```js\np.promap(f, g).promap(h, i)\n// equals\np.promap((x) => f(h(x)), (y) => i(g(y)))\n//        ^^^^^^^^^^^^^^ reversed     ^^^^^^^^^^^^^^ forwards\n```\n\nFunctions are the canonical profunctor, and profunctors are the foundation under the optics in\nthis glossary: a lens is a profunctor transformation.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. A profunctor is the two previous concepts in one signature, and the\narrows are the whole story.\n\n```ts\ninterface Fn<A, B> {\n  run: (a: A) => B\n  promap: <C, D>(f: (c: C) => A, g: (b: B) => D) => Fn<C, D>\n}\n```\n\nTwo functions, pointing opposite ways. `f` is `(c: C) => A`, coming **in** toward your input.\n`g` is `(b: B) => D`, going **out** from your output. The result is `Fn<C, D>`, a function\nfrom the new input to the new output, with yours sandwiched in the middle.\n\nLine the three up and the family is obvious:\n\n```ts\ninterface Box<A>        { map:       <B>(f: (a: A) => B) => Box<B> }             // out only\ninterface Predicate<A>  { contramap: <B>(f: (b: B) => A) => Predicate<B> }       // in only\ninterface Fn<A, B>      { promap:    <C, D>(f: (c: C) => A, g: (b: B) => D) => Fn<C, D> }\n```\n\nA function is [contravariant](#contravariant-functor) in its argument and covariant in its\nresult, and `promap` is the one operation that adapts both ends at once.\n\n```ts\nconst fn = <A, B>(run: (a: A) => B): Fn<A, B> => ({\n  run,\n  promap: (f, g) => fn((c) => g(run(f(c))))\n})\n\nconst double: Fn<number, number> = fn((n) => n * 2)\n\nconst parseThenLabel = double.promap(\n  (s: string) => Number(s),\n  (n) => `= ${n}`\n)\nparseThenLabel.run('21')   // '= 42'\n```\n\nThe body is the only one that typechecks, and reading it right to left tells you the running\norder: `f` first, then `run`, then `g`. That is why the composition law reverses on one side\nand not the other. Swapping `f` and `g` is not a subtle bug you have to test for, it is a type\nerror, because `f` produces an `A` and `g` consumes a `B` and there is nothing that says those\nare the same.",
     "rungs": [
       {
         "id": "implement",
@@ -1311,6 +1325,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Which end is which?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Fn<A, B>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
