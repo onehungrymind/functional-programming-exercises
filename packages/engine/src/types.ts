@@ -74,6 +74,14 @@ export interface ExprRung extends BaseRung {
 
 export interface CodeRung extends BaseRung {
   kind: 'code';
+  /**
+   * `'ts'` erases the types before running and rejects an answer that leans on `any`.
+   *
+   * A typed rung supplies the interface and asks the learner to satisfy it, so what is being
+   * tested is reading a signature. Verifying that their own annotations are right would mean
+   * shipping the TypeScript compiler; this costs 61KB instead of roughly 1.5MB.
+   */
+  lang?: 'js' | 'ts';
   starter: string;
   /** Must pass. Enforced by `npm run verify`. */
   solution: string;

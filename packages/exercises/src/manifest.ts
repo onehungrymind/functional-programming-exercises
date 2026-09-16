@@ -859,6 +859,12 @@ export const manifest: ManifestEntry[] = [
         "role": "break",
         "title": "Break a law on purpose",
         "kind": "code"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "The same Box, with the type written down",
+        "kind": "code"
       }
     ]
   },

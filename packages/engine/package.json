@@ -13,6 +13,7 @@
     "./laws": "./src/laws.ts"
   },
   "dependencies": {
-    "acorn": "^8.18.0"
+    "acorn": "^8.18.0",
+    "sucrase": "^3.35.1"
   }
 }

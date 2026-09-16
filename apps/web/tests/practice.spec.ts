@@ -440,3 +440,54 @@ test.describe('expression rungs', () => {
     await expect(page.locator('.expr-input input')).toHaveValue("[0, 1, '', true]");
   });
 });
+
+test.describe('typed rungs', () => {
+  const TS_SOLUTION = `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+
+const Box = <A,>(value: A): Box<A> => ({
+  value,
+  map: <B,>(f: (a: A) => B) => Box<B>(f(value))
+})
+`;
+
+  /** insertText bypasses keystroke handling, so auto-closing brackets do not interfere. */
+  async function setCode(page: Page, code: string) {
+    await page.waitForSelector('.cm-content', { timeout: 15000 });
+    await page.click('.cm-content');
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.insertText(code);
+  }
+
+  test('TypeScript is not flagged as a JavaScript syntax error', async ({ page }) => {
+    await page.goto('/#/term/functor/practice/typed');
+    await page.waitForSelector('.cm-content', { timeout: 15000 });
+    await page.waitForTimeout(1200);
+    // The starter is valid TypeScript. acorn would underline every annotation in it.
+    await expect(page.locator('.cm-lintRange-error')).toHaveCount(0);
+  });
+
+  test('a correct typed answer clears the rung', async ({ page }) => {
+    await page.goto('/#/term/functor/practice/typed');
+    await setCode(page, TS_SOLUTION);
+    await expect(page.locator('.tally')).toHaveText('6 / 6 passing', { timeout: 15000 });
+    await expect(page.locator('.cleared')).toBeVisible();
+  });
+
+  test('answering with any is rejected', async ({ page }) => {
+    await page.goto('/#/term/functor/practice/typed');
+    await setCode(
+      page,
+      'const Box = (value: any): any => ({\n  value,\n  map: (f: any): any => Box(f(value))\n})\n',
+    );
+    await expect(page.locator('.check-detail')).toContainText('leans on `any`', { timeout: 15000 });
+  });
+
+  test('a TypeScript syntax error is reported as one', async ({ page }) => {
+    await page.goto('/#/term/functor/practice/typed');
+    await setCode(page, 'const Box = <A,>(value: ) => value\n');
+    await expect(page.locator('.fatal')).toContainText('SyntaxError', { timeout: 15000 });
+  });
+});

@@ -20,6 +20,11 @@ export const functor: ExerciseSet = {
         "Knows a functor may decline to apply the function, as Maybe does on nothing, and still obey both laws.",
     },
     {
+      id: 'read-the-signature',
+      statement:
+        'Can read the functor signature and build something that satisfies it, seeing that `map` changes the contents while the container stays the same.',
+    },
+    {
       id: 'break-a-law',
       statement:
         "Can construct something that looks like a functor and quietly fails a law, and know which one it failed.",
@@ -281,6 +286,114 @@ const BadBox = (value) => ({
           }
           return 'Both laws held across 80 random cases. Your BadBox is still a lawful functor.';
         });
+      },
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['read-the-signature', 'map-rewraps'],
+      title: 'The same Box, with the type written down',
+      prompt:
+        'Here is the functor signature as an interface. Build a `Box` that satisfies it. The shape you wrote by hand in the last rung is exactly what these types say.',
+      hints: [
+        'Read `map` first: it takes an `A -> B` and gives back a `Box<B>`. The container stays; the contents change.',
+        '`<A,>` with the trailing comma is how you write a generic arrow function in a .tsx-flavoured parser.',
+      ],
+      exports: ['Box'],
+      starter: `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+
+const Box = <A,>(value: A): Box<A> => ({
+  value,
+  map: (f) => {
+    // the signature above already told you what goes here
+  }
+})
+`,
+      solution: `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+
+const Box = <A,>(value: A): Box<A> => ({
+  value,
+  map: <B,>(f: (a: A) => B) => Box<B>(f(value))
+})
+`,
+      broken: [
+        // Returns the bare value: the signature says Box<B>, this gives B.
+        `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+
+const Box = <A,>(value: A): Box<A> => ({
+  value,
+  map: <B,>(f: (a: A) => B) => f(value) as unknown as Box<B>
+})
+`,
+        // Satisfies the shape by never applying f.
+        `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+
+const Box = <A,>(value: A): Box<A> => ({
+  value,
+  map: <B,>(f: (a: A) => B) => Box(value) as unknown as Box<B>
+})
+`,
+        // Erases the types it was asked to satisfy.
+        `const Box = (value: any): any => ({
+  value,
+  map: (f: any): any => Box(f(value))
+})
+`,
+      ],
+      checks: (T, exp) => {
+        const Box = exp.Box as (v: any) => any;
+        const isBox = (b: any) => b && typeof b.map === 'function' && 'value' in b;
+
+        T.check('The annotations are still doing work', () => {
+          // A heuristic, not a type checker. It defends against answering a typed rung by
+          // deleting the types, which the runtime checks alone would happily accept.
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`. The point of this rung is to satisfy the signature, and `any` satisfies nothing.';
+          }
+          return (
+            /interface\s+Box/.test(src) ||
+            'The Box interface has gone. Keep it: it is the thing you are implementing against.'
+          );
+        });
+
+        T.check('map returns a Box, not a raw value', () => {
+          const r = Box(2).map((x: number) => x + 1);
+          return (
+            isBox(r) ||
+            `Got ${T.fmt(r)}. The signature says \`Box<B>\`, so the container has to survive the map.`
+          );
+        });
+
+        T.check('map applies the function', () => {
+          const r = Box(2).map((x: number) => x + 1);
+          return (isBox(r) && r.value === 3) || `Got ${T.fmt(r)}, expected Box(3).`;
+        });
+
+        T.check('The type of the contents may change', () => {
+          const r = Box(2).map((n: number) => `n is ${n}`);
+          return (
+            isBox(r) && r.value === 'n is 2' ||
+            `Got ${T.fmt(r)}. \`map\` goes from \`Box<A>\` to \`Box<B>\`, and B need not be A.`
+          );
+        });
+
+        laws.functor(T, { of: Box, runs: 50 });
       },
     },
   ],

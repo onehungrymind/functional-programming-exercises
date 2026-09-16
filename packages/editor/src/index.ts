@@ -20,6 +20,7 @@ import {
   placeholder as placeholderExt,
 } from '@codemirror/view';
 import { parse } from 'acorn';
+import { transform } from 'sucrase';
 import { themeExtension } from './theme.js';
 
 export { editorTheme, themeExtension } from './theme.js';
@@ -34,14 +35,39 @@ const JS_KEYWORDS = [
 /**
  * Reports a syntax error where it actually is.
  *
- * acorn gives a character offset, which is what CodeMirror wants, so the squiggle
- * lands on the broken token rather than the whole line.
+ * acorn gives a character offset, which is what CodeMirror wants, so the squiggle lands on
+ * the broken token rather than the whole line. A typed rung is parsed by sucrase instead,
+ * because acorn would flag every annotation as an error and underline the whole exercise.
  */
-export function acornLinter(): Extension {
+export function syntaxLinter(lang: 'js' | 'ts' = 'js'): Extension {
   return linter(
     (view): Diagnostic[] => {
       const src = view.state.doc.toString();
       if (!src.trim()) return [];
+
+      if (lang === 'ts') {
+        try {
+          transform(src, { transforms: ['typescript'] });
+          return [];
+        } catch (e) {
+          const err = e as Error & { loc?: { line: number; column: number } };
+          // Sucrase reports a line and column; turn it into a document offset.
+          let from = 0;
+          if (err.loc) {
+            const line = view.state.doc.line(Math.min(err.loc.line, view.state.doc.lines));
+            from = Math.min(line.from + err.loc.column, src.length);
+          }
+          return [
+            {
+              from,
+              to: Math.min(from + 1, src.length),
+              severity: 'error',
+              message: err.message.replace(/^Error: /, '').replace(/\s*\(\d+:\d+\)\s*$/, ''),
+            },
+          ];
+        }
+      }
+
       try {
         parse(src, { ecmaVersion: 'latest', sourceType: 'script' });
         return [];
@@ -64,6 +90,9 @@ export function acornLinter(): Extension {
   );
 }
 
+/** @deprecated Use `syntaxLinter`. Kept so an existing import does not break. */
+export const acornLinter = () => syntaxLinter('js');
+
 /** Completes the rung's own bindings and JS keywords. No type-aware completion in v1. */
 function scopeCompletions(names: string[]): CompletionSource {
   return completeFromList([
@@ -82,6 +111,8 @@ export interface CreateEditorOptions {
   onChange?: (doc: string) => void;
   /** Named on the editor for screen readers, e.g. "Write curry2". */
   ariaLabel?: string;
+  /** Drives both the grammar and the lint source. */
+  lang?: 'js' | 'ts';
   placeholder?: string;
   readOnly?: boolean;
 }
@@ -114,9 +145,9 @@ export function createEditor(opts: CreateEditorOptions): EditorHandle {
     closeBrackets(),
     indentOnInput(),
     indentUnit.of('  '),
-    javascript(),
+    javascript({ typescript: opts.lang === 'ts' }),
     themeExtension,
-    acornLinter(),
+    syntaxLinter(opts.lang ?? 'js'),
     lintGutter(),
     EditorView.lineWrapping,
     scopeCompartment.of(autocompletion({ override: [scopeCompletions(opts.scope ?? [])] })),

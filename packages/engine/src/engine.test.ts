@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createShapeRules } from './shape.js';
 import { didPass, evaluateExpr, evaluateRung } from './evaluate.js';
 import { createHarness, eq, fmt } from './harness.js';
+import { stripTypes, usesAny } from './typescript.js';
 import { CheckRunner } from './runner.js';
 import type { CodeRung, ExprRung, RunResult } from './types.js';
 
@@ -193,6 +194,70 @@ describe('evaluateExpr', () => {
   it('reports a throw as fatal', () => {
     const r = evaluateExpr(expr({}), 'nope.nope');
     expect(r.fatal).toMatch(/ReferenceError|TypeError/);
+  });
+});
+
+describe('typed rungs', () => {
+  it('erases annotations so the code can run', () => {
+    const out = stripTypes('const f = (n: number): string => String(n)');
+    expect('code' in out && out.code).toContain('const f = (n) => String(n)');
+  });
+
+  it('erases an interface entirely', () => {
+    const out = stripTypes('interface Box<A> { value: A }\nconst x = 1');
+    expect('code' in out && out.code).not.toContain('interface');
+    expect('code' in out && out.code).toContain('const x = 1');
+  });
+
+  it('keeps line positions, so an error still points where the learner is looking', () => {
+    const src = 'interface Box<A> { value: A }\n\nconst x: number = 1';
+    const out = stripTypes(src);
+    expect('code' in out && out.code.split('\n').length).toBe(src.split('\n').length);
+  });
+
+  it('reports a type-level syntax error rather than throwing', () => {
+    const out = stripTypes('const f = (n: ) => n');
+    expect('error' in out).toBe(true);
+  });
+
+  it('runs a typed rung by erasing it first', () => {
+    const r = evaluateRung(
+      rung({
+        lang: 'ts',
+        exports: ['f'],
+        checks: (T, exp) => T.check('f(1) is 2', () => (exp.f as any)(1) === 2 || 'no'),
+      }),
+      'const f = (x: number): number => x + 1',
+    );
+    expect(didPass(r)).toBe(true);
+  });
+
+  it('gives the shape rules the original source, not the erased one', () => {
+    // A check may want to ask about the annotations the learner actually wrote.
+    const r = evaluateRung(
+      rung({
+        lang: 'ts',
+        exports: ['f'],
+        checks: (T) => T.check('sees the types', () => T.src.includes(': number') || 'erased'),
+      }),
+      'const f = (x: number): number => x + 1',
+    );
+    expect(didPass(r)).toBe(true);
+  });
+
+  it('reports a TypeScript syntax error as fatal', () => {
+    const r = evaluateRung(rung({ lang: 'ts', exports: ['f'] }), 'const f = (x: ) => x');
+    expect(r.fatal).toMatch(/SyntaxError/);
+    expect(r.results).toHaveLength(0);
+  });
+
+  it('spots an answer that leans on any', () => {
+    expect(usesAny('const f = (x: any) => x')).toBe(true);
+    expect(usesAny('const f = (x: unknown) => x as any')).toBe(true);
+    expect(usesAny('const f = (x: number) => x')).toBe(false);
+    // Not fooled by the word appearing in a string or a comment.
+    expect(usesAny('const s = "any"')).toBe(false);
+    expect(usesAny('// takes any number\nconst f = (x: number) => x')).toBe(false);
   });
 });
 

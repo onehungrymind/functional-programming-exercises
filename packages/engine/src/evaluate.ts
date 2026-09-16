@@ -1,4 +1,5 @@
 import { createHarness } from './harness.js';
+import { stripTypes, usesAny } from './typescript.js';
 import { eq, fmt } from './harness.js';
 import type { CodeRung, ExprRung, RunResult } from './types.js';
 
@@ -14,8 +15,19 @@ const MAX_LOG_LINES = 20;
  * thread this runs on, which is exactly why the browser runs it inside a worker that the
  * main thread can terminate. See `runner.ts`.
  */
-export function evaluateRung(rung: CodeRung, code: string, seq = 0): RunResult {
-  const { api, state } = createHarness(code);
+export function evaluateRung(rung: CodeRung, source: string, seq = 0): RunResult {
+  // A typed rung runs its erased form. The harness still sees the original, so a check can
+  // ask about the annotations the learner actually wrote.
+  let code = source;
+  if (rung.lang === 'ts') {
+    const stripped = stripTypes(source);
+    if ('error' in stripped) {
+      return { seq, results: [], logs: [], fatal: `SyntaxError: ${stripped.error}` };
+    }
+    code = stripped.code;
+  }
+
+  const { api, state } = createHarness(source);
   // Shared with the harness, so a check can assert on what the learner printed.
   const logs = state.logs;
 

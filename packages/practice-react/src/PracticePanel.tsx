@@ -297,6 +297,7 @@ function CodeRungView({
         doc: initial,
         scope: rung.exports,
         ariaLabel: rung.title,
+        lang: rung.lang ?? 'js',
         onRun: () => {
           clearTimeout(debounce.current);
           void run(editor.current!.getDoc());
