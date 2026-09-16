@@ -19,29 +19,53 @@ export const functionTerm: ExerciseSet = {
         'Can write a definition with no input that falls through, including the cases a quick reading misses.',
     },
   ],
-  notes: `A glossary will tell you a function maps inputs to outputs. The useful version is
-three separate promises, because code usually breaks exactly one of them and it is worth
-being able to say which.
+  notes: `Three separate promises, and code usually breaks exactly one. Being able to say which is the
+difference between "this is impure" and knowing how to repair it.
 
-**Every input gets an output.** Not most inputs. A branch with no \`return\` hands back
-\`undefined\`, which is a gap wearing a value's clothing. This is the requirement
-[partial functions](#partial-function) fail.
+**Every input gets an output.**
 
-**Each input gets exactly one output.** The same argument, today and tomorrow, gives the same
-answer. Reading a clock, a global, or a random number breaks this, because the input no longer
-determines the result.
+\`\`\`js
+const half = (n) => {          // broken: odd numbers fall off the end
+  if (n % 2 === 0) return n / 2
+}
+half(4)  // 2
+half(3)  // undefined, which is not a Number
 
-**Nothing else happens.** No writing to anything the caller can see, no logging, no mutating
-the argument. This is the requirement [side effects](#side-effects) fail.
+const half = (n) => n / 2      // every number has a half
+\`\`\`
 
-Only the first is about the function's shape; the other two are about what it touches. That is
-why \`const half = (n) => n / 2\` is a function and \`const roll = (n) => Math.ceil(Math.random() * n)\`
-is not, even though both are one line and neither throws.
+**Each input gets exactly one output.**
 
-The three are independent, which is the part worth internalizing. A definition can be perfectly
-total and still read a global. It can be deterministic and still push to an array. When
-something is not a function, the interesting question is which promise it broke, because that
-tells you how to repair it.`,
+\`\`\`js
+const roll = (sides) => Math.ceil(Math.random() * sides)
+roll(6)  // 4
+roll(6)  // 1     same input, different answer
+
+const roll = (sides, draw) => Math.ceil(draw * sides)
+roll(6, 0.5)  // 3
+roll(6, 0.5)  // 3     the randomness moved to the caller
+\`\`\`
+
+**Nothing else happens.**
+
+\`\`\`js
+const hits = []
+const track = (n) => {
+  hits.push(n)                 // the caller can see this
+  return n * 2
+}
+
+const track = (n) => [n * 2, n]   // hand the record back instead
+\`\`\`
+
+The three are independent, which is the part worth holding onto. Each of these breaks exactly
+one:
+
+\`\`\`js
+const first = (xs) => xs[0]                    // 1: [] has no first element
+const rate = (amount) => amount * TAX_RATE     // 2: TAX_RATE is not an input
+const save = (user) => { db.write(user); return user.id }   // 3: the write
+\`\`\``,
   rungs: [
     {
       id: 'recognize',

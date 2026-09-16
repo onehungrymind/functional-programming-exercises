@@ -17,33 +17,65 @@ export const thunk: ExerciseSet = {
         'Knows a plain thunk recomputes on every call, and can add caching without breaking on a falsy or undefined result.',
     },
   ],
-  notes: `A thunk is a function of no arguments whose job is to stand in for a value you do not
-want computed yet. \`() => expensive()\` is a thunk; \`expensive()\` is a value.
+  notes: `A thunk is a function of no arguments standing in for a value you do not want computed yet.
 
-The zero arguments are the point. A thunk carries everything it needs already, so handing one
-around is handing around *the computation itself* rather than its result, and whoever ends up
-with it decides when, or whether, it happens.
+\`\`\`js
+const value = expensive()        // computed now
+const thunk = () => expensive()  // computed if and when someone calls it
+\`\`\`
 
-Two properties are worth separating.
+The zero arguments are the point: a thunk already carries everything it needs, so passing one
+around is passing the computation itself, and whoever ends up with it decides when.
 
-**Deferral.** Building a thunk must run nothing. The usual mistake is to compute up front and
-wrap the answer, which looks the same from outside and defers nothing:
+**Deferral.** Building a thunk must run nothing. The usual mistake computes up front and wraps
+the answer, which looks identical from outside and defers nothing:
 
 \`\`\`js
 const delay = (fn) => {
-  const value = fn()      // already too late
+  const value = fn()             // already too late
   return () => value
+}
+
+const delay = (fn) => () => fn()
+\`\`\`
+
+**Recomputation.** A plain thunk runs its body every time, which is often what you want, because
+it re-reads whatever it depends on:
+
+\`\`\`js
+let count = 0
+const next = () => ++count
+next()   // 1
+next()   // 2
+\`\`\`
+
+When you want the opposite, cache it. The trap is deciding "have I run yet?" by looking at the
+stored value:
+
+\`\`\`js
+const lazy = (fn) => {
+  let value
+  return () => {
+    if (value === undefined) value = fn()   // a result of undefined recomputes forever
+    return value
+  }
+}
+
+const lazy = (fn) => {
+  let forced = false
+  let value
+  return () => {
+    if (!forced) {
+      forced = true
+      value = fn()
+    }
+    return value
+  }
 }
 \`\`\`
 
-**Recomputation.** A plain thunk runs its body every single time it is called. That is often
-what you want, because it means the thunk re-reads whatever it depends on. When you want the
-opposite, you add caching, and that is where the falsy trap lives: if you decide "have I run
-yet?" by checking whether the stored value is set, then a thunk that legitimately produces
-\`0\`, \`''\`, \`false\`, or \`undefined\` recomputes forever. Keep a separate flag.
-
-The same idea shows up as [lazy evaluation](#lazy-evaluation) over sequences, and as
-[IO](#io), which is a thunk with a name and a map.`,
+The same idea appears as [lazy evaluation](#lazy-evaluation) over sequences, and as
+[IO](#io), which is a thunk with a name and a \`map\`.`,
   rungs: [
     {
       id: 'implement',

@@ -17,31 +17,52 @@ export const predicate: ExerciseSet = {
       statement: 'Can turn a rule stated in English into a composition of named predicates, with the grouping right.',
     },
   ],
-  notes: `A predicate is a function from one value to a boolean: \`a -> Boolean\`. That is a
-small idea, and the reason it gets a name is that it is the shape \`filter\`, \`find\`,
-\`every\`, and \`some\` all expect.
+  notes: `A predicate is a function from one value to a boolean: \`a -> Boolean\`. It gets a name because
+it is the shape \`filter\`, \`find\`, \`every\`, and \`some\` all expect.
 
-Two things are worth being strict about.
+A combinator returns a **predicate**, not an answer. That is what lets the pieces nest:
 
-**It answers true or false, not truthy or falsy.** \`&\` and \`|\` are bitwise and hand back
-numbers. \`a & b\` where both are booleans gives you \`1\` or \`0\`, which works in an
-\`if\` and then fails the moment anyone compares it to \`true\`. Use \`&&\`, \`||\`, and
-\`!\`.
+\`\`\`js
+const both   = (f, g) => (x) => f(x) && g(x)
+const either = (f, g) => (x) => f(x) || g(x)
+const not    = (f) => (x) => !f(x)
 
-**A combinator returns a predicate, not an answer.** \`both(f, g)\` does not test anything;
-it builds a new predicate that will. That is what lets you keep going:
-\`both(inStock, either(isCheap, isOnSale))\` nests because every piece has the same shape as
-every other piece.
+const isPositive = (n) => n > 0
+const isEven = (n) => n % 2 === 0
 
-Getting the grouping right is the part that needs care, because English is ambiguous where
-code is not. "In stock, and either cheap or on sale" is
-\`both(inStock, either(isCheap, isOnSale))\`. Written the other way round,
-\`either(both(inStock, isCheap), isOnSale)\`, it quietly lets through an item that is on sale
-but out of stock. Both read fine in prose. Only one is what you meant.
+both(isPositive, isEven)(4)    // true
+both(isPositive, isEven)(3)    // false
+not(isPositive)(-1)            // true
+\`\`\`
 
-Worth knowing: the combinators obey De Morgan's laws, so
-\`not(both(f, g))\` is the same predicate as \`either(not(f), not(g))\`. If those two ever
-disagree in your implementation, one of your and/or is the wrong way round.`,
+Answer true or false, not truthy or falsy. \`&\` and \`|\` are bitwise and hand back numbers:
+
+\`\`\`js
+const both = (f, g) => (x) => f(x) & g(x)
+both(isPositive, isEven)(4)              // 1
+both(isPositive, isEven)(4) === true     // false, which will bite someone
+\`\`\`
+
+Grouping is where English is ambiguous and code is not. "In stock, and either cheap or on
+sale":
+
+\`\`\`js
+const wanted = both(inStock, either(isCheap, isOnSale))
+wanted({ stock: 0, price: 1, sale: true })   // false, correct
+
+// Reads the same in prose, lets through an out-of-stock item on sale
+const wanted = either(both(inStock, isCheap), isOnSale)
+wanted({ stock: 0, price: 1, sale: true })   // true, wrong
+\`\`\`
+
+They obey De Morgan, which is a useful check on your own implementation:
+
+\`\`\`js
+not(both(f, g))            // the same predicate as
+either(not(f), not(g))     // this one
+\`\`\`
+
+If those two ever disagree, one of your and/or is the wrong way round.`,
   rungs: [
     {
       id: 'implement',

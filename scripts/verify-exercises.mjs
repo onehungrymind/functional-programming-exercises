@@ -119,6 +119,8 @@ const note = (msg) => problems.push(msg);
 let codeRungs = 0;
 let variants = 0;
 const migrationOutstanding = [];
+const notedConcepts = [];
+const MIN_CODE_BLOCKS = 3;
 let timeouts = 0;
 
 const describe = (out) => {
@@ -192,6 +194,19 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
     );
   } else if (declared > 1) {
     note(`${termId}: declares more than one of \`notes\`, \`upstreamIsEnough\`, and \`rubricTodo\`.`);
+  }
+
+  // Code carries more than prose does. Notes that explain a concept without showing it are
+  // the thing this catches.
+  if (set.notes) {
+    const blocks = (set.notes.match(/```/g) ?? []).length / 2;
+    if (blocks < MIN_CODE_BLOCKS) {
+      note(
+        `${termId}: notes have ${blocks} code block${blocks === 1 ? '' : 's'}, want at least ${MIN_CODE_BLOCKS}. ` +
+          `Show the concept, do not only describe it.`,
+      );
+    }
+    notedConcepts.push({ termId, blocks, code: [...set.notes.matchAll(/```[\s\S]*?```/g)].reduce((a, m) => a + m[0].length, 0), prose: set.notes.replace(/```[\s\S]*?```/g, '').length });
   }
 
   const seen = new Set();
@@ -272,6 +287,14 @@ if (migrationOutstanding.length) {
   const done = termCount - migrationOutstanding.length;
   console.log(
     `  ${done}/${termCount} written to a competency rubric; ${migrationOutstanding.length} still marked \`rubricTodo\``,
+  );
+}
+if (notedConcepts.length) {
+  const blocks = notedConcepts.reduce((a, n) => a + n.blocks, 0);
+  const code = notedConcepts.reduce((a, n) => a + n.code, 0);
+  const prose = notedConcepts.reduce((a, n) => a + n.prose, 0);
+  console.log(
+    `  ${blocks} code examples across ${notedConcepts.length} sets of notes, ${Math.round((code / (code + prose)) * 100)}% of them by volume`,
   );
 }
 console.log('');

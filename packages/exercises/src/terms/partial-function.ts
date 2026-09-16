@@ -18,30 +18,57 @@ export const partialFunction: ExerciseSet = {
       statement: 'Can probe a function across a set of inputs and collect the ones it is not defined for, without the survey dying on the first throw.',
     },
   ],
-  notes: `A partial function is one whose signature promises more than it delivers. \`first ::
-[a] -> a\` claims that for any list it gives you an \`a\`. Hand it \`[]\` and it does not.
+  notes: `A partial function is one whose signature promises more than it delivers. There are three ways
+that happens, and they fail very differently.
 
-There are three distinct ways that happens, and they are worth separating because they fail
-very differently in practice.
+**It throws.** The honest one: loud, immediate, with a stack trace pointing at the problem.
 
-**It throws.** \`JSON.parse('nope')\` is the honest one. Loud, immediate, easy to find, and it
-gives you a stack trace pointing at the problem.
+\`\`\`js
+// parse :: String -> Object
+const parse = (s) => JSON.parse(s)
+parse('{}')      // {}
+parse('nope')    // SyntaxError
+\`\`\`
 
-**It returns nothing useful.** \`[][0]\` gives you \`undefined\`, which is not an \`a\` but
-looks enough like one to travel. This is the dangerous case, because the failure surfaces later,
-somewhere else, as \`Cannot read property 'x' of undefined\`, and by then the list that was
-empty is nowhere near the stack trace.
+**It returns nothing useful.** The dangerous one, because \`undefined\` is not an \`a\` but looks
+enough like one to travel:
 
-**It never returns.** A recursion that misses its base case, or a loop whose condition is never
-met. \`countDown(-1)\` where the base case tests \`n === 0\` will recurse until the stack runs
-out. The signature says \`Number -> [Number]\` and for negative inputs there is simply no
-answer coming.
+\`\`\`js
+// first :: [a] -> a
+const first = (xs) => xs[0]
+first([1, 2])    // 1
+first([])        // undefined
 
-Two habits follow. When you write a signature, ask which inputs will not honour it. And when you
-survey someone else's function for these, catch each throw and carry on, or your survey stops at
-the first bad input and tells you about one problem instead of all of them.
+// ...and the failure surfaces somewhere else entirely
+first(users).name   // TypeError: Cannot read property 'name' of undefined
+\`\`\`
 
-The repair is a [total function](#total-function): either widen what comes out, so
+**It never returns.**
+
+\`\`\`js
+// countDown :: Number -> [Number]
+const countDown = (n) => (n === 0 ? [0] : [n, ...countDown(n - 1)])
+countDown(3)     // [3, 2, 1, 0]
+countDown(-1)    // RangeError: Maximum call stack size exceeded
+\`\`\`
+
+When you survey someone else's function for these, catch each throw and carry on, or you stop
+at the first bad input and learn about one problem instead of all of them:
+
+\`\`\`js
+const breaksOn = (fn, inputs) =>
+  inputs.filter((x) => {
+    try {
+      return fn(x) === undefined
+    } catch (e) {
+      return true
+    }
+  })
+
+breaksOn(parse, ['{}', 'nope', '[1]'])   // ['nope']
+\`\`\`
+
+The repair is a [total function](#total-function): widen what comes out, so
 \`[a] -> Option a\` can honestly say "nothing here", or narrow what goes in.`,
   rungs: [
     {

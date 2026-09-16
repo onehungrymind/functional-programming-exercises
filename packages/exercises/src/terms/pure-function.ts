@@ -23,36 +23,58 @@ export const pureFunction: ExerciseSet = {
         'Knows that copying the top level of a structure is not enough, and can spot a copy that still shares a nested reference.',
     },
   ],
-  notes: `Two requirements, and it pays to keep them apart because code usually breaks one and
-not the other.
+  notes: `Two requirements, and it pays to keep them apart because code usually breaks one and not the
+other.
 
-**The output depends on the inputs alone.** No clock, no random, no globals, no reading a
-\`let\` from an enclosing scope that something else can write to. Same arguments, same answer,
-every time and forever.
+**The output depends on the inputs alone.** The move is to take what it read as an argument:
 
-**Nothing observable changes.** No writing to anything the caller can see. That includes
-mutating the arguments, which is the one people miss, because it does not look like an effect.
+\`\`\`js
+const isExpired = (token) => token.expiresAt < Date.now()
+isExpired(t)   // true today, false yesterday. Same token.
 
-The practical move for the first requirement is to **take it as an argument**. A function that
-reads \`Date.now()\` becomes a function that takes \`now\`. The impurity does not vanish; it
-moves to the caller, and keeps moving up until it reaches somewhere you are content for it to
-live. That is the whole game: not eliminating effects, but pushing them to the edge.
+const isExpired = (token, now) => token.expiresAt < now
+\`\`\`
 
-For the second, the move is to **build and return** rather than edit in place. And the trap here
-is depth. This is not pure:
+The impurity does not vanish, it moves to the caller, and keeps moving up until it reaches
+somewhere you are content for it to live. That is the whole game: not eliminating effects, but
+pushing them to the edge.
+
+**Nothing observable changes.** The move is to build and return rather than edit in place:
+
+\`\`\`js
+const addItem = (cart, item) => {
+  cart.items.push(item)        // the caller's cart just changed
+  return cart
+}
+
+const addItem = (cart, item) => ({
+  ...cart,
+  items: [...cart.items, item]
+})
+\`\`\`
+
+The trap here is depth. Spreading copies the top level only:
 
 \`\`\`js
 const addItem = (cart, item) => {
   const next = { ...cart }
-  next.items.push(item)   // same array the caller is holding
+  next.items.push(item)        // next.items IS cart.items
   return next
 }
+
+const before = { items: [] }
+const after = addItem(before, 'x')
+before.items                   // ['x']   the original changed anyway
+after !== before               // true, which is why this passes a careless test
 \`\`\`
 
-Spreading copies the top level only. \`next.items\` is the very same array as \`cart.items\`,
-so pushing to it changes what the caller can see. You need \`items: [...cart.items, item]\`.
-Tests that only check the return value will pass this happily; tests that freeze the input will
-not, which is why the checks here freeze.`,
+Tests that only look at the return value wave that through. Tests that freeze the input do not,
+which is why the checks here freeze:
+
+\`\`\`js
+const frozen = Object.freeze({ items: Object.freeze([]) })
+addItem(frozen, 'x')           // TypeError in strict mode
+\`\`\``,
   rungs: [
     {
       id: 'recognize',

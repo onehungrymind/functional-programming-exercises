@@ -18,30 +18,53 @@ export const totalFunction: ExerciseSet = {
       statement: 'Knows the empty case usually has a right answer already, and can say what it is for a sum, a product, and a repeat.',
     },
   ],
-  notes: `Total means: an answer for every input the signature admits. No throwing, no
-\`undefined\` where a value was promised, no hanging.
+  notes: `Total means an answer for every input the signature admits. No throwing, no \`undefined\` where a
+value was promised, no hanging.
 
 There are exactly two ways to get there.
 
-**Widen the output.** \`first :: [a] -> a\` is a lie, but \`first :: [a] -> Option a\` is
-true, because \`None\` is a perfectly good answer for the empty list. The signature now admits
-what was always the case. This is the move that makes [Option](#option) and
-[Either](#either) worth having.
+**Widen the output**, so the signature admits what was always the case:
 
-**Narrow the input.** \`head :: NonEmptyList a -> a\` is total because the type will not let
-you ask the question that had no answer.
+\`\`\`js
+// first :: [a] -> a          a lie
+const first = (xs) => xs[0]
 
-What does *not* work is inventing a value. Returning \`null\` from \`first\` makes the throw
-go away without making the function total: the signature still says \`a\`, and the caller still
-gets something that is not one. You have moved the problem to a place with less context. The
-test is whether the returned thing **says which case it is**: \`{ found: false }\` is honest,
-a bare \`undefined\` is not.
+// first :: [a] -> Option a   true
+const first = (xs) => (xs.length ? Some(xs[0]) : None())
+\`\`\`
+
+**Narrow the input**, so the question with no answer cannot be asked:
+
+\`\`\`js
+// head :: NonEmptyList a -> a
+\`\`\`
+
+What does not work is inventing a value. The test is whether the result **says which case it
+is**:
+
+\`\`\`js
+const first = (xs) => xs[0] ?? null    // the signature still says a
+first([])       // null. Is that the first element, or a failure?
+
+const first = (xs) => (xs.length ? { found: true, value: xs[0] } : { found: false })
+first([])       // { found: false }. Unambiguous.
+first([null])   // { found: true, value: null }. Still unambiguous.
+\`\`\`
 
 The empty case deserves its own paragraph, because people reach for an error when there is a
-right answer sitting there. The sum of no numbers is \`0\`. The product of none is \`1\`.
-Repeating a string zero times is \`''\`. In each case it is the value that leaves the other
-operand alone, which is exactly the [monoid](#monoid) identity. \`reduce\` without a seed
-throws on an empty array; \`reduce\` with the right seed never needs to.`,
+right answer sitting there:
+
+\`\`\`js
+[].reduce((a, b) => a + b)      // TypeError: Reduce of empty array with no initial value
+[].reduce((a, b) => a + b, 0)   // 0
+
+sum([])       // 0    adding nothing changes nothing
+product([])   // 1    multiplying by nothing changes nothing
+'ab'.repeat(0) // ''  repeating nothing changes nothing
+\`\`\`
+
+In each case it is the value that leaves the other operand alone, which is exactly the
+[monoid](#monoid) identity.`,
   rungs: [
     {
       id: 'implement',

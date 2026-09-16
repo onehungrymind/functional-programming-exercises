@@ -18,28 +18,48 @@ export const arity: ExerciseSet = {
         'Can say what breaks when machinery reads `fn.length` and gets an answer it did not expect, as auto-currying does.',
     },
   ],
-  notes: `The glossary entry covers the names. The part that catches people out is that
-JavaScript has two different notions of arity, and \`fn.length\` reports the one you probably
-did not mean.
+  notes: `Two different notions of arity, and \`fn.length\` reports the one you probably did not mean.
 
-**Declared arity** is what \`fn.length\` gives you: the number of parameters written before
-the first one that has a default or a rest. **Call arity** is how many arguments a particular
-call actually passes, which \`arguments.length\` would tell you inside the function.
+**Declared arity** is what \`fn.length\` gives you. **Call arity** is how many arguments a
+particular call passes.
 
-Three rules decide what \`fn.length\` counts:
+\`\`\`js
+const add = (a, b) => a + b
+add.length        // 2, declared
+add(1, 2, 3)      // call arity 3, and add never notices
+\`\`\`
 
-- Counting **stops at the first parameter with a default**, and everything after it is
-  ignored, even parameters that have no default of their own. So \`(a = 1, b) => 0\` has a
-  length of 0, not 1.
-- A **rest parameter is never counted**. \`(...xs) => 0\` has a length of 0, which means a
-  variadic function and a nullary one look identical to \`fn.length\`.
-- A **destructured parameter is still one parameter**. \`({ a, b }) => 0\` has a length of 1.
+Three rules decide what gets counted:
 
-This matters well beyond trivia, because [auto-currying](#auto-currying) decides how many
-arguments to wait for by reading \`fn.length\`. Curry a variadic function and it will call
-through immediately, having been told the function takes nothing. Curry one with a trailing
-default and it fires an argument early. Any time declared arity is smaller than what the
-function really wants, machinery built on \`fn.length\` acts too soon.`,
+\`\`\`js
+((a, b) => 0).length          // 2   plain parameters
+((a, b, c = 0) => 0).length   // 2   counting stops at the first default
+((a = 1, b) => 0).length      // 0   even though b has no default
+((a, ...rest) => 0).length    // 1   a rest parameter is never counted
+((...xs) => 0).length         // 0   so variadic looks exactly like nullary
+(({ a, b }) => 0).length      // 1   one destructured parameter is one parameter
+\`\`\`
+
+This is not trivia, because [auto-currying](#auto-currying) decides how long to wait by reading
+\`fn.length\`:
+
+\`\`\`js
+const curry = (fn) => {
+  const collect = (...args) =>
+    args.length >= fn.length ? fn(...args) : (...more) => collect(...args, ...more)
+  return collect
+}
+
+const add3 = (a, b, c) => a + b + c
+curry(add3)(1)(2)(3)          // 6, as you would hope
+
+const sum = (...ns) => ns.reduce((a, b) => a + b, 0)
+curry(sum)(1)                 // 1, not a function
+                              // sum.length is 0, so curry called through at once
+\`\`\`
+
+Any time declared arity is smaller than what the function really wants, machinery built on
+\`fn.length\` acts too soon.`,
   rungs: [
     {
       id: 'recognize',

@@ -21,28 +21,61 @@ export const higherOrderFunctions: ExerciseSet = {
         'Can wrap an existing function to change when or how often it runs, without changing what it computes.',
     },
   ],
-  notes: `A higher-order function does one of two things, or both: it **takes** a function as
-an argument, or it **returns** one. Nothing else is required, and JavaScript's built-ins are
-full of them.
+  notes: `A higher-order function **takes** a function, **returns** one, or both.
 
-The taking kind is the familiar half. \`map\`, \`filter\`, \`reduce\`, \`sort\`: each
-takes the varying part as a function and keeps the walking part for itself. When you write one,
-the discipline is to build a new structure rather than edit the one you were handed, because
-the caller still holds it.
+The taking kind is the familiar half, and the discipline is to build rather than edit:
 
-The returning kind is the one that unlocks the rest of this vocabulary. \`is(Array)\` does not
-test anything; it hands back a function that will. That is only useful because of
-[closure](#closure): the returned function still has access to \`type\` after \`is\` has
-finished. Every curried function, every partially applied one, every combinator in this glossary
-is this shape.
+\`\`\`js
+const filter = (predicate, xs) => {
+  const out = []
+  for (const x of xs) if (predicate(x)) out.push(x)
+  return out                              // a new list; xs is untouched
+}
+\`\`\`
 
-The third use is **wrapping**: take a function, return a function with the same signature but
-different timing. \`once\`, \`memoize\`, \`debounce\`, \`withContract\` are all this.
+The returning kind is what unlocks the rest of this vocabulary. It works because of
+[closure](#closure): the returned function still sees \`type\` after \`is\` has finished.
 
-Wrapping has a trap worth naming. When the wrapper remembers something, track *whether it has
-run* separately from *what it returned*. Using the stored result as the flag looks tidier and
-breaks the moment the function legitimately returns \`0\`, \`''\`, \`false\`, or
-\`undefined\`: the wrapper decides it has not run yet and runs again.`,
+\`\`\`js
+const is = (type) => (x) => x instanceof type
+
+const isArray = is(Array)
+isArray([])       // true
+isArray('nope')   // false
+\`\`\`
+
+The third use is **wrapping**: same signature, different timing.
+
+\`\`\`js
+const once = (fn) => {
+  let called = false
+  let result
+  return (...args) => {
+    if (!called) {
+      called = true
+      result = fn(...args)
+    }
+    return result
+  }
+}
+\`\`\`
+
+Track *whether it ran* separately from *what it returned*. Using the result as the flag looks
+tidier and breaks on any falsy value:
+
+\`\`\`js
+const once = (fn) => {
+  let result
+  return (...args) => {
+    if (!result) result = fn(...args)   // 0, '', false, undefined all fail here
+    return result
+  }
+}
+
+const readCount = once(() => 0)
+readCount()   // 0, and it runs
+readCount()   // 0, and it runs again
+\`\`\``,
   rungs: [
     {
       id: 'implement',

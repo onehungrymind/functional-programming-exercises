@@ -18,28 +18,49 @@ export const lambda: ExerciseSet = {
       statement: 'Can rewrite a pipeline of single-use named helpers as inline lambdas without changing what it does.',
     },
   ],
-  notes: `A lambda is a function written as an expression rather than declared as a
-statement. That is the entire difference. \`function double(n) { return n * 2 }\` and
-\`(n) => n * 2\` describe the same thing; one of them happens to have a name bound to it.
+  notes: `A lambda is a function written as an expression rather than declared as a statement. These
+two describe the same thing:
 
-What makes that worth a word of its own is what follows from a function being an ordinary
-**value**. Four things you can do with a number, you can do with a function:
+\`\`\`js
+function double(n) { return n * 2 }
+const double = (n) => n * 2
+\`\`\`
 
-- **Pass it.** \`xs.map(n => n * 2)\` hands one to \`map\` without ever naming it.
-- **Return it.** \`const adder = a => b => a + b\` gives one back, which is what makes
-  [currying](#currying) possible at all.
-- **Store it.** Put one in an array, an object, a Map. That is all a lookup table of
-  operations is.
-- **Apply it immediately.** \`(x => x * 2)(4)\` is legal, because the thing before the
-  parentheses is just a value that happens to be callable.
+What earns it a word of its own is what follows from a function being an ordinary **value**.
+Four things you can do with a number, you can do with a function:
+
+\`\`\`js
+// Pass it
+;[1, 2, 3].map((n) => n * 2)
+
+// Return it
+const adder = (a) => (b) => a + b
+adder(2)(3)                     // 5
+
+// Store it
+const ops = { add: (a, b) => a + b, sub: (a, b) => a - b }
+ops.add(2, 3)                   // 5
+
+// Apply it on the spot
+;((x) => x * 2)(4)              // 8
+\`\`\`
 
 None of that needs a name, which is why the anonymity is the headline. But the useful judgment
-is the reverse: a name is a **comment you cannot let go stale**. \`xs.filter(u => u.age >= 18)\`
-is clear inline. \`xs.filter(isEligibleForDiscount)\` earns its name, because the predicate
-encodes a rule the reader would otherwise have to reconstruct.
+runs the other way: a name is a **comment you cannot let go stale**.
 
-The rule of thumb: inline it when the body says what the name would have said. Name it when
-the name says something the body does not.`,
+\`\`\`js
+// The body already says it. The name is a hop for no reason.
+function isAdult(u) { return u.age >= 18 }
+users.filter(isAdult)
+users.filter((u) => u.age >= 18)
+
+// The name says something the body does not. Keep it.
+const isEligibleForDiscount = (u) => u.age >= 65 || u.memberSince < 2015
+users.filter(isEligibleForDiscount)
+\`\`\`
+
+Inline it when the body says what the name would have said. Name it when the name says
+something the body does not.`,
   rungs: [
     {
       id: 'recognize',
