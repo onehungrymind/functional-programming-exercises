@@ -2,12 +2,70 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const lambdaCalculus: ExerciseSet = {
   termId: 'lambda-calculus',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'three-rules',
+      statement:
+        "Knows the whole system is variables, abstraction and application, and that numbers and conditionals are encoded rather than built in.",
+    },
+    {
+      id: 'church-numerals',
+      statement:
+        "Can read a Church numeral as \"apply f this many times\" and build succ and add from that reading.",
+    },
+    {
+      id: 'escape-hatch',
+      statement:
+        "Knows where the encoding meets real values, and that only the conversion back needs a real number.",
+    },
+  ],
+  notes: `The untyped lambda calculus has three things and no more: **variables**, **abstraction**
+(making a function), and **application** (calling one). No numbers, no booleans, no conditionals,
+no recursion. Everything else is encoded.
+
+A Church numeral encodes **n** as "apply f n times":
+
+\`\`\`js
+const zero  = (f) => (x) => x            // not at all
+const one   = (f) => (x) => f(x)         // once
+const two   = (f) => (x) => f(f(x))      // twice
+\`\`\`
+
+Once you read it that way, the rest follows. \`succ\` applies f one more time than n does:
+
+\`\`\`js
+const succ = (n) => (f) => (x) => f(n(f)(x))
+\`\`\`
+
+And \`add\` applies m's worth on top of n's worth:
+
+\`\`\`js
+const add = (m) => (n) => (f) => (x) => m(f)(n(f)(x))
+\`\`\`
+
+Notice what is absent: no \`+\`, no digit, nothing but functions calling functions. The only
+place a real number appears is the escape hatch back to JavaScript:
+
+\`\`\`js
+const toInt = (n) => n((k) => k + 1)(0)   // run the numeral with "add one", starting at 0
+
+toInt(zero)                    // 0
+toInt(succ(succ(zero)))        // 2
+toInt(add(two)(two))           // 4
+\`\`\`
+
+You can watch the encoding work by giving it a function that is not arithmetic at all:
+
+\`\`\`js
+add(two)(one)((s) => s + '!')('')   // '!!!'   applied three times
+\`\`\`
+
+Booleans, pairs, lists and recursion all encode the same way, which is the point: three rules
+are enough to express any computation at all.`,
   rungs: [
     {
       id: 'guided',
+      covers: ['church-numerals', 'escape-hatch'],
       kind: 'code',
       role: 'guided',
       title: 'Numbers made only of functions',
@@ -140,6 +198,7 @@ const toInt = (n) => n((k) => k + 1)(0)
 
     {
       id: 'recognize',
+      covers: ['three-rules'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

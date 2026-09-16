@@ -2,12 +2,92 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const lazyEvaluation: ExerciseSet = {
   termId: 'lazy-evaluation',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'pull-not-push',
+      statement:
+        "Knows nothing is computed until something asks, and can build an endless source that costs nothing to define.",
+    },
+    {
+      id: 'no-over-pulling',
+      statement:
+        "Can take exactly as many values as needed, and knows why pulling one extra breaks against an endless source.",
+    },
+    {
+      id: 'filter-lazily',
+      statement:
+        "Can filter an endless source without materializing it, stopping as soon as enough has been collected.",
+    },
+  ],
+  notes: `Lazy means the work happens when the answer is wanted, not when the expression is written. A
+generator is lazy out of the box: nothing between yields runs until something pulls.
+
+\`\`\`js
+function* naturals() {
+  let n = 0
+  while (true) {          // costs nothing until pulled
+    yield n
+    n += 1
+  }
+}
+
+const it = naturals()
+it.next().value   // 0
+it.next().value   // 1
+\`\`\`
+
+The discipline is to **pull exactly what you need**. \`for...of\` pulls a value before the body
+can decide it has enough, which is one too many:
+
+\`\`\`js
+const take = (n, iterator) => {
+  const out = []
+  for (const value of iterator) {
+    out.push(value)
+    if (out.length >= n) break      // the nth pull already happened
+  }
+  return out
+}
+
+const take = (n, iterator) => {
+  const it = iterator[Symbol.iterator]()
+  const out = []
+  while (out.length < n) {          // decide, then pull
+    const step = it.next()
+    if (step.done) break
+    out.push(step.value)
+  }
+  return out
+}
+\`\`\`
+
+Against a finite source that is an off-by-one. Against an endless one it is the difference
+between working and not:
+
+\`\`\`js
+const take = (n, it) => [...it].slice(0, n)   // drains the iterator
+take(3, naturals())                           // never returns
+\`\`\`
+
+Same rule when filtering. Walk and stop; do not build a prefix and hope it was big enough:
+
+\`\`\`js
+const firstSquaresOver = (floor, count) => {
+  const out = []
+  for (const n of naturals()) {
+    const sq = n * n
+    if (sq > floor) out.push(sq)
+    if (out.length >= count) break
+  }
+  return out
+}
+
+firstSquaresOver(1000000, 2)   // [1002001, 1004004], reached without a million steps of storage
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['pull-not-push', 'no-over-pulling'],
       kind: 'code',
       role: 'implement',
       title: 'An infinite list you can take from',
@@ -167,6 +247,7 @@ const take = (n, iterator) => [...iterator].slice(0, n)
 
     {
       id: 'apply',
+      covers: ['filter-lazily', 'no-over-pulling'],
       kind: 'code',
       role: 'apply',
       title: 'Filter an endless list',

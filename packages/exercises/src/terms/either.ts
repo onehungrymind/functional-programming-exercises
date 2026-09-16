@@ -2,12 +2,79 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const either: ExerciseSet = {
   termId: 'either',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'carries-the-reason',
+      statement:
+        "Knows Either carries a failure that says why, unlike Option which only says there was one.",
+    },
+    {
+      id: 'right-biased',
+      statement:
+        "Knows map and chain work on the Right only, so a Left passes through untouched, and fold runs exactly one branch.",
+    },
+    {
+      id: 'distinct-failures',
+      statement:
+        "Can build a pipeline where each step fails with its own message, and the first failure ends it.",
+    },
+  ],
+  notes: `Either is Option that **says why**. A failure carries a value, so the caller learns which step
+went wrong.
+
+\`\`\`js
+const Left = (error) => ({
+  isRight: false,
+  map: () => Left(error),        // the failure passes straight through
+  chain: () => Left(error),
+  fold: (onLeft, onRight) => onLeft(error)
+})
+const Right = (value) => ({
+  isRight: true,
+  map: (f) => Right(f(value)),
+  chain: (f) => f(value),
+  fold: (onLeft, onRight) => onRight(value)
+})
+\`\`\`
+
+It is **right-biased**: map and chain only ever touch the success side, which is what lets a
+failure travel the length of a pipeline without being handled at every step.
+
+\`\`\`js
+Left('not found').map((n) => n * 100).map((n) => n + 1)
+// Left('not found'), and neither function ran
+\`\`\`
+
+\`fold\` is the way out, and exactly one branch runs:
+
+\`\`\`js
+result.fold(
+  (err) => \`failed: \${err}\`,
+  (val) => \`ok: \${val}\`
+)
+\`\`\`
+
+The reason to prefer it over throwing is that each step keeps its own message, and the whole
+thing stays a value:
+
+\`\`\`js
+const parseJson = (s) => { try { return Right(JSON.parse(s)) } catch { return Left('not json') } }
+const getAge = (o) => ('age' in o ? Right(o.age) : Left('no age'))
+const checkPositive = (n) => (typeof n === 'number' && n > 0 ? Right(n) : Left('age must be positive'))
+
+const parseAge = (json) => parseJson(json).chain(getAge).chain(checkPositive)
+
+parseAge('{"age": 30}')     // Right(30)
+parseAge('nope')            // Left('not json')
+parseAge('{"name":"ada"}')  // Left('no age')
+parseAge('{"age": -1}')     // Left('age must be positive')
+\`\`\`
+
+Three different failures, three different messages, and no try/catch at the call site.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['carries-the-reason', 'right-biased'],
       kind: 'code',
       role: 'implement',
       title: 'Left, Right, and fold',
@@ -166,6 +233,7 @@ const Right = (value) => ({
 
     {
       id: 'apply',
+      covers: ['distinct-failures', 'right-biased'],
       kind: 'code',
       role: 'apply',
       title: 'A parse pipeline that reports why it failed',

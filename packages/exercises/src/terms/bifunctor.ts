@@ -3,12 +3,70 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const bifunctor: ExerciseSet = {
   termId: 'bifunctor',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'two-slots',
+      statement:
+        "Can map both positions of a two-slot structure, each with its own function.",
+    },
+    {
+      id: 'slots-stay-put',
+      statement:
+        "Knows bimap maps the contents and never changes which slot or which case a value is in.",
+    },
+    {
+      id: 'either-error-side',
+      statement:
+        "Can use bimap on Either to adjust the failure without touching the success path.",
+    },
+  ],
+  notes: `A Bifunctor has two positions, and \`bimap\` maps each with its own function.
+
+\`\`\`js
+const Pair = (first, second) => ({
+  first, second,
+  bimap: (f, g) => Pair(f(first), g(second))
+})
+
+Pair(2, 'ab').bimap((n) => n * 10, (s) => s.toUpperCase())   // Pair(20, 'AB')
+\`\`\`
+
+The first function belongs to the first slot. Swapping them is a different function, and a
+silent one if both slots happen to hold the same type:
+
+\`\`\`js
+bimap: (f, g) => Pair(g(second), f(first))   // the slots have traded places
+\`\`\`
+
+It maps the **contents**, never the structure. A Left stays a Left:
+
+\`\`\`js
+const Left = (error) => ({
+  isRight: false,
+  bimap: (f, g) => Left(f(error))      // still a Left
+})
+const Right = (value) => ({
+  isRight: true,
+  bimap: (f, g) => Right(g(value))     // still a Right
+})
+\`\`\`
+
+On Either exactly one of the two functions runs, which is what makes it the natural way to
+decorate an error without disturbing the happy path:
+
+\`\`\`js
+const withContext = (e) => e.bimap((msg) => \`while loading user: \${msg}\`, (v) => v)
+
+withContext(Left('not found'))   // Left('while loading user: not found')
+withContext(Right(42))           // Right(42), untouched
+\`\`\`
+
+Mapping over a Right only is \`map\`; a bifunctor is what gives you access to the other side
+without unwrapping and rebuilding.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['two-slots', 'slots-stay-put'],
       kind: 'code',
       role: 'implement',
       title: 'Map over both slots',
@@ -86,6 +144,7 @@ const Pair = (first, second) => ({
 
     {
       id: 'apply',
+      covers: ['either-error-side', 'slots-stay-put'],
       kind: 'code',
       role: 'apply',
       title: 'bimap for Either',

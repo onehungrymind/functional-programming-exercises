@@ -119,7 +119,6 @@ const note = (msg) => problems.push(msg);
 let codeRungs = 0;
 let exprRungs = 0;
 let variants = 0;
-const migrationOutstanding = [];
 const notedConcepts = [];
 const MIN_CODE_BLOCKS = 3;
 let timeouts = 0;
@@ -151,11 +150,7 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
   // The rubric is the specification and the rungs are its tests, so the two have to line up
   // in both directions or the traceability is decorative.
   const rubric = set.rubric ?? [];
-  if (set.rubricTodo) {
-    // Not yet written to the rubric model. Counted below rather than failing the run.
-    migrationOutstanding.push(termId);
-    if (rubric.length) note(`${termId}: has a rubric and is still marked \`rubricTodo\`.`);
-  } else if (rubric.length === 0) {
+  if (rubric.length === 0) {
     note(`${termId}: no rubric. Say what competency looks like before saying how it is tested.`);
   }
   const rubricIds = new Set(rubric.map((r) => r.id));
@@ -167,7 +162,6 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
   const covered = new Set();
   for (const rung of set.rungs) {
     const covers = rung.covers ?? [];
-    if (set.rubricTodo) continue;
     if (covers.length === 0) {
       note(`${termId}/${rung.id}: covers no rubric item. Either it is off-syllabus, or the rubric is missing something.`);
     }
@@ -187,14 +181,11 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
   // A rung may only ask about something Learn has covered. Upstream is a glossary, so for
   // most concepts that means this repo supplies the teaching itself. Every set has to declare
   // which case it is, so a new one cannot land without someone deciding.
-  const declared = [set.notes, set.upstreamIsEnough, set.rubricTodo].filter(Boolean).length;
-  if (declared === 0) {
+  if (!set.notes && !set.upstreamIsEnough) {
     note(
-      `${termId}: declares none of \`notes\`, \`upstreamIsEnough\`, or \`rubricTodo\`. ` +
-        `A rung may only ask about something the Learn tab has covered, so say which applies.`,
+      `${termId}: no \`notes\`, and \`upstreamIsEnough\` is not set. ` +
+        `A rung may only ask about something the Learn tab has covered.`,
     );
-  } else if (declared > 1) {
-    note(`${termId}: declares more than one of \`notes\`, \`upstreamIsEnough\`, and \`rubricTodo\`.`);
   }
 
   // Code carries more than prose does. Notes that explain a concept without showing it are
@@ -301,12 +292,7 @@ await worker?.terminate();
 console.log(
   `\n  verify passed\n  ${termCount} concepts, ${codeRungs} code rungs, ${exprRungs} expression rungs, ${variants} variants graded through the real harness`,
 );
-if (migrationOutstanding.length) {
-  const done = termCount - migrationOutstanding.length;
-  console.log(
-    `  ${done}/${termCount} written to a competency rubric; ${migrationOutstanding.length} still marked \`rubricTodo\``,
-  );
-}
+console.log(`  ${termCount}/${termCount} written to a competency rubric`);
 if (notedConcepts.length) {
   const blocks = notedConcepts.reduce((a, n) => a + n.blocks, 0);
   const code = notedConcepts.reduce((a, n) => a + n.code, 0);

@@ -3,12 +3,64 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const prism: ExerciseSet = {
   termId: 'prism',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'may-not-match',
+      statement:
+        "Knows a prism focuses on a case that might not be there, unlike a lens which always finds its focus.",
+    },
+    {
+      id: 'round-trip',
+      statement:
+        "Can write a matching pair where preview and review undo each other, and knows only exactly round-tripping values may match.",
+    },
+    {
+      id: 'guard-the-edges',
+      statement:
+        "Can reject the inputs that nearly parse, such as trailing characters, padding, decimals, and the empty string.",
+    },
+  ],
+  notes: `Where a lens always finds its focus, a prism focuses on a case that **might not be there**. It
+is the optic for a sum type: pick out the Right, the Some, the integer inside a string.
+
+\`\`\`js
+const preview = (s) => {          // String -> Option Number
+  const n = Number(s)
+  return Number.isInteger(n) && String(n) === s ? Some(n) : None()
+}
+const review = (n) => String(n)   // Number -> String, always succeeds
+\`\`\`
+
+The test \`String(n) === s\` is doing the real work. A prism may only match a value it can
+**rebuild exactly**, which rules out a surprising number of near misses:
+
+\`\`\`js
+preview('42')      // Some(42)
+preview('007')     // None. review(7) is '7', not '007', so the round trip would lose it.
+preview(' 7 ')     // None. Same reason.
+preview('1.5')     // None. Not an integer.
+preview('12abc')   // None, though parseInt would happily say 12.
+preview('')        // None, though Number('') is 0.
+\`\`\`
+
+Those last two are the traps. \`parseInt\` stops at the first bad character and \`Number('')\`
+is zero, so both accept things nothing can rebuild:
+
+\`\`\`js
+const preview = (s) => {
+  const n = parseInt(s, 10)
+  return Number.isNaN(n) ? None() : Some(n)
+}
+preview('12abc')   // Some(12), and review(12) is '12'. The original is gone.
+\`\`\`
+
+The two laws say exactly that: rebuilding what you previewed gives the original back, and
+previewing something you built always matches. Prisms compose with lenses, which is how you
+reach into a field that may or may not be the case you want.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['round-trip', 'guard-the-edges'],
       kind: 'code',
       role: 'implement',
       title: 'A prism for integers in strings',
@@ -133,6 +185,7 @@ const review = (n) => \`#\${n}\`
 
     {
       id: 'recognize',
+      covers: ['may-not-match'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

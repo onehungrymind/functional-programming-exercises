@@ -2,12 +2,68 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const autoCurrying: ExerciseSet = {
   termId: 'auto-currying',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'any-grouping',
+      statement:
+        "Can write a curry that accepts any grouping of arguments, not just one at a time.",
+    },
+    {
+      id: 'reads-length',
+      statement:
+        "Knows it decides when to call through by reading `fn.length`, and can name the definitions where that goes wrong.",
+    },
+    {
+      id: 'waits',
+      statement:
+        "Knows nothing runs until enough arguments have arrived, however they were grouped.",
+    },
+  ],
+  notes: `Hand-currying gives you one argument at a time and nothing else. Auto-currying accepts **any
+grouping**:
+
+\`\`\`js
+const curry = (fn) => {
+  const collect = (...args) =>
+    args.length >= fn.length ? fn(...args) : (...more) => collect(...args, ...more)
+  return collect
+}
+
+const add3 = (a, b, c) => a + b + c
+const c = curry(add3)
+
+c(1)(2)(3)    // 6
+c(1, 2)(3)    // 6
+c(1)(2, 3)    // 6
+c(1, 2, 3)    // 6
+\`\`\`
+
+The whole mechanism rests on \`fn.length\`, which is why [arity](#arity) is worth knowing
+precisely. Anything that makes declared arity smaller than what the function wants breaks it:
+
+\`\`\`js
+const sum = (...ns) => ns.reduce((a, b) => a + b, 0)
+sum.length          // 0
+curry(sum)(1)       // 1, not a function. It called through immediately.
+
+const greet = (greeting, name, punct = '!') => greeting + name + punct
+greet.length        // 2, not 3
+curry(greet)('hi')('ada')   // fires after two, punct takes its default
+\`\`\`
+
+Until enough arguments arrive, nothing runs:
+
+\`\`\`js
+let calls = 0
+const spy = curry((a, b, c) => { calls++; return a + b + c })
+spy(1)
+spy(1, 2)
+calls    // 0
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['any-grouping', 'waits'],
       kind: 'code',
       role: 'implement',
       title: 'Curry any function automatically',
@@ -104,6 +160,7 @@ const curry = (fn) => {
 
     {
       id: 'recognize',
+      covers: ['reads-length'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

@@ -2,12 +2,61 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const pointFreeStyle: ExerciseSet = {
   termId: 'point-free-style',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'spot-it',
+      statement:
+        "Can tell a point-free definition from one that names an argument only to pass it straight on.",
+    },
+    {
+      id: 'remove-the-point',
+      statement:
+        "Can rewrite a definition to drop the argument it never really used, using composition or a curried helper.",
+    },
+    {
+      id: 'when-not-to',
+      statement:
+        "Knows point-free is a readability choice, not a virtue, and can say when naming the argument is clearer.",
+    },
+  ],
+  notes: `Point-free means the definition never names the data it works on. The "point" is the argument.
+
+\`\`\`js
+const incrementAll = (xs) => map(add(1))(xs)   // names xs to pass it straight on
+const incrementAll = map(add(1))               // point-free
+\`\`\`
+
+The move is mechanical. Wherever the body is \`f(g(x))\` and the parameter is \`x\`, the
+definition is \`compose(f, g)\`:
+
+\`\`\`js
+const shout = (s) => exclaim(upper(s))
+const shout = compose(exclaim, upper)
+
+const countOf = (k) => (o) => length(prop(k)(o))
+const countOf = (k) => compose(length, prop(k))   // k is a real argument, keep it
+\`\`\`
+
+This only works because the helpers are [curried](#currying). \`map\` taking its function first
+and its list second is what leaves a list-shaped hole to drop.
+
+It is a readability choice, not a virtue. Point-free shines when the composition reads as a
+sentence, and hurts when it forces contortions:
+
+\`\`\`js
+// clear
+const activeNames = compose(map(prop('name')), filter(prop('active')))
+
+// technically point-free, and worse for everyone
+const avg = converge(divide, [sum, length])
+const avg = (xs) => sum(xs) / xs.length
+\`\`\`
+
+When you reach for a combinator whose name you have to look up, name the argument instead.`,
   rungs: [
     {
       id: 'recognize',
+      covers: ['spot-it', 'when-not-to'],
       kind: 'choice',
       role: 'recognize',
       multi: true,
@@ -41,6 +90,7 @@ export const pointFreeStyle: ExerciseSet = {
 
     {
       id: 'apply',
+      covers: ['remove-the-point', 'spot-it'],
       kind: 'code',
       role: 'apply',
       title: 'Remove the arguments',

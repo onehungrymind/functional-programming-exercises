@@ -26,12 +26,9 @@ export interface BaseRung {
   id: string;
   /**
    * The rubric items this rung demonstrates. At least one, and every id must exist in the
-   * set's rubric.
-   *
-   * Optional only while the existing content is migrated; `npm run verify` requires it.
-   * Tighten to required once every set has a rubric.
+   * set's rubric. `npm run verify` checks both directions.
    */
-  covers?: string[];
+  covers: string[];
   role: RungRole;
   /** Sentence case, imperative or a question. */
   title: string;
@@ -109,11 +106,8 @@ export interface ExerciseSet {
    * This is the unit of success: a learner who clears every rung has demonstrated every
    * item. Upstream's glossary entry is a reference, not a syllabus, so the rubric is free
    * to go well past it.
-   *
-   * Optional only while the existing content is migrated; `npm run verify` requires it.
-   * Tighten to required once every set has one.
    */
-  rubric?: RubricItem[];
+  rubric: RubricItem[];
   rungs: Rung[];
   /**
    * Teaching this repo owns, shown in Learn after the upstream entry.
@@ -130,14 +124,6 @@ export interface ExerciseSet {
    * notes are needed.
    */
   upstreamIsEnough?: true;
-  /**
-   * Predates the rubric model: no rubric, no notes, rungs unmapped.
-   *
-   * Every set must declare a `rubric` or this, so a new one cannot land without someone
-   * writing down what competency means. `npm run verify` counts these and prints the
-   * outstanding total on every run, which keeps the backlog visible rather than implied.
-   */
-  rubricTodo?: true;
 }
 
 // ---------------------------------------------------------------- results

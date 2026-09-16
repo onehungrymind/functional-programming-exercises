@@ -3,12 +3,80 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const option: ExerciseSet = {
   termId: 'option',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'absence-in-the-type',
+      statement:
+        "Knows Option makes \"there might be nothing\" part of the type, and that map on None skips the function entirely.",
+    },
+    {
+      id: 'map-chain-getorelse',
+      statement:
+        "Can write map, chain and getOrElse, and knows chain is for a function that already returns an Option.",
+    },
+    {
+      id: 'one-exit',
+      statement:
+        "Can chain a sequence of lookups so a miss anywhere short-circuits, with getOrElse as the only way out.",
+    },
+  ],
+  notes: `Option puts "there might be nothing here" into the type, so the check happens once at the end
+rather than at every step.
+
+\`\`\`js
+const Some = (value) => ({
+  isSome: true, value,
+  map: (f) => Some(f(value)),
+  chain: (f) => f(value),
+  getOrElse: () => value
+})
+const None = () => ({
+  isSome: false,
+  map: () => None(),        // f never runs
+  chain: () => None(),
+  getOrElse: (fallback) => fallback
+})
+\`\`\`
+
+\`map\` is for a plain function; \`chain\` is for one that already returns an Option. Using map
+where chain belongs leaves you holding an Option of an Option:
+
+\`\`\`js
+const prop = (k) => (o) => (o != null && o[k] != null ? Some(o[k]) : None())
+
+Some(user).map(prop('address'))    // Some(Some({...}))
+Some(user).chain(prop('address'))  // Some({...})
+\`\`\`
+
+The payoff is a chain that short-circuits on the first miss, with no null checks in between:
+
+\`\`\`js
+const cityOf = (user) =>
+  prop('address')(user).chain(prop('city')).getOrElse('unknown')
+
+cityOf({ address: { city: 'Paris' } })   // 'Paris'
+cityOf({ address: {} })                  // 'unknown'
+cityOf({})                               // 'unknown'
+cityOf(null)                             // 'unknown'
+\`\`\`
+
+Compare that with the version it replaces:
+
+\`\`\`js
+const cityOf = (user) => {
+  if (user == null) return 'unknown'
+  if (user.address == null) return 'unknown'
+  if (user.address.city == null) return 'unknown'
+  return user.address.city
+}
+\`\`\`
+
+\`getOrElse\` is the way out, and it belongs **last**. Reaching for \`.value\` partway through
+throws the whole thing away.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['absence-in-the-type', 'map-chain-getorelse'],
       kind: 'code',
       role: 'implement',
       title: 'Some, None, and the three ways out',
@@ -177,6 +245,7 @@ const None = () => ({
 
     {
       id: 'apply',
+      covers: ['one-exit', 'map-chain-getorelse'],
       kind: 'code',
       role: 'apply',
       title: 'Read a nested field safely',

@@ -2,12 +2,65 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const equationalReasoning: ExerciseSet = {
   termId: 'equational-reasoning',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'safe-rewrites',
+      statement:
+        "Can tell a rewrite that preserves meaning from one that quietly changes it, and can say which law licenses it.",
+    },
+    {
+      id: 'needs-purity',
+      statement:
+        "Knows the rewrites only hold for pure functions, and can name a case where mutation breaks one.",
+    },
+    {
+      id: 'apply-them',
+      statement:
+        "Can fuse and reorder a pipeline using the laws, and check the result agrees on every input.",
+    },
+  ],
+  notes: `Equational reasoning is replacing an expression with an equal one, the way you would in algebra.
+The laws are the licences.
+
+\`\`\`js
+xs.map(f).map(g)                 // the functor composition law
+xs.map((x) => g(f(x)))           // one pass instead of two
+
+xs.concat([]).length             // the monoid identity
+xs.length
+\`\`\`
+
+Moving a filter past a map needs the predicate rewritten, because it now sees the pre-map value:
+
+\`\`\`js
+xs.map(f).filter(p)              // filter sees f(x)
+xs.filter((x) => p(f(x))).map(f) // same elements survive, and f runs on fewer of them
+\`\`\`
+
+Some rewrites that look symmetrical are not:
+
+\`\`\`js
+xs.filter(p).map(f)              // p sees the raw element
+xs.map(f).filter(p)              // p now sees a different shape. Not the same program.
+\`\`\`
+
+All of it rests on purity. The moment a function mutates, the rewrite stops being safe:
+
+\`\`\`js
+const xs = [1, 2, 3]
+xs.reverse().reverse()   // looks like a no-op
+xs                       // [1, 2, 3] by luck: reverse mutated twice and landed back
+
+const ys = [1, 2, 3]
+const zs = ys.reverse()  // ys is now [3, 2, 1] as well. Substituting ys for zs is wrong.
+\`\`\`
+
+This is the whole practical argument for purity. Not elegance: the ability to read a large
+program by replacing pieces with what they mean, without holding the rest of it in your head.`,
   rungs: [
     {
       id: 'recognize',
+      covers: ['safe-rewrites', 'needs-purity'],
       kind: 'choice',
       role: 'recognize',
       multi: true,
@@ -45,6 +98,7 @@ export const equationalReasoning: ExerciseSet = {
 
     {
       id: 'guided',
+      covers: ['apply-them', 'safe-rewrites'],
       kind: 'code',
       role: 'guided',
       title: 'Rewrite a pipeline step by step',

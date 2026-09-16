@@ -2,12 +2,68 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const catamorphism: ExerciseSet = {
   termId: 'catamorphism',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'fold-to-a-value',
+      statement:
+        "Can write a fold and express several operations in terms of it, differing only in the step and the seed.",
+    },
+    {
+      id: 'seed-is-the-identity',
+      statement:
+        "Knows the seed decides the empty case and must be the identity for the operation.",
+    },
+    {
+      id: 'direction',
+      statement:
+        "Knows cata tears down where ana builds up, and that neither is tied to lists.",
+    },
+  ],
+  notes: `A catamorphism tears a structure down to a single value. For a list that is a fold, and the
+only things that vary are the step and the seed.
+
+\`\`\`js
+const cata = (step) => (seed) => (xs) => {
+  let acc = seed
+  for (const x of xs) acc = step(acc, x)
+  return acc
+}
+
+const sum    = cata((a, b) => a + b)(0)
+const max    = cata((a, b) => (b > a ? b : a))(-Infinity)
+const length = cata((a) => a + 1)(0)
+\`\`\`
+
+The seed is not an implementation detail: it **is** the empty case, and getting it wrong is
+silent until someone passes an empty list.
+
+\`\`\`js
+sum([])                          // 0    correct
+cata((a, b) => a + b)(1)([])     // 1    quietly wrong
+\`\`\`
+
+And it has to be the identity for the operation, or a non-empty list goes wrong too:
+
+\`\`\`js
+const max = cata((a, b) => (b > a ? b : a))(0)
+max([-5, -2, -9])   // 0, which is not in the list
+\`\`\`
+
+Note also that \`length\`'s step ignores its element entirely, which is what makes it work for
+lists of anything, including falsy values:
+
+\`\`\`js
+length([0, '', null, false, 1])   // 5
+cata((a, b) => (b ? a + 1 : a))(0)([0, '', null, false, 1])   // 1
+\`\`\`
+
+The name generalizes beyond lists: a catamorphism folds any recursive structure, so the same
+idea covers summing a tree or evaluating an expression. Its opposite is
+[anamorphism](#anamorphism), which builds one up.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['fold-to-a-value', 'seed-is-the-identity'],
       kind: 'code',
       role: 'implement',
       title: 'Collapse a structure to a value',
@@ -132,6 +188,7 @@ const length = cata((a, b) => (b ? a + 1 : a))(0)
 
     {
       id: 'recognize',
+      covers: ['direction'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

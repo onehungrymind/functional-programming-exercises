@@ -2,12 +2,70 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const sumType: ExerciseSet = {
   termId: 'sum-type',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'one-of-several',
+      statement:
+        "Can build a tagged union where a value is exactly one case and carries that case's payload.",
+    },
+    {
+      id: 'exhaustive-match',
+      statement:
+        "Can write a match that refuses to run unless every case is handled, and knows why a silent undefined is the failure to prevent.",
+    },
+    {
+      id: 'recognize',
+      statement:
+        "Can identify a sum type in the wild, including recursive ones like a list.",
+    },
+  ],
+  notes: `A sum type is a value that is **exactly one** of several shapes. Each case carries a tag and
+whatever that case needs.
+
+\`\`\`js
+const Loading = () => ({ type: 'loading' })
+const Ok = (data) => ({ type: 'ok', data })
+const Failed = (error) => ({ type: 'failed', error })
+\`\`\`
+
+That replaces a record where most combinations are meaningless. \`{ loading, data, error }\`
+has eight states and three make sense; this has three.
+
+The value of the tag is that a single function can dispatch on it, and **refuse** to run when a
+case is unhandled:
+
+\`\`\`js
+const CASES = ['loading', 'ok', 'failed']
+
+const match = (state, handlers) => {
+  const missing = CASES.filter((c) => typeof handlers[c] !== 'function')
+  if (missing.length) throw new TypeError(\`match is missing a handler for: \${missing.join(', ')}\`)
+  return handlers[state.type](state)
+}
+\`\`\`
+
+Without that check a forgotten case is silent, which is the exact failure exhaustiveness exists
+to prevent:
+
+\`\`\`js
+const match = (state, handlers) => handlers[state.type](state)
+
+match(Failed('boom'), { loading: () => '...', ok: (s) => s.data })
+// TypeError: handlers[state.type] is not a function, somewhere far from the cause
+\`\`\`
+
+More things are sum types than you would think. A list is one, and a recursive one:
+
+\`\`\`js
+// [a] is either empty, or a head followed by a tail
+Boolean          // true | false, the smallest interesting sum
+Option a         // Some a | None
+Either e a       // Left e | Right a
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['one-of-several', 'exhaustive-match'],
       kind: 'code',
       role: 'implement',
       title: 'A tagged union with an exhaustive match',
@@ -141,6 +199,7 @@ const match = (state, handlers) => {
 
     {
       id: 'recognize',
+      covers: ['recognize', 'one-of-several'],
       kind: 'choice',
       role: 'recognize',
       multi: true,

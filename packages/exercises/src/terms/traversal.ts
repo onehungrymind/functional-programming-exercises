@@ -2,12 +2,75 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const traversal: ExerciseSet = {
   termId: 'traversal',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'many-focuses',
+      statement:
+        "Knows a traversal focuses on any number of elements, where a lens focuses on one and a prism on at most one.",
+    },
+    {
+      id: 'leave-the-rest',
+      statement:
+        "Can modify the matching elements while leaving the non-matching ones exactly where they were.",
+    },
+    {
+      id: 'consistency',
+      statement:
+        "Knows reading after modifying should agree with modifying what was read, and that identity must change nothing.",
+    },
+  ],
+  notes: `The optics hierarchy is about **how many** things you can be looking at:
+
+\`\`\`js
+// lens       exactly one       user.name
+// prism      zero or one       the Right of an Either
+// traversal  zero or more      every even number in a list
+\`\`\`
+
+A traversal reads them all and modifies them in place, structurally speaking:
+
+\`\`\`js
+const isEven = (n) => n % 2 === 0
+
+const getAll = (xs) => xs.filter(isEven)
+const modify = (f, xs) => xs.map((x) => (isEven(x) ? f(x) : x))
+
+getAll([1, 2, 3, 4])            // [2, 4]
+modify((n) => n * 10, [1, 2, 3, 4])   // [1, 20, 3, 40]
+\`\`\`
+
+The non-matching elements are the point. A traversal **narrows what you act on**, it does not
+remove anything:
+
+\`\`\`js
+const modify = (f, xs) => xs.filter(isEven).map(f)   // [20, 40]. The odds are gone.
+const modify = (f, xs) => xs.map(f)                  // [10, 20, 30, 40]. Everything changed.
+\`\`\`
+
+And it must not disturb what it was given:
+
+\`\`\`js
+const modify = (f, xs) => {
+  xs.forEach((x, i) => { if (isEven(x)) xs[i] = f(x) })
+  return xs                    // the caller's array just changed
+}
+\`\`\`
+
+Two consistency properties are worth checking. Modifying with identity changes nothing, and
+reading after a modify agrees with modifying what you read:
+
+\`\`\`js
+modify((x) => x, xs)              // the same list
+getAll(modify(f, xs))             // agrees with getAll(xs).map(f)
+                                  // as long as f keeps elements inside the focus
+\`\`\`
+
+That caveat matters: if \`f\` turns an even number odd, the focus set itself moves, and the two
+sides stop agreeing for a good reason.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['leave-the-rest', 'consistency'],
       kind: 'code',
       role: 'implement',
       title: 'Focus on many things at once',
@@ -113,6 +176,7 @@ const modify = (f, xs) => {
 
     {
       id: 'recognize',
+      covers: ['many-focuses'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

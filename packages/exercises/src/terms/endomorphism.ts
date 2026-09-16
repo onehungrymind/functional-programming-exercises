@@ -3,12 +3,69 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const endomorphism: ExerciseSet = {
   termId: 'endomorphism',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'same-type-both-ends',
+      statement:
+        "Can recognize an endomorphism from its signature, and knows why the same type at both ends matters.",
+    },
+    {
+      id: 'monoid-under-composition',
+      statement:
+        "Knows endomorphisms form a monoid under composition, with identity as the empty.",
+    },
+    {
+      id: 'fold-a-pipeline',
+      statement:
+        "Can combine a list of transformations into one, using the monoid, including the empty case.",
+    },
+  ],
+  notes: `An endomorphism takes a type and gives back the **same** type.
+
+\`\`\`js
+// upper :: String -> String    yes
+// negate :: Number -> Number   yes
+// sort :: [a] -> [a]           yes
+// length :: String -> Number   no, different type out
+// head :: [a] -> a             no
+\`\`\`
+
+That sameness is what makes them always composable with each other, and that in turn makes them
+a [monoid](#monoid) under composition:
+
+\`\`\`js
+const Endo = (run) => ({
+  run,
+  concat: (other) => Endo((x) => other.run(run(x)))
+})
+Endo.empty = () => Endo((x) => x)      // identity is the neutral element
+\`\`\`
+
+The laws come for free from composition being associative with an identity:
+
+\`\`\`js
+Endo.empty().concat(dbl).run(5)   // 10
+dbl.concat(Endo.empty()).run(5)   // 10
+\`\`\`
+
+Which means a list of transformations folds into one, and the empty list has an answer:
+
+\`\`\`js
+const steps = [(n) => n + 1, (n) => n * 2, (n) => n - 3].map(Endo)
+const pipeline = steps.reduce((a, b) => a.concat(b), Endo.empty())
+
+pipeline.run(4)      // 7
+
+const none = [].reduce((a, b) => a.concat(b), Endo.empty())
+none.run(4)          // 4, rather than an error
+\`\`\`
+
+That last line is the practical payoff. A configurable pipeline with no steps configured is
+the identity, not a special case you have to write a branch for.`,
   rungs: [
     {
       id: 'recognize',
+      covers: ['same-type-both-ends'],
       kind: 'choice',
       role: 'recognize',
       multi: true,
@@ -29,6 +86,7 @@ export const endomorphism: ExerciseSet = {
 
     {
       id: 'implement',
+      covers: ['monoid-under-composition', 'fold-a-pipeline'],
       kind: 'code',
       role: 'implement',
       title: 'Endomorphisms form a monoid',

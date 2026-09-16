@@ -3,12 +3,69 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const pointedFunctor: ExerciseSet = {
   termId: 'pointed-functor',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'of-lifts',
+      statement:
+        "Can add an of that puts a value into the container and does nothing else.",
+    },
+    {
+      id: 'neutral',
+      statement:
+        "Knows of must not inspect or transform what it is given, including when it is handed a container.",
+    },
+    {
+      id: 'why-it-matters',
+      statement:
+        "Can say what of is for: a known starting point that the applicative and monad laws are stated against.",
+    },
+  ],
+  notes: `A Pointed Functor is a functor with an \`of\`: a way into the container that does the **least
+interesting thing possible**.
+
+\`\`\`js
+Box.of = (value) => Box(value)
+
+Box.of(3)   // Box(3)
+\`\`\`
+
+That sounds too small to name, and the rules are what make it worth naming. \`of\` must add
+nothing:
+
+\`\`\`js
+Box.of = (value) => Box(value * 2)      // no
+Box.of = (value) => value               // no, that is not a Box
+\`\`\`
+
+And it must not be clever about what it is handed. Lifting a container gives you a container in
+a container, and that is correct:
+
+\`\`\`js
+Box.of(Box(1))                                  // Box(Box(1))
+Box.of = (v) => (v && v.map ? v : Box(v))       // wrong: of always adds exactly one layer
+\`\`\`
+
+Flattening is [chain](#monad)'s job, not \`of\`'s.
+
+The reason it earns a name is that everything above it is **stated in terms of it**. The
+applicative and monad laws all mention \`of\`, so without a predictable one there is nothing to
+state them against:
+
+\`\`\`js
+M.of(a).chain(f)      // has to equal f(a)              left identity
+m.chain(M.of)         // has to equal m                 right identity
+A.of((x) => x).ap(v)  // has to equal v                 applicative identity
+\`\`\`
+
+A useful consequence: lifting then mapping is the same as applying then lifting.
+
+\`\`\`js
+Box.of(n).map(f)      // equals Box.of(f(n))
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['of-lifts', 'neutral'],
       kind: 'code',
       role: 'implement',
       title: 'A functor that knows how to lift',
@@ -103,6 +160,7 @@ Box.of = (value) => (value && value.map ? value : Box(value))
 
     {
       id: 'recognize',
+      covers: ['why-it-matters', 'neutral'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

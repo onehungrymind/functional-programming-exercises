@@ -2,12 +2,72 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const continuation: ExerciseSet = {
   termId: 'continuation',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'what-it-is',
+      statement:
+        "Can identify the continuation in a call: the function that says what happens once the answer exists.",
+    },
+    {
+      id: 'convert',
+      statement:
+        "Can convert a direct-style function to continuation-passing style, replacing every return with a call.",
+    },
+    {
+      id: 'sequence',
+      statement:
+        "Can chain two continuation-passing steps so the first feeds the second, calling the outer continuation exactly once.",
+    },
+  ],
+  notes: `In continuation-passing style a function never returns. It takes an extra argument, the
+**continuation**, and hands its answer to that instead.
+
+\`\`\`js
+const add = (a, b) => a + b                        // direct style
+const addCps = (a, b, done) => done(a + b)         // the same thing, inside out
+
+addCps(2, 3, (sum) => console.log(sum))            // 5
+//            ^^^^^^^^^^^^^^^^^^^^^^^ the continuation: what happens next
+\`\`\`
+
+The conversion is mechanical. Every \`return x\` becomes \`done(x)\`:
+
+\`\`\`js
+const half = (n) => {
+  if (n % 2) return null
+  return n / 2
+}
+
+const halfCps = (n, done) => {
+  if (n % 2) return done(null)
+  return done(n / 2)
+}
+\`\`\`
+
+Sequencing is where the shape earns its keep. The first step's continuation is the rest of the
+program:
+
+\`\`\`js
+const addThenSquare = (a, b, done) =>
+  addCps(a, b, (sum) => squareCps(sum, done))
+//                                    ^^^^ pass it along, do not call it yourself
+\`\`\`
+
+Getting that last part wrong is the usual mistake, and it shows up as the continuation running
+twice:
+
+\`\`\`js
+const addThenSquare = (a, b, done) =>
+  addCps(a, b, (sum) => done(squareCps(sum, done)))   // done called twice
+\`\`\`
+
+This is the shape callbacks, async/await, and generators all desugar to, and what makes
+[algebraic effects](#algebraic-effects) possible: once the rest of the program is a value, you
+can choose not to run it, or run it twice.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['convert', 'sequence'],
       kind: 'code',
       role: 'implement',
       title: 'Convert to continuation-passing style',
@@ -122,6 +182,7 @@ const addThenSquare = (a, b, done) => addCps(a, b, (sum) => done(squareCps(sum, 
 
     {
       id: 'recognize',
+      covers: ['what-it-is'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

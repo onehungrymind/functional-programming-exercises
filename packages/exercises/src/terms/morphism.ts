@@ -2,12 +2,62 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const morphism: ExerciseSet = {
   termId: 'morphism',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'objects-and-arrows',
+      statement:
+        "Can identify the objects and the arrow in a piece of code, and knows the arrow need not be reversible.",
+    },
+    {
+      id: 'the-named-kinds',
+      statement:
+        "Can name a morphism by the relationship it has to its endpoints: endo, iso, or neither.",
+    },
+  ],
+  notes: `A morphism is an arrow between two objects. In everyday code the objects are types and the
+arrows are functions.
+
+\`\`\`js
+// length :: String -> Number
+//           ^^^^^^    ^^^^^^ the objects
+// the function itself is the morphism
+\`\`\`
+
+Most arrows do not reverse. Many strings share a length, so there is no way back:
+
+\`\`\`js
+length('abc')   // 3
+length('xyz')   // 3   given 3, which string was it?
+\`\`\`
+
+The glossary's "-morphism" words are just names for the relationship an arrow has to its
+endpoints:
+
+\`\`\`js
+// endomorphism   A -> A          same object at both ends
+const upper = (s) => s.toUpperCase()
+
+// isomorphism    A -> B with an inverse
+const toPair = (c) => [c.x, c.y]
+const toCoords = (p) => ({ x: p[0], y: p[1] })
+
+// automorphism   A -> A with an inverse
+const negate = (n) => -n
+
+// neither        A -> B, no way back
+const length = (s) => s.length
+\`\`\`
+
+The other family in this glossary, catamorphism and its relatives, names arrows by the **shape
+of the recursion** rather than by the endpoints. Same suffix, different question being answered.
+
+The reason any of it is worth naming: once you know arrows compose and that composition is
+associative with an identity, you have a [category](#category), and every result about
+categories applies.`,
   rungs: [
     {
       id: 'recognize',
+      covers: ['objects-and-arrows'],
       kind: 'choice',
       role: 'recognize',
       multi: true,
@@ -32,6 +82,7 @@ export const morphism: ExerciseSet = {
 
     {
       id: 'implement',
+      covers: ['the-named-kinds', 'objects-and-arrows'],
       kind: 'code',
       role: 'implement',
       title: 'Classify the arrows',

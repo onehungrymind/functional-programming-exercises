@@ -3,12 +3,68 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const semigroup: ExerciseSet = {
   termId: 'semigroup',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'concat-stays-inside',
+      statement:
+        "Can write a concat that returns the same type, so three values can be combined in one chain.",
+    },
+    {
+      id: 'associativity',
+      statement:
+        "Knows associativity is the only requirement, and can name operations that have it and ones that do not.",
+    },
+    {
+      id: 'several-instances',
+      statement:
+        "Knows one type can be a semigroup in several ways, and that the wrapper is what picks which.",
+    },
+  ],
+  notes: `A Semigroup is a type with an associative \`concat\`. That is the whole definition: no identity,
+no inverse, nothing else.
+
+\`\`\`js
+const Max = (value) => ({
+  value,
+  concat: (other) => Max(value > other.value ? value : other.value)
+})
+
+Max(3).concat(Max(7))            // Max(7)
+Max(1).concat(Max(9)).concat(Max(5))   // Max(9)
+\`\`\`
+
+\`concat\` has to stay **inside** the type, or the second link in the chain has nothing to call:
+
+\`\`\`js
+concat: (other) => Math.max(value, other.value)   // gives a number
+Max(1).concat(Max(2)).concat(Max(3))              // TypeError
+\`\`\`
+
+Associativity means the grouping cannot change the answer:
+
+\`\`\`js
+(1 + 2) + 3 === 1 + (2 + 3)      // addition: yes
+(1 - 2) - 3 === 1 - (2 - 3)      // subtraction: -4 vs 2. No.
+(8 / 4) / 2 === 8 / (4 / 2)      // division: 1 vs 4. No.
+\`\`\`
+
+Even "always keep the left one" is associative, which is why \`First\` is a legitimate semigroup
+if not a very exciting one.
+
+A type is usually a semigroup in **more than one way**, and the wrapper is how you choose:
+
+\`\`\`js
+Max(3).concat(Max(7)).value    // 7
+Min(3).concat(Min(7)).value    // 3
+Sum(3).concat(Sum(7)).value    // 10
+\`\`\`
+
+That is why they are wrapped at all. \`Number\` on its own does not say which combination you
+meant.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['concat-stays-inside', 'associativity', 'several-instances'],
       kind: 'code',
       role: 'implement',
       title: 'Three ways to combine two things',
@@ -116,6 +172,7 @@ const First = (value) => ({ value, concat: (other) => First(value - other.value)
 
     {
       id: 'recognize',
+      covers: ['associativity'],
       kind: 'choice',
       role: 'recognize',
       multi: true,

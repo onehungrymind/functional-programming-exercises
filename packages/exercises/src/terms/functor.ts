@@ -3,12 +3,84 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const functor: ExerciseSet = {
   termId: 'functor',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'map-rewraps',
+      statement:
+        "Knows map applies a function inside and hands back the same kind of container, so mapping can continue.",
+    },
+    {
+      id: 'two-laws',
+      statement:
+        "Can state the identity and composition laws and say what each one rules out.",
+    },
+    {
+      id: 'skipping-is-lawful',
+      statement:
+        "Knows a functor may decline to apply the function, as Maybe does on nothing, and still obey both laws.",
+    },
+    {
+      id: 'break-a-law',
+      statement:
+        "Can construct something that looks like a functor and quietly fails a law, and know which one it failed.",
+    },
+  ],
+  notes: `A functor is a container with a \`map\` that obeys two laws. The shape requirement comes first:
+map has to hand back **the same kind of container**, or you cannot map again.
+
+\`\`\`js
+const Box = (value) => ({
+  value,
+  map: (f) => Box(f(value))
+})
+
+Box(2).map((x) => x + 1).map((x) => x * 10)   // Box(30)
+
+map: (f) => f(value)          // unwraps instead
+Box(2).map(inc).map(dbl)      // TypeError: .map is not a function
+\`\`\`
+
+**Identity**: mapping the identity function changes nothing.
+
+\`\`\`js
+Box(3).map((x) => x)   // has to equal Box(3)
+\`\`\`
+
+That rules out a map which sneaks in extra work. **Composition**: mapping twice equals mapping
+the composition.
+
+\`\`\`js
+Box(3).map(f).map(g)              // has to equal
+Box(3).map((x) => g(f(x)))
+\`\`\`
+
+That rules out a map whose behaviour depends on anything but its argument and the value inside.
+
+A functor is allowed to **not run the function**, which surprises people. Maybe declines on
+nothing and both laws still hold, because they hold on the Nothing case vacuously:
+
+\`\`\`js
+const Maybe = (value) => ({
+  value,
+  map: (f) => (value == null ? Maybe(value) : Maybe(f(value)))
+})
+
+Maybe(null).map((x) => x.name)   // Maybe(null), no crash
+\`\`\`
+
+Breaking a law while keeping the shape takes a little care, and that is the useful exercise:
+
+\`\`\`js
+let calls = 0
+const BadBox = (value) => ({
+  value,
+  map: (f) => BadBox(f(value) + calls++)   // depends on history, so it cannot compose
+})
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['map-rewraps', 'two-laws'],
       kind: 'code',
       role: 'implement',
       title: 'Give Box a lawful map',
@@ -71,6 +143,7 @@ const Box = (value) => ({
 
     {
       id: 'apply',
+      covers: ['skipping-is-lawful', 'two-laws'],
       kind: 'code',
       role: 'apply',
       title: 'A Maybe that skips missing values',
@@ -137,6 +210,7 @@ const Box = (value) => ({
 
     {
       id: 'break',
+      covers: ['break-a-law'],
       kind: 'code',
       role: 'break',
       inverted: true,

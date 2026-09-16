@@ -2,12 +2,65 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const functionalCombinator: ExerciseSet = {
   termId: 'functional-combinator',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'no-free-variables',
+      statement:
+        "Knows a combinator uses nothing but its own arguments, and can tell one from a function that closes over something.",
+    },
+    {
+      id: 'the-classics',
+      statement:
+        "Can write I, K, C and S, and say what each does in one sentence.",
+    },
+    {
+      id: 'identities',
+      statement:
+        "Can verify a combinator identity such as S(K)(K) behaving like I, and knows a failure points at one of the definitions.",
+    },
+  ],
+  notes: `A combinator is a function built from nothing but its own arguments. No globals, no closure over
+something outside, no free variables at all.
+
+\`\`\`js
+const I = (x) => x                          // a combinator
+const withTax = (x) => x * TAX_RATE         // not one: TAX_RATE comes from outside
+\`\`\`
+
+The classic four:
+
+\`\`\`js
+const I = (x) => x                          // identity: hand it back
+const K = (x) => (y) => x                   // constant: keep the first, ignore the second
+const C = (f) => (b) => (a) => f(a)(b)      // flip: swap the order they arrive in
+const S = (f) => (g) => (x) => f(x)(g(x))   // substitution: both branches see the same x
+\`\`\`
+
+K is worth dwelling on, because it genuinely never looks at its second argument:
+
+\`\`\`js
+K('kept')(() => { throw new Error('never runs') })   // 'kept'
+\`\`\`
+
+And S is where the shape becomes interesting, because \`x\` is used twice:
+
+\`\`\`js
+const add = (x) => (y) => x + y
+const double = S(add)(I)
+double(5)    // 10, because both branches got the same 5
+\`\`\`
+
+The identities fall straight out of the definitions, which makes them a good check on your own
+work. If this one fails, either K or S is wrong:
+
+\`\`\`js
+S(K)(K)(42)   // 42, the same as I(42)
+C(C(f))       // the same function as f
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['the-classics', 'identities'],
       kind: 'code',
       role: 'implement',
       title: 'The classic combinators',
@@ -130,6 +183,7 @@ const S = (f) => (g) => (x) => f(x)(g)
 
     {
       id: 'recognize',
+      covers: ['no-free-variables'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

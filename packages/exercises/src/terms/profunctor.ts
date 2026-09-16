@@ -3,12 +3,70 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const profunctor: ExerciseSet = {
   termId: 'profunctor',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'both-ends',
+      statement:
+        "Can adapt the input and the output of a function-like structure in one step, with the input function running first.",
+    },
+    {
+      id: 'variance',
+      statement:
+        "Knows it is contravariant in what it consumes and covariant in what it produces.",
+    },
+    {
+      id: 'composition-order',
+      statement:
+        "Knows the input functions compose in reverse and the output functions compose forwards.",
+    },
+  ],
+  notes: `A profunctor consumes on one side and produces on the other, so it can be adapted at both ends
+at once.
+
+\`\`\`js
+const Fn = (run) => ({
+  run,
+  promap: (f, g) => Fn((x) => g(run(f(x))))
+//                        ^^^^^^^^^^^^^^^ f on the way in, g on the way out
+})
+
+const length = Fn((s) => s.length)
+
+const trimmedIsEven = length.promap(
+  (s) => s.trim(),          // pre-process the input
+  (n) => n % 2 === 0        // post-process the output
+)
+
+trimmedIsEven.run('  code  ')   // true   trims to 'code', length 4
+trimmedIsEven.run(' hello ')    // false  trims to 'hello', length 5
+\`\`\`
+
+Order matters and is easy to get backwards. Running both functions on the output is a common
+slip and it silently changes what the thing means:
+
+\`\`\`js
+promap: (f, g) => Fn((x) => g(f(run(x))))   // trims a number
+\`\`\`
+
+The variance follows from the direction of travel. The input side is
+[contravariant](#contravariant-functor), because adapting it means accepting a **wider** set of
+things by converting them first. The output side is covariant, the ordinary kind.
+
+So the composition law is mixed:
+
+\`\`\`js
+p.promap(f, g).promap(h, i)
+// equals
+p.promap((x) => f(h(x)), (y) => i(g(y)))
+//        ^^^^^^^^^^^^^^ reversed     ^^^^^^^^^^^^^^ forwards
+\`\`\`
+
+Functions are the canonical profunctor, and profunctors are the foundation under the optics in
+this glossary: a lens is a profunctor transformation.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['both-ends', 'composition-order'],
       kind: 'code',
       role: 'implement',
       title: 'Adjust both ends of a function',
@@ -94,6 +152,7 @@ const Fn = (run) => ({
 
     {
       id: 'recognize',
+      covers: ['variance'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

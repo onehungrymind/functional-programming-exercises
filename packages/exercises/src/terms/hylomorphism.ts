@@ -2,12 +2,69 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const hylomorphism: ExerciseSet = {
   termId: 'hylomorphism',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'unfold-then-fold',
+      statement:
+        "Can compose an unfold and a fold into one function over a seed.",
+    },
+    {
+      id: 'intermediate-is-throwaway',
+      statement:
+        "Knows the structure in the middle exists only to be consumed, which is what makes fusing the two halves possible.",
+    },
+    {
+      id: 'general',
+      statement:
+        "Knows the shape is not specific to any one problem, and can use the same hylo for a different fold.",
+    },
+  ],
+  notes: `A hylomorphism builds a structure and immediately tears it down. Unfold, then fold, with the
+middle never really needed.
+
+\`\`\`js
+const hylo = (foldStep, foldSeed, unfoldStep) => (seed) =>
+  cata(foldStep, foldSeed, unfold(unfoldStep, seed))
+
+const factorial = hylo(
+  (acc, n) => acc * n,                      // fold: multiply
+  1,                                        // seed: the identity for multiplication
+  (n) => (n > 0 ? [n, n - 1] : null)        // unfold: n down to 1
+)
+
+factorial(5)   // 120
+factorial(0)   // 1, because the unfold produces nothing and the seed stands
+\`\`\`
+
+Both boundaries matter, and both are silent when wrong:
+
+\`\`\`js
+hylo((acc, n) => acc * n, 0, ...)                 // every factorial is 0
+hylo(..., 1, (n) => (n >= 0 ? [n, n - 1] : null)) // includes 0, so the product collapses
+\`\`\`
+
+The shape is general, not a factorial trick. Change the fold and you have something else
+entirely:
+
+\`\`\`js
+const sumTo = hylo((acc, n) => acc + n, 0, (n) => (n > 0 ? [n, n - 1] : null))
+sumTo(5)     // 15
+
+const collect = hylo((acc, x) => [...acc, x], [], (n) => (n > 0 ? [n, n - 1] : null))
+collect(3)   // [3, 2, 1]
+\`\`\`
+
+Worth naming because the intermediate list is **pure overhead**: it is built one element at a
+time and consumed one element at a time, and nothing else ever sees it. Recognizing the shape is
+what lets you fuse the two halves and never allocate it. A compiler doing deforestation is
+spotting exactly this.
+
+It does not guarantee termination. An unfold that never returns null runs forever, and
+composing a fold onto it does not help.`,
   rungs: [
     {
       id: 'apply',
+      covers: ['unfold-then-fold', 'general'],
       kind: 'code',
       role: 'apply',
       title: 'Unfold then fold',
@@ -144,6 +201,7 @@ const factorial = hylo((acc, n) => acc * n, 1, (n) => (n > 0 ? [n, n - 1] : null
 
     {
       id: 'recognize',
+      covers: ['intermediate-is-throwaway'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

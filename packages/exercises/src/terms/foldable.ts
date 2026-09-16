@@ -3,12 +3,74 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const foldable: ExerciseSet = {
   termId: 'foldable',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'collapse',
+      statement:
+        "Can give a structure a reduce that visits every element exactly once in a defined order.",
+    },
+    {
+      id: 'order-matters',
+      statement:
+        "Knows the traversal order is part of the contract, and that reduce must agree with the structure's own idea of its elements.",
+    },
+    {
+      id: 'what-it-buys',
+      statement:
+        "Can say what one reduce provides: sum, length, contains, maximum, and anything else expressible as a fold.",
+    },
+  ],
+  notes: `Foldable means the structure can be collapsed to a single value. One method, and a family of
+operations comes with it.
+
+\`\`\`js
+const Leaf = (value) => ({
+  reduce: (f, seed) => f(seed, value),
+  toArray: () => [value]
+})
+
+const Node = (left, value, right) => ({
+  reduce: (f, seed) => right.reduce(f, f(left.reduce(f, seed), value)),
+  //                   ^ right      ^ node     ^ left     in that order
+  toArray: () => [...left.toArray(), value, ...right.toArray()]
+})
+\`\`\`
+
+Order is part of the contract, not an implementation detail. Visiting the node before its left
+subtree gives different answers for anything non-commutative:
+
+\`\`\`js
+const tree = Node(Leaf(1), 2, Node(Leaf(3), 4, Leaf(5)))
+
+tree.reduce((acc, x) => [...acc, x], [])   // [1, 2, 3, 4, 5]
+tree.reduce((a, b) => a + b, 0)            // 15, same either way
+tree.reduce((a, b) => a - b, 0)            // order-dependent, and now it matters
+\`\`\`
+
+Which is why the useful self-check is that \`reduce\` agrees with the structure's own idea of
+its elements:
+
+\`\`\`js
+tree.reduce((acc, x) => [...acc, x], [])   // has to equal tree.toArray()
+\`\`\`
+
+And once \`reduce\` exists, a whole family follows without knowing anything about the shape:
+
+\`\`\`js
+const sum      = (t) => t.reduce((a, b) => a + b, 0)
+const length   = (t) => t.reduce((a) => a + 1, 0)
+const toArray  = (t) => t.reduce((a, b) => [...a, b], [])
+const contains = (t, x) => t.reduce((a, b) => a || b === x, false)
+const maximum  = (t) => t.reduce((a, b) => (b > a ? b : a), -Infinity)
+\`\`\`
+
+What Foldable does **not** give you is \`map\`: a fold cannot rebuild the structure it walked.
+That needs [Functor](#functor), and doing both at once needs
+[Traversable](#traversable).`,
   rungs: [
     {
       id: 'implement',
+      covers: ['collapse', 'order-matters'],
       kind: 'code',
       role: 'implement',
       title: 'Fold a tree down to one value',
@@ -147,6 +209,7 @@ const Node = (left, value, right) => ({
 
     {
       id: 'recognize',
+      covers: ['what-it-buys'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

@@ -3,12 +3,63 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const setoid: ExerciseSet = {
   termId: 'setoid',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'by-contents',
+      statement:
+        "Can give a type an equals that compares contents rather than identity.",
+    },
+    {
+      id: 'three-laws',
+      statement:
+        "Can state reflexivity, symmetry and transitivity, and say which one a given definition breaks.",
+    },
+    {
+      id: 'boolean',
+      statement:
+        "Knows equals answers true or false, and that an ordering dressed as an equality fails symmetry.",
+    },
+  ],
+  notes: `A Setoid is a type that knows how to compare itself. The interesting part is not \`equals\`, it
+is the three laws it has to satisfy.
+
+\`\`\`js
+const Point = (x, y) => ({
+  x, y,
+  equals: (other) => other.x === x && other.y === y
+})
+
+Point(1, 2).equals(Point(1, 2))   // true
+{ x: 1 } === { x: 1 }              // false. === asks whether it is the same object.
+\`\`\`
+
+**Reflexive**: everything equals itself. **Symmetric**: the order does not matter.
+**Transitive**: equality chains.
+
+The one people break is symmetry, usually by writing an ordering and calling it an equality:
+
+\`\`\`js
+const Score = (n) => ({ n, equals: (other) => other.n >= n })
+
+Score(1).equals(Score(2))   // true
+Score(2).equals(Score(1))   // false   not symmetric
+\`\`\`
+
+Reflexivity and transitivity both survive that, which is why checking one law is not enough.
+
+Also worth guarding: comparing only part of the value passes the laws and is still wrong, and
+it is the kind of thing a quick test misses:
+
+\`\`\`js
+const Point = (x, y) => ({ x, y, equals: (other) => other.x === x })
+Point(1, 2).equals(Point(1, 99))   // true, and reflexive, symmetric and transitive
+\`\`\`
+
+The laws tell you the relation is well-behaved, not that it means what you intended.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['by-contents', 'three-laws', 'boolean'],
       kind: 'code',
       role: 'implement',
       title: 'Equality you can rely on',
@@ -83,6 +134,7 @@ const Point = (x, y) => ({
 
     {
       id: 'recognize',
+      covers: ['three-laws'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

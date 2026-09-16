@@ -2,12 +2,68 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const kleisliComposition: ExerciseSet = {
   termId: 'kleisli-composition',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'why-compose-fails',
+      statement:
+        "Can say why ordinary composition cannot join two functions that each return a container.",
+    },
+    {
+      id: 'compose-with-chain',
+      statement:
+        "Can write composeK, and knows it reads right to left the way compose does.",
+    },
+    {
+      id: 'short-circuits',
+      statement:
+        "Knows a failure in the first step skips the second entirely, and that the composition is associative.",
+    },
+  ],
+  notes: `Ordinary composition needs the output of one function to be the input of the next. Two functions
+that each return a container do not line up:
+
+\`\`\`js
+const half = (n) => (n % 2 === 0 ? Just(n / 2) : Nothing())   // Number -> Maybe Number
+
+compose(half, half)(8)   // half receives Just(4), and it expects a Number
+\`\`\`
+
+\`chain\` is what bridges the gap, and \`composeK\` packages that up:
+
+\`\`\`js
+const composeK = (g, f) => (a) => f(a).chain(g)
+
+const positive = (n) => (n > 0 ? Just(n) : Nothing())
+const halfThenPositive = composeK(positive, half)
+
+halfThenPositive(8)    // Just(4)
+\`\`\`
+
+It reads right to left, the same as \`compose\`, so the rightmost function runs first. Using
+\`map\` instead leaves you doubly wrapped:
+
+\`\`\`js
+const composeK = (g, f) => (a) => f(a).map(g)   // Just(Just(4))
+\`\`\`
+
+A failure anywhere ends it, and the later steps never run:
+
+\`\`\`js
+halfThenPositive(7)     // Nothing. half failed, positive was never called.
+halfThenPositive(-4)    // Nothing. half gave Just(-2), positive rejected it.
+\`\`\`
+
+And it is associative, which is what makes it a [category](#category) rather than just a handy
+function: you can group a long chain into named stages freely.
+
+\`\`\`js
+composeK(composeK(h, g), f)   // the same function as
+composeK(h, composeK(g, f))
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['compose-with-chain', 'short-circuits'],
       kind: 'code',
       role: 'implement',
       title: 'Compose functions that return containers',
@@ -119,6 +175,7 @@ const composeK = (g, f) => (a) => f(a).chain(g)
 
     {
       id: 'recognize',
+      covers: ['why-compose-fails'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

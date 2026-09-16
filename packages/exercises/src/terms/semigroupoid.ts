@@ -3,12 +3,67 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const semigroupoid: ExerciseSet = {
   termId: 'semigroupoid',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'compose-stays-inside',
+      statement:
+        "Can write a compose that returns the same wrapper, so three morphisms chain.",
+    },
+    {
+      id: 'direction',
+      statement:
+        "Knows compose reads right to left, so the argument runs first.",
+    },
+    {
+      id: 'associativity-only',
+      statement:
+        "Knows associativity is the only requirement, and that an identity is what a category adds.",
+    },
+  ],
+  notes: `A Semigroupoid is anything with an associative \`compose\`. That is the entire definition, and
+it is the same step-up from [semigroup](#semigroup) that a category is from a monoid.
+
+\`\`\`js
+const Morphism = (f) => ({
+  f,
+  compose: (other) => Morphism((x) => f(other.f(x))),   // other runs first
+  run: (x) => f(x)
+})
+
+const inc = Morphism((n) => n + 1)
+const dbl = Morphism((n) => n * 2)
+
+inc.compose(dbl).run(5)    // 11   doubled to 10, then incremented
+\`\`\`
+
+Right to left, matching \`compose\` everywhere else. Reversing it is a different function and a
+silent one when the operations happen to commute:
+
+\`\`\`js
+compose: (other) => Morphism((x) => other.f(f(x)))
+inc.compose(dbl).run(5)    // 12. Incremented then doubled.
+\`\`\`
+
+And it has to stay inside the wrapper, or a chain of three has nothing to call:
+
+\`\`\`js
+compose: (other) => (x) => f(other.f(x))   // a bare function
+a.compose(b).compose(c)                     // TypeError
+\`\`\`
+
+Associativity is the only law:
+
+\`\`\`js
+a.compose(b).compose(c)     // the same morphism as
+a.compose(b.compose(c))
+\`\`\`
+
+What it lacks is an identity, and that is precisely what [category](#category) adds. The
+semigroup-to-monoid step, one level up.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['compose-stays-inside', 'direction', 'associativity-only'],
       kind: 'code',
       role: 'implement',
       title: 'Composition that associates',
@@ -91,6 +146,7 @@ const Morphism = (f) => ({
 
     {
       id: 'recognize',
+      covers: ['associativity-only'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

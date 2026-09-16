@@ -2,12 +2,64 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const typeSignatures: ExerciseSet = {
   termId: 'type-signatures',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'read-the-arrows',
+      statement:
+        "Can read a Hindley-Milner signature, and knows each arrow is one argument arriving.",
+    },
+    {
+      id: 'match-implementation',
+      statement:
+        "Can tell whether an implementation matches its signature, including the order the arguments arrive in.",
+    },
+    {
+      id: 'signature-constrains',
+      statement:
+        "Knows a signature over any `a` forbids looking inside, and can say what that leaves a function able to do.",
+    },
+  ],
+  notes: `A signature says what goes in and what comes out. Every arrow is **one argument arriving**.
+
+\`\`\`js
+// add :: Number -> Number -> Number
+const add = (a) => (b) => a + b
+
+// add :: (Number, Number) -> Number     parentheses mean both at once
+const add = (a, b) => a + b
+\`\`\`
+
+So the shape of the arrows tells you how to call it, and getting the order wrong is a different
+function:
+
+\`\`\`js
+// map :: (a -> b) -> [a] -> [b]
+const map = (fn) => (xs) => xs.map(fn)     // matches
+const map = (xs) => (fn) => xs.map(fn)     // does not: the list arrives first
+const map = (fn) => (xs) => xs.forEach(fn) // does not: forEach returns undefined, not [b]
+\`\`\`
+
+The interesting part is what a lowercase variable **forbids**. \`a\` means "any type at all",
+so the function cannot know anything about it, which rules out almost everything:
+
+\`\`\`js
+// identity :: a -> a
+const identity = (a) => a          // the only thing it could be
+
+// first :: a -> b -> a
+const first = (a) => (b) => a      // the only a it has is the first argument
+
+// count :: [a] -> Number
+const count = (xs) => xs.length              // fine: never looks at an element
+const count = (xs) => xs.filter(Boolean).length   // not fine: it inspected an a
+\`\`\`
+
+That is why signatures are worth reading before implementations. \`[a] -> Number\` has very few
+possible honest implementations, and \`a -> a\` has exactly one.`,
   rungs: [
     {
       id: 'recognize',
+      covers: ['read-the-arrows', 'match-implementation'],
       kind: 'choice',
       role: 'recognize',
       multi: false,
@@ -39,6 +91,7 @@ export const typeSignatures: ExerciseSet = {
 
     {
       id: 'implement',
+      covers: ['signature-constrains', 'read-the-arrows'],
       kind: 'code',
       role: 'implement',
       title: 'Write the functions the signatures describe',

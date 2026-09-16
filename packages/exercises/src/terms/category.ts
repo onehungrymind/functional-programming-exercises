@@ -3,12 +3,66 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const category: ExerciseSet = {
   termId: 'category',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'identity-morphism',
+      statement:
+        "Can supply an identity morphism and knows it must be neutral composed on either side.",
+    },
+    {
+      id: 'id-is-a-morphism',
+      statement:
+        "Knows the identity has to be a morphism itself, not a bare function, so it can be composed.",
+    },
+    {
+      id: 'what-is-required',
+      statement:
+        "Can say what a category requires and what it does not, in particular that arrows need no inverses.",
+    },
+  ],
+  notes: `A Category is a [semigroupoid](#semigroupoid) with an identity: associative composition, plus
+an arrow that changes nothing.
+
+\`\`\`js
+Morphism.id = () => Morphism((x) => x)
+
+const dbl = Morphism((n) => n * 2)
+
+Morphism.id().compose(dbl).run(5)   // 10
+dbl.compose(Morphism.id()).run(5)   // 10
+\`\`\`
+
+Both sides have to be neutral, and the identity has to be a **morphism**, not a bare function,
+or there is nothing to compose it with:
+
+\`\`\`js
+Morphism.id = () => (x) => x         // a function
+Morphism.id().compose(dbl)           // TypeError: compose is not a function
+\`\`\`
+
+What a category does **not** require is inverses. Most arrows cannot be reversed and that is
+fine; requiring them would make it a groupoid:
+
+\`\`\`js
+const length = Morphism((s) => s.length)   // perfectly good morphism, no way back
+\`\`\`
+
+Nor does it require the objects to be types or the arrows to be functions. Functions and types
+are one example. [Kleisli composition](#kleisli-composition) is another: the arrows are
+\`a -> M b\` and the identity is \`M.of\`, and that is a category for exactly the same reasons.
+
+\`\`\`js
+composeK(composeK(h, g), f)   // associative
+composeK(M.of, f)             // the same as f
+composeK(f, M.of)             // the same as f
+\`\`\`
+
+Which is what the monad laws are, read sideways: the two identity laws and associativity say
+precisely that Kleisli arrows form a category.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['identity-morphism', 'id-is-a-morphism'],
       kind: 'code',
       role: 'implement',
       title: 'Composition with an identity',
@@ -99,6 +153,7 @@ Morphism.id = () => (x) => x
 
     {
       id: 'recognize',
+      covers: ['what-is-required'],
       kind: 'choice',
       role: 'recognize',
       multi: true,

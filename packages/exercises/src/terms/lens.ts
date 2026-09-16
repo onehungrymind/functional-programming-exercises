@@ -3,12 +3,74 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const lens: ExerciseSet = {
   termId: 'lens',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'getter-and-setter',
+      statement:
+        "Knows a lens is a getter and setter travelling together, and that the setter must build a new structure.",
+    },
+    {
+      id: 'view-set-over',
+      statement:
+        "Can write view, set and over, and knows over is set composed with view.",
+    },
+    {
+      id: 'compose',
+      statement:
+        "Can compose two lenses to reach a nested field, updating it without disturbing anything around it.",
+    },
+  ],
+  notes: `A lens is a getter and a setter travelling together, so the pair can be passed around and
+composed as one value.
+
+\`\`\`js
+const lens = (getter, setter) => ({ getter, setter })
+
+const view = (l, s) => l.getter(s)
+const set  = (l, value, s) => l.setter(value, s)
+const over = (l, f, s) => set(l, f(view(l, s)), s)   // read, apply, write back
+
+const lensProp = (key) =>
+  lens((s) => s[key], (value, s) => ({ ...s, [key]: value }))
+\`\`\`
+
+The setter has to **build**, not edit, or the caller's record changes underneath them:
+
+\`\`\`js
+(value, s) => { s[key] = value; return s }    // mutates what you were given
+(value, s) => ({ ...s, [key]: value })        // a new record, siblings intact
+\`\`\`
+
+Composing is where they earn their keep. A composed lens views through both and sets by setting
+the inner one inside the outer one:
+
+\`\`\`js
+const composeLens = (outer, inner) =>
+  lens(
+    (s) => view(inner, view(outer, s)),
+    (value, s) => set(outer, set(inner, value, view(outer, s)), s)
+  )
+
+const cityLens = composeLens(lensProp('address'), lensProp('city'))
+
+const user = { name: 'ada', address: { city: 'London', postcode: 'N1' }, tags: ['a'] }
+set(cityLens, 'Paris', user)
+// { name: 'ada', address: { city: 'Paris', postcode: 'N1' }, tags: ['a'] }
+\`\`\`
+
+Note what survived: \`postcode\` beside the field you changed, and \`name\` and \`tags\` around
+it. Replacing the whole nested object instead is the usual bug:
+
+\`\`\`js
+(value, s) => set(outer, value, s)    // address becomes the string 'Paris'
+\`\`\`
+
+The three laws are worth knowing because they are what make a lens trustworthy: setting what
+you just got changes nothing, getting what you just set gives it back, and the last set wins.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['getter-and-setter', 'view-set-over'],
       kind: 'code',
       role: 'implement',
       title: 'lens, view, set, over',
@@ -145,6 +207,7 @@ const lensProp = (key) => lens((s) => s[key], (value, s) => ({ [key]: value }))
 
     {
       id: 'apply',
+      covers: ['compose', 'getter-and-setter'],
       kind: 'code',
       role: 'apply',
       title: 'Update something nested',

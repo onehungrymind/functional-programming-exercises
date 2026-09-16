@@ -2,12 +2,87 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const traversable: ExerciseSet = {
   termId: 'traversable',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'swap-the-layers',
+      statement:
+        "Can turn a structure of containers into a container of the structure, so the check happens once.",
+    },
+    {
+      id: 'all-or-nothing',
+      statement:
+        "Knows one failure sinks the whole thing, and that filtering the failures out is a different operation.",
+    },
+    {
+      id: 'empty-succeeds',
+      statement:
+        "Knows an empty structure succeeds, because nothing failed.",
+    },
+    {
+      id: 'traverse',
+      statement:
+        "Can map and sequence in one pass, and use it to validate a list.",
+    },
+  ],
+  notes: `Traversable swaps two layers. An array of Maybes becomes a Maybe of an array, so you check once
+instead of at every element.
+
+\`\`\`js
+const sequence = (maybes) => {
+  const out = []
+  for (const m of maybes) {
+    if (m.isNothing) return Nothing()     // one failure sinks it
+    out.push(m.value)
+  }
+  return Just(out)
+}
+
+sequence([Just(1), Just(2), Just(3)])     // Just([1, 2, 3])
+sequence([Just(1), Nothing(), Just(3)])   // Nothing
+\`\`\`
+
+All-or-nothing is the contract. Dropping the failures is a perfectly good operation and it is
+**not** this one:
+
+\`\`\`js
+Just(maybes.filter((m) => !m.isNothing).map((m) => m.value))   // Just([1, 3]). Different.
+\`\`\`
+
+The empty case succeeds, because nothing failed:
+
+\`\`\`js
+sequence([])   // Just([]), not Nothing
+\`\`\`
+
+\`traverse\` maps and sequences in one pass, which is what you actually reach for:
+
+\`\`\`js
+const traverse = (f, xs) => {
+  const out = []
+  for (const x of xs) {
+    const m = f(x)
+    if (m.isNothing) return Nothing()
+    out.push(m.value)
+  }
+  return Just(out)
+}
+
+const parseNum = (s) => {
+  const n = Number(s)
+  return Number.isInteger(n) && s.trim() !== '' ? Just(n) : Nothing()
+}
+
+traverse(parseNum, ['1', '2', '3'])   // Just([1, 2, 3])
+traverse(parseNum, ['1', 'x', '3'])   // Nothing
+traverse(parseNum, ['1', '', '3'])    // Nothing, and note Number('') is 0
+\`\`\`
+
+Swap Maybe for a Promise-like and the same shape gives you "run all of these and give me one
+result", which is what \`Promise.all\` is.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['swap-the-layers', 'all-or-nothing', 'empty-succeeds'],
       kind: 'code',
       role: 'implement',
       title: 'Turn the structure inside out',
@@ -121,6 +196,7 @@ const sequence = (maybes) => {
 
     {
       id: 'apply',
+      covers: ['traverse', 'all-or-nothing'],
       kind: 'code',
       role: 'apply',
       title: 'traverse in one pass',

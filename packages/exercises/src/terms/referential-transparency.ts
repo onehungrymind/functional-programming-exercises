@@ -2,12 +2,65 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const referentialTransparency: ExerciseSet = {
   termId: 'referential-transparency',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'substitution-test',
+      statement:
+        "Can apply the test: could this call be replaced by its result without changing the program?",
+    },
+    {
+      id: 'what-breaks-it',
+      statement:
+        "Can name the two things that break it, reading something that varies and changing something observable.",
+    },
+    {
+      id: 'repair',
+      statement:
+        "Can make a call substitutable by taking what it read as an argument and leaving its arguments alone.",
+    },
+  ],
+  notes: `An expression is referentially transparent when you could **paste its result in its place** and
+nothing about the program would change.
+
+\`\`\`js
+Math.max(2, 7)              // -> 7. Substitute it; nothing notices.
+JSON.stringify({ a: 1 })    // -> '{"a":1}'. Same.
+
+arr.pop()                   // -> 3, but arr is now shorter
+                            // pasting 3 in would skip that
+prompt('Name?')             // -> 'ada', but it also asked a person
+\`\`\`
+
+Two things break it, and they are the same two that make a function impure: **reading something
+that varies**, and **changing something observable**.
+
+\`\`\`js
+let TAX_RATE = 0.2
+const addTax = (price) => price * (1 + TAX_RATE)
+addTax(100)          // 120 today
+TAX_RATE = 0.25
+addTax(100)          // 125. The call and its result are no longer the same thing.
+
+const addTax = (price, rate) => price * (1 + rate)
+\`\`\`
+
+\`\`\`js
+const firstItem = (xs) => xs.shift()   // removes it
+const xs = [1, 2, 3]
+firstItem(xs)   // 1
+firstItem(xs)   // 2. Same call, different answer.
+
+const firstItem = (xs) => xs[0]
+\`\`\`
+
+The reason to care is that it is what lets you reason about code by **substitution**, which is
+how you read anything larger than a page: replace a call with what it means, and keep going.
+It is also what makes [memoization](#memoization) safe, and what makes a compiler free to cache
+or reorder.`,
   rungs: [
     {
       id: 'recognize',
+      covers: ['substitution-test', 'what-breaks-it'],
       kind: 'choice',
       role: 'recognize',
       multi: true,
@@ -45,6 +98,7 @@ export const referentialTransparency: ExerciseSet = {
 
     {
       id: 'implement',
+      covers: ['repair', 'what-breaks-it'],
       kind: 'code',
       role: 'implement',
       title: 'Make the calls substitutable',

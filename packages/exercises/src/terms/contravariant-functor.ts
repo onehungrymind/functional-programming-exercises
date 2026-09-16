@@ -3,12 +3,71 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const contravariantFunctor: ExerciseSet = {
   termId: 'contravariant-functor',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'maps-the-input',
+      statement:
+        "Knows contramap applies its function on the way in, adapting what the structure accepts rather than what it produces.",
+    },
+    {
+      id: 'order-reverses',
+      statement:
+        "Knows the composition law reverses, and can say why chaining contramaps runs the last one first.",
+    },
+    {
+      id: 'behavioural-equality',
+      statement:
+        "Knows two of these are compared by what they do on sample inputs, because their whole content is a function.",
+    },
+  ],
+  notes: `A functor maps the **output**. A contravariant functor maps the **input**.
+
+\`\`\`js
+const Predicate = (run) => ({
+  run,
+  contramap: (f) => Predicate((x) => run(f(x)))   // f runs first, on the way in
+})
+
+const isLong = Predicate((n) => n > 3)
+const isLongString = isLong.contramap((s) => s.length)
+
+isLongString.run('hi')      // false
+isLongString.run('hello')   // true
+\`\`\`
+
+A Predicate **consumes**; there is no output to map. Adapting it means adapting what it will
+accept, which is what turns a predicate about numbers into one about strings.
+
+The composition law runs backwards, and this is the part worth committing to memory:
+
+\`\`\`js
+u.map(f).map(g)                    // equals u.map((x) => g(f(x)))
+u.contramap(f).contramap(g)        // equals u.contramap((x) => f(g(x)))
+//                                                              ^^^^^^^ reversed
+\`\`\`
+
+It follows from the shape. Each \`contramap\` adds a step **earlier** in the pipeline, so the
+last one added is the first to run.
+
+One practical trap when testing these: structural equality is useless here. A Predicate's entire
+content is a closure, so comparing two of them compares nothing and every law passes:
+
+\`\`\`js
+deepEqual(Predicate(f), Predicate(g))   // true for any f and g
+\`\`\`
+
+They have to be judged by behaviour:
+
+\`\`\`js
+const same = (a, b) => [-7, -1, 0, 1, 5].every((x) => a.run(x) === b.run(x))
+\`\`\`
+
+Comparators, serializers, and anything else shaped \`a -> something\` are contravariant in
+\`a\` for the same reason.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['maps-the-input', 'behavioural-equality'],
       kind: 'code',
       role: 'implement',
       title: 'Map over the input instead of the output',
@@ -89,6 +148,7 @@ const Predicate = (run) => ({
 
     {
       id: 'recognize',
+      covers: ['order-reverses'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

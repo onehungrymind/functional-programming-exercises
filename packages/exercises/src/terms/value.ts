@@ -2,12 +2,75 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const value: ExerciseSet = {
   termId: 'value',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'what-qualifies',
+      statement:
+        "Knows what can be a value in JavaScript, and that functions and classes are among them.",
+    },
+    {
+      id: 'expression-not-statement',
+      statement:
+        "Can tell an expression from a statement, and knows only the former produces a value.",
+    },
+    {
+      id: 'functions-as-data',
+      statement:
+        "Can store operations in a data structure and look one up at runtime, rather than branching on a name.",
+    },
+  ],
+  notes: `A value is anything you can assign to a variable, pass as an argument, and return. In
+JavaScript that list is wider than people expect.
+
+\`\`\`js
+const a = 42
+const b = { name: 'ada' }
+const c = [1, 2, 3]
+const d = (x) => x * 2         // functions are values
+const e = class Point {}       // so are classes, which are functions underneath
+const f = Symbol('id')
+\`\`\`
+
+What is **not** a value is a statement. The test is whether you can put it on the right of an
+\`=\`:
+
+\`\`\`js
+const x = if (cond) { 1 } else { 2 }     // SyntaxError: if is a statement
+const x = cond ? 1 : 2                   // fine: the ternary is an expression
+
+const y = for (const n of ns) {}         // SyntaxError
+const y = ns.map((n) => n)               // fine
+\`\`\`
+
+That distinction is why expression-oriented code composes and statement-oriented code does not.
+An expression can go anywhere a value can go; a statement can only sit in a block.
+
+The practical payoff of functions being values is that behaviour becomes **data**, and a table
+replaces a branch:
+
+\`\`\`js
+const apply = (name, a, b) => {
+  if (name === 'add') return a + b        // adding an operation means editing this
+  if (name === 'sub') return a - b
+  return null
+}
+
+const registry = {
+  add: (a, b) => a + b,
+  sub: (a, b) => a - b
+}
+const apply = (name, a, b) => {
+  const op = registry[name]
+  return typeof op === 'function' ? op(a, b) : null
+}
+
+registry.pow = (a, b) => a ** b           // extended without touching apply
+apply('pow', 2, 5)                        // 32
+\`\`\``,
   rungs: [
     {
       id: 'recognize',
+      covers: ['what-qualifies', 'expression-not-statement'],
       kind: 'choice',
       role: 'recognize',
       multi: true,
@@ -38,6 +101,7 @@ export const value: ExerciseSet = {
 
     {
       id: 'implement',
+      covers: ['functions-as-data', 'what-qualifies'],
       kind: 'code',
       role: 'implement',
       title: 'Treat a function as data',

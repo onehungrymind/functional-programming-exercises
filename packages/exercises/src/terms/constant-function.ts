@@ -2,12 +2,59 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const constantFunction: ExerciseSet = {
   termId: 'constant-function',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'value-to-function',
+      statement:
+        "Can turn a value into a function that answers it regardless of what it is asked.",
+    },
+    {
+      id: 'ignores-argument',
+      statement:
+        "Knows it never looks at its argument, so it is safe to pass one that would be expensive or would throw.",
+    },
+    {
+      id: 'use-it',
+      statement:
+        "Can use it where a function is required but the input is irrelevant, without naming the argument.",
+    },
+  ],
+  notes: `\`constant\` turns a value into a function that answers with it, whatever it is asked. It is the
+K combinator wearing a friendlier name.
+
+\`\`\`js
+const constant = (a) => () => a
+
+const always5 = constant(5)
+always5()          // 5
+always5('x')       // 5
+always5(null, 1)   // 5
+\`\`\`
+
+It genuinely never looks at what it is given, which is what makes it safe in places an ordinary
+function would not be:
+
+\`\`\`js
+constant('kept')(() => { throw new Error('never runs') })   // 'kept'
+\`\`\`
+
+Its use is anywhere an API demands a function but the input is beside the point:
+
+\`\`\`js
+const map = (fn) => (xs) => xs.map(fn)
+
+const allZero = (xs) => xs.map(() => 0)   // names the list, and the element
+const allZero = map(constant(0))          // neither
+
+allZero([1, 'two', { three: 3 }])          // [0, 0, 0]
+\`\`\`
+
+It also turns up as the default branch of a fold, and as the "leave it alone" case in optics,
+where you need a function with the right shape that does nothing interesting.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['value-to-function', 'ignores-argument'],
       kind: 'code',
       role: 'implement',
       title: 'Write constant',
@@ -65,6 +112,7 @@ const constant = (a) => () => a
 
     {
       id: 'apply',
+      covers: ['use-it', 'value-to-function'],
       kind: 'code',
       role: 'apply',
       title: 'Use it to blank a list',

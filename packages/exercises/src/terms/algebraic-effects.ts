@@ -2,12 +2,71 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const algebraicEffects: ExerciseSet = {
   termId: 'algebraic-effects',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'ask-do-not-do',
+      statement:
+        "Knows the program states what it needs rather than how to get it, and carries no knowledge of the handler.",
+    },
+    {
+      id: 'drive-it',
+      statement:
+        "Can write the interpreter that answers each request and feeds the answer back so the program can continue.",
+    },
+    {
+      id: 'swap-handlers',
+      statement:
+        "Can run one program under two handlers and get different behaviour without touching the program.",
+    },
+  ],
+  notes: `A program written with algebraic effects **asks** rather than **does**. It yields a request and
+waits; something else decides how to answer.
+
+\`\`\`js
+function* greeting() {
+  const name = yield { type: 'ask_config', key: 'name' }
+  yield { type: 'log', message: \`greeting \${name}\` }
+  return \`Hello, \${name}\`
+}
+\`\`\`
+
+Nothing in there says where the name comes from or what logging means. The interpreter drives
+it, answering each request and **feeding the answer back**:
+
+\`\`\`js
+const run = (gen, handlers) => {
+  const it = gen()
+  let step = it.next()
+  while (!step.done) {
+    const request = step.value
+    step = it.next(handlers[request.type](request))
+//                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ without this the program sees undefined
+  }
+  return step.value
+}
+\`\`\`
+
+The payoff is that one program runs two ways, with no change to the program:
+
+\`\`\`js
+run(greeting, {
+  ask_config: (r) => config[r.key],
+  log: (r) => console.log(r.message)
+})   // 'Hello, ada'
+
+run(greeting, {
+  ask_config: () => 'test',
+  log: () => {}
+})   // 'Hi, test'   no config, no console, no mocking
+\`\`\`
+
+It works because a generator hands you the [continuation](#continuation) as a value. Once the
+rest of the program is a thing you hold, you can resume it with whatever you like, or not at
+all.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['drive-it', 'swap-handlers'],
       kind: 'code',
       role: 'implement',
       title: 'Write the handler',
@@ -166,6 +225,7 @@ const run = (gen, handlers) => {
 
     {
       id: 'recognize',
+      covers: ['ask-do-not-do'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

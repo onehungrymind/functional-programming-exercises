@@ -3,12 +3,69 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const constantFunctor: ExerciseSet = {
   termId: 'constant-functor',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'map-does-nothing',
+      statement:
+        "Can write a map that discards its function and keeps the carried value, still returning a mappable container.",
+    },
+    {
+      id: 'lawful',
+      statement:
+        "Knows both functor laws hold precisely because nothing happens, and can say why.",
+    },
+    {
+      id: 'what-it-is-for',
+      statement:
+        "Can say what Const buys you: accumulating a value while a generic traversal runs, which is how a lens getter is built.",
+    },
+  ],
+  notes: `\`Const\` is a functor whose \`map\` throws the function away and keeps what it is carrying.
+
+\`\`\`js
+const Const = (value) => ({
+  value,
+  map: (f) => Const(value)      // f is never called
+})
+
+Const(5).map((n) => n * 100)    // Const(5)
+Const('kept').map(() => 'replaced').map(() => 'again')   // Const('kept')
+\`\`\`
+
+Both functor laws hold, and they hold **because** nothing happens:
+
+\`\`\`js
+Const(5).map((x) => x)              // Const(5). Identity, trivially.
+Const(5).map(f).map(g)              // Const(5)
+Const(5).map((x) => g(f(x)))        // Const(5). Composition, trivially.
+\`\`\`
+
+That makes it sound useless, and its use is genuinely non-obvious: it is how you get a **getter
+out of a setter**.
+
+A van Laarhoven lens is one function parameterized by a functor. Run it with a functor that
+applies its function and you get a setter. Run the very same code with \`Const\` and the
+mapping does nothing while the payload travels back out:
+
+\`\`\`js
+// one definition
+const nameLens = (F) => (f) => (s) => f(s.name).map((name) => ({ ...s, name }))
+
+// with Identity: a setter
+nameLens(Identity)((n) => Identity(n.toUpperCase()))({ name: 'ada', age: 36 })
+// Identity({ name: 'ADA', age: 36 })
+
+// with Const: a getter, because the rebuild is discarded
+nameLens(Const)((n) => Const(n))({ name: 'ada', age: 36 })
+// Const('ada')
+\`\`\`
+
+One traversal, two behaviours, decided entirely by which functor you hand it. That is the whole
+trick behind optics libraries.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['map-does-nothing', 'lawful'],
       kind: 'code',
       role: 'implement',
       title: 'A functor whose map does nothing',
@@ -81,6 +138,7 @@ const Const = (value) => ({
 
     {
       id: 'recognize',
+      covers: ['what-it-is-for'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

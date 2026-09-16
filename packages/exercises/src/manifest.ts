@@ -240,7 +240,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "partial-application",
-    "notes": null,
+    "notes": "Partial application fixes some of a function's arguments and hands back a function waiting\nfor the rest.\n\n```js\nconst partial = (fn, ...fixed) => (...rest) => fn(...fixed, ...rest)\n\nconst add = (a, b) => a + b\nconst add10 = partial(add, 10)\nadd10(5)    // 15\nadd10(1)    // 11   reusable\n```\n\nThe fixed arguments stay on the **left**, which matters the moment the function is not\ncommutative:\n\n```js\nconst sub = (a, b) => a - b\npartial(sub, 10)(3)   // 7,  10 - 3\n\n// getting the order wrong is silent until it is not\nconst partial = (fn, ...fixed) => (...rest) => fn(...rest, ...fixed)\npartial(sub, 10)(3)   // -7, 3 - 10\n```\n\nThis is the difference from [currying](#currying). A curried function takes exactly one\nargument at a time; partial application takes however many you hand it, all at once:\n\n```js\nconst vol = (l, w, h) => l * w * h\n\npartial(vol, 2, 3)(4)     // 24   two fixed in one call\ncurry(vol)(2)(3)(4)       // 24   one at a time, always\n```\n\nNothing runs until the rest arrive, which is what makes the returned function worth keeping:\n\n```js\nconst log = (level, message) => console.log(`[${level}] ${message}`)\nconst warn = partial(log, 'WARN')   // nothing printed yet\nwarn('disk filling up')             // [WARN] disk filling up\n```",
     "rungs": [
       {
         "id": "implement",
@@ -258,7 +258,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "currying",
-    "notes": null,
+    "notes": "A curried function takes its arguments **one at a time**, returning a new function at every\nstep until the last.\n\n```js\nconst add = (a, b) => a + b          // not curried: arity 2\nconst add = (a) => (b) => a + b      // curried: three unary steps in disguise\n\nadd(2)      // a function\nadd(2)(3)   // 5\n```\n\nPartly curried is not curried. Every step has to take exactly one:\n\n```js\nconst sum3 = (a) => (b, c) => a + b + c     // step 2 takes two\nconst clamp = (min) => (max) => (x) => Math.min(max, Math.max(min, x))   // curried\n```\n\nNothing should happen until the last argument lands. That is what makes an intermediate step\nworth keeping and reusing:\n\n```js\nconst curry2 = (f) => (a) => (b) => f(a, b)\n\nlet calls = 0\nconst spy = curry2((a, b) => { calls++; return a + b })\nconst add10 = spy(10)\ncalls        // 0, nothing has run\nadd10(1)     // 11\nadd10(5)     // 15\n```\n\nThe payoff is [point-free style](#point-free-style). Because every argument arrives on its own,\nthe last one can simply be left off:\n\n```js\nconst map = (fn) => (list) => list.map(fn)\nconst add = (a) => (b) => a + b\n\nconst incrementAll = (numbers) => map(add(1))(numbers)   // names the list\nconst incrementAll = map(add(1))                         // does not\n```",
     "rungs": [
       {
         "id": "recognize",
@@ -282,7 +282,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "auto-currying",
-    "notes": null,
+    "notes": "Hand-currying gives you one argument at a time and nothing else. Auto-currying accepts **any\ngrouping**:\n\n```js\nconst curry = (fn) => {\n  const collect = (...args) =>\n    args.length >= fn.length ? fn(...args) : (...more) => collect(...args, ...more)\n  return collect\n}\n\nconst add3 = (a, b, c) => a + b + c\nconst c = curry(add3)\n\nc(1)(2)(3)    // 6\nc(1, 2)(3)    // 6\nc(1)(2, 3)    // 6\nc(1, 2, 3)    // 6\n```\n\nThe whole mechanism rests on `fn.length`, which is why [arity](#arity) is worth knowing\nprecisely. Anything that makes declared arity smaller than what the function wants breaks it:\n\n```js\nconst sum = (...ns) => ns.reduce((a, b) => a + b, 0)\nsum.length          // 0\ncurry(sum)(1)       // 1, not a function. It called through immediately.\n\nconst greet = (greeting, name, punct = '!') => greeting + name + punct\ngreet.length        // 2, not 3\ncurry(greet)('hi')('ada')   // fires after two, punct takes its default\n```\n\nUntil enough arguments arrive, nothing runs:\n\n```js\nlet calls = 0\nconst spy = curry((a, b, c) => { calls++; return a + b + c })\nspy(1)\nspy(1, 2)\ncalls    // 0\n```",
     "rungs": [
       {
         "id": "implement",
@@ -300,7 +300,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "function-composition",
-    "notes": null,
+    "notes": "Composition threads a value through a list of functions. The only real decision is which way\nto read:\n\n```js\nconst compose = (...fns) => (x) => fns.reduceRight((acc, fn) => fn(acc), x)\nconst pipe    = (...fns) => (x) => fns.reduce((acc, fn) => fn(acc), x)\n\nconst inc = (n) => n + 1\nconst dbl = (n) => n * 2\n\ncompose(inc, dbl)(5)   // 11   dbl first, the way the maths reads\npipe(inc, dbl)(5)      // 12   inc first, the way the steps happen\n```\n\nThey are the same function with the list reversed, so `compose(a, b, c)` and\n`pipe(c, b, a)` are interchangeable. Pick one per codebase and stop thinking about it.\n\nComposition is **associative**, which is why a pipeline of ten can be grouped into three named\nstages without changing anything:\n\n```js\ncompose(compose(f, g), h)   // the same function as\ncompose(f, compose(g, h))\n```\n\nAnd **identity is neutral**, which is why composing nothing has to be the identity rather than\nan error:\n\n```js\nconst id = (x) => x\ncompose(id, f)(x)   // same as f(x)\ncompose(f, id)(x)   // same as f(x)\ncompose()(9)        // 9\n```\n\nThose two laws are exactly what makes a [category](#category), which is the general version of\nthis idea.",
     "rungs": [
       {
         "id": "implement",
@@ -318,7 +318,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "point-free-style",
-    "notes": null,
+    "notes": "Point-free means the definition never names the data it works on. The \"point\" is the argument.\n\n```js\nconst incrementAll = (xs) => map(add(1))(xs)   // names xs to pass it straight on\nconst incrementAll = map(add(1))               // point-free\n```\n\nThe move is mechanical. Wherever the body is `f(g(x))` and the parameter is `x`, the\ndefinition is `compose(f, g)`:\n\n```js\nconst shout = (s) => exclaim(upper(s))\nconst shout = compose(exclaim, upper)\n\nconst countOf = (k) => (o) => length(prop(k)(o))\nconst countOf = (k) => compose(length, prop(k))   // k is a real argument, keep it\n```\n\nThis only works because the helpers are [curried](#currying). `map` taking its function first\nand its list second is what leaves a list-shaped hole to drop.\n\nIt is a readability choice, not a virtue. Point-free shines when the composition reads as a\nsentence, and hurts when it forces contortions:\n\n```js\n// clear\nconst activeNames = compose(map(prop('name')), filter(prop('active')))\n\n// technically point-free, and worse for everyone\nconst avg = converge(divide, [sum, length])\nconst avg = (xs) => sum(xs) / xs.length\n```\n\nWhen you reach for a combinator whose name you have to look up, name the argument instead.",
     "rungs": [
       {
         "id": "recognize",
@@ -336,7 +336,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "functional-combinator",
-    "notes": null,
+    "notes": "A combinator is a function built from nothing but its own arguments. No globals, no closure over\nsomething outside, no free variables at all.\n\n```js\nconst I = (x) => x                          // a combinator\nconst withTax = (x) => x * TAX_RATE         // not one: TAX_RATE comes from outside\n```\n\nThe classic four:\n\n```js\nconst I = (x) => x                          // identity: hand it back\nconst K = (x) => (y) => x                   // constant: keep the first, ignore the second\nconst C = (f) => (b) => (a) => f(a)(b)      // flip: swap the order they arrive in\nconst S = (f) => (g) => (x) => f(x)(g(x))   // substitution: both branches see the same x\n```\n\nK is worth dwelling on, because it genuinely never looks at its second argument:\n\n```js\nK('kept')(() => { throw new Error('never runs') })   // 'kept'\n```\n\nAnd S is where the shape becomes interesting, because `x` is used twice:\n\n```js\nconst add = (x) => (y) => x + y\nconst double = S(add)(I)\ndouble(5)    // 10, because both branches got the same 5\n```\n\nThe identities fall straight out of the definitions, which makes them a good check on your own\nwork. If this one fails, either K or S is wrong:\n\n```js\nS(K)(K)(42)   // 42, the same as I(42)\nC(C(f))       // the same function as f\n```",
     "rungs": [
       {
         "id": "implement",
@@ -354,7 +354,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "continuation",
-    "notes": null,
+    "notes": "In continuation-passing style a function never returns. It takes an extra argument, the\n**continuation**, and hands its answer to that instead.\n\n```js\nconst add = (a, b) => a + b                        // direct style\nconst addCps = (a, b, done) => done(a + b)         // the same thing, inside out\n\naddCps(2, 3, (sum) => console.log(sum))            // 5\n//            ^^^^^^^^^^^^^^^^^^^^^^^ the continuation: what happens next\n```\n\nThe conversion is mechanical. Every `return x` becomes `done(x)`:\n\n```js\nconst half = (n) => {\n  if (n % 2) return null\n  return n / 2\n}\n\nconst halfCps = (n, done) => {\n  if (n % 2) return done(null)\n  return done(n / 2)\n}\n```\n\nSequencing is where the shape earns its keep. The first step's continuation is the rest of the\nprogram:\n\n```js\nconst addThenSquare = (a, b, done) =>\n  addCps(a, b, (sum) => squareCps(sum, done))\n//                                    ^^^^ pass it along, do not call it yourself\n```\n\nGetting that last part wrong is the usual mistake, and it shows up as the continuation running\ntwice:\n\n```js\nconst addThenSquare = (a, b, done) =>\n  addCps(a, b, (sum) => done(squareCps(sum, done)))   // done called twice\n```\n\nThis is the shape callbacks, async/await, and generators all desugar to, and what makes\n[algebraic effects](#algebraic-effects) possible: once the rest of the program is a value, you\ncan choose not to run it, or run it twice.",
     "rungs": [
       {
         "id": "implement",
@@ -372,7 +372,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "lazy-evaluation",
-    "notes": null,
+    "notes": "Lazy means the work happens when the answer is wanted, not when the expression is written. A\ngenerator is lazy out of the box: nothing between yields runs until something pulls.\n\n```js\nfunction* naturals() {\n  let n = 0\n  while (true) {          // costs nothing until pulled\n    yield n\n    n += 1\n  }\n}\n\nconst it = naturals()\nit.next().value   // 0\nit.next().value   // 1\n```\n\nThe discipline is to **pull exactly what you need**. `for...of` pulls a value before the body\ncan decide it has enough, which is one too many:\n\n```js\nconst take = (n, iterator) => {\n  const out = []\n  for (const value of iterator) {\n    out.push(value)\n    if (out.length >= n) break      // the nth pull already happened\n  }\n  return out\n}\n\nconst take = (n, iterator) => {\n  const it = iterator[Symbol.iterator]()\n  const out = []\n  while (out.length < n) {          // decide, then pull\n    const step = it.next()\n    if (step.done) break\n    out.push(step.value)\n  }\n  return out\n}\n```\n\nAgainst a finite source that is an off-by-one. Against an endless one it is the difference\nbetween working and not:\n\n```js\nconst take = (n, it) => [...it].slice(0, n)   // drains the iterator\ntake(3, naturals())                           // never returns\n```\n\nSame rule when filtering. Walk and stop; do not build a prefix and hope it was big enough:\n\n```js\nconst firstSquaresOver = (floor, count) => {\n  const out = []\n  for (const n of naturals()) {\n    const sq = n * n\n    if (sq > floor) out.push(sq)\n    if (out.length >= count) break\n  }\n  return out\n}\n\nfirstSquaresOver(1000000, 2)   // [1002001, 1004004], reached without a million steps of storage\n```",
     "rungs": [
       {
         "id": "implement",
@@ -390,7 +390,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "io",
-    "notes": null,
+    "notes": "IO wraps an effect as a **value**. The effect is a function sitting inside, waiting, and\nnothing happens until you ask.\n\n```js\nconst IO = (effect) => ({\n  run: effect,\n  map: (f) => IO(() => f(effect())),\n  chain: (f) => IO(() => f(effect()).run())\n})\n\nconst readName = IO(() => window.localStorage.getItem('name'))\n// nothing has been read yet\nreadName.run()   // now it has\n```\n\nBuilding and mapping must perform nothing. Assembling a whole program is still just assembling:\n\n```js\nlet reads = 0\nconst program = IO(() => { reads++; return 'ada' })\n  .map((n) => n.toUpperCase())\n  .map((n) => `Hello, ${n}`)\n\nreads              // 0, the program is only described\nprogram.run()      // 'Hello, ADA'\nreads              // 1\n```\n\nThe common mistake is performing the effect while building:\n\n```js\nmap: (f) => {\n  const value = effect()      // ran at build time\n  return IO(() => f(value))\n}\n```\n\nAnd `chain` has to **run** the inner IO, or you end up holding an IO of an IO:\n\n```js\nchain: (f) => IO(() => f(effect()))          // gives IO(IO(6))\nchain: (f) => IO(() => f(effect()).run())    // gives IO(6)\n```\n\nBecause it is a description rather than a result, running it twice performs it twice. That is\nthe feature: the value is reusable, and the caller decides when and how often.\n\n```js\nprogram.run()   // reads storage\nprogram.run()   // reads it again, freshly\n```",
     "rungs": [
       {
         "id": "implement",
@@ -408,7 +408,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "algebraic-effects",
-    "notes": null,
+    "notes": "A program written with algebraic effects **asks** rather than **does**. It yields a request and\nwaits; something else decides how to answer.\n\n```js\nfunction* greeting() {\n  const name = yield { type: 'ask_config', key: 'name' }\n  yield { type: 'log', message: `greeting ${name}` }\n  return `Hello, ${name}`\n}\n```\n\nNothing in there says where the name comes from or what logging means. The interpreter drives\nit, answering each request and **feeding the answer back**:\n\n```js\nconst run = (gen, handlers) => {\n  const it = gen()\n  let step = it.next()\n  while (!step.done) {\n    const request = step.value\n    step = it.next(handlers[request.type](request))\n//                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ without this the program sees undefined\n  }\n  return step.value\n}\n```\n\nThe payoff is that one program runs two ways, with no change to the program:\n\n```js\nrun(greeting, {\n  ask_config: (r) => config[r.key],\n  log: (r) => console.log(r.message)\n})   // 'Hello, ada'\n\nrun(greeting, {\n  ask_config: () => 'test',\n  log: () => {}\n})   // 'Hi, test'   no config, no console, no mocking\n```\n\nIt works because a generator hands you the [continuation](#continuation) as a value. Once the\nrest of the program is a thing you hold, you can resume it with whatever you like, or not at\nall.",
     "rungs": [
       {
         "id": "implement",
@@ -426,7 +426,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "side-effects",
-    "notes": null,
+    "notes": "A side effect is any interaction with the world outside the function, in **either direction**.\nWriting is the obvious half; reading is the half people miss.\n\n```js\nlocalStorage.setItem('k', v)   // writes\nconst now = Date.now()         // reads, and gives a different answer every time\ncart.items.push(item)          // writes to something the caller still holds\nconsole.log(total)             // writes, even though it feels harmless\n```\n\nThe move is to separate the calculation from the action, so the interesting part can be tested\nwithout a fixture:\n\n```js\nconst report = (items) => {\n  const total = items.reduce((a, i) => a + i.price, 0)\n  console.log(`Total: ${total}`)      // computing and acting, tangled\n  return total\n}\n\nconst summarize = (items) => `Total: ${items.reduce((a, i) => a + i.price, 0)}`\nconst report = (items) => {\n  const line = summarize(items)\n  console.log(line)                   // the only line that touches the world\n  return line\n}\n```\n\nYou are not removing the effect. You are moving it, and it keeps moving up until it reaches\nsomewhere you are content for it to live, usually one thin layer at the edge:\n\n```js\n// deep in the code, reading the clock\nconst isExpired = (token) => token.expiresAt < Date.now()\n\n// at the edge, once\nconst now = Date.now()\nconst expired = tokens.filter((t) => isExpired(t, now))\n```\n\nThe test for whether you have succeeded: can the calculation run in a test with no setup and no\nmocking?",
     "rungs": [
       {
         "id": "recognize",
@@ -444,7 +444,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "value",
-    "notes": null,
+    "notes": "A value is anything you can assign to a variable, pass as an argument, and return. In\nJavaScript that list is wider than people expect.\n\n```js\nconst a = 42\nconst b = { name: 'ada' }\nconst c = [1, 2, 3]\nconst d = (x) => x * 2         // functions are values\nconst e = class Point {}       // so are classes, which are functions underneath\nconst f = Symbol('id')\n```\n\nWhat is **not** a value is a statement. The test is whether you can put it on the right of an\n`=`:\n\n```js\nconst x = if (cond) { 1 } else { 2 }     // SyntaxError: if is a statement\nconst x = cond ? 1 : 2                   // fine: the ternary is an expression\n\nconst y = for (const n of ns) {}         // SyntaxError\nconst y = ns.map((n) => n)               // fine\n```\n\nThat distinction is why expression-oriented code composes and statement-oriented code does not.\nAn expression can go anywhere a value can go; a statement can only sit in a block.\n\nThe practical payoff of functions being values is that behaviour becomes **data**, and a table\nreplaces a branch:\n\n```js\nconst apply = (name, a, b) => {\n  if (name === 'add') return a + b        // adding an operation means editing this\n  if (name === 'sub') return a - b\n  return null\n}\n\nconst registry = {\n  add: (a, b) => a + b,\n  sub: (a, b) => a - b\n}\nconst apply = (name, a, b) => {\n  const op = registry[name]\n  return typeof op === 'function' ? op(a, b) : null\n}\n\nregistry.pow = (a, b) => a ** b           // extended without touching apply\napply('pow', 2, 5)                        // 32\n```",
     "rungs": [
       {
         "id": "recognize",
@@ -462,7 +462,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "constant",
-    "notes": null,
+    "notes": "`const` is about the **binding**, not the value. It stops you pointing the name somewhere\nelse; it says nothing about what you point at.\n\n```js\nconst xs = [1, 2]\nxs.push(3)      // fine. xs still points at the same array.\nxs = [3]        // TypeError: Assignment to constant variable.\n```\n\n`Object.freeze` protects the value, but only one level down:\n\n```js\nconst config = Object.freeze({ db: { host: 'localhost' } })\nconfig.db = {}            // ignored, or throws in strict mode\nconfig.db.host = 'evil'   // allowed. freeze did not reach here.\nconfig.db.host            // 'evil'\n```\n\nWorse, outside strict mode the failed write is **silent**, which is a good reason to be in\nstrict mode:\n\n```js\nconst o = Object.freeze({ a: 1 })\no.a = 2      // sloppy mode: does nothing at all, no error\no.a          // 1\n```\n\nGoing all the way down means recursing, and skipping anything already frozen, which also stops\na self-referencing object sending you round forever:\n\n```js\nconst deepFreeze = (o) => {\n  if (o && typeof o === 'object' && !Object.isFrozen(o)) {\n    Object.freeze(o)\n    for (const key of Object.keys(o)) deepFreeze(o[key])\n  }\n  return o                    // return it, so it can be used inline\n}\n\nconst a = { name: 'a' }\na.self = a\ndeepFreeze(a)                 // terminates, because a is frozen before the recursion\n```",
     "rungs": [
       {
         "id": "recognize",
@@ -480,7 +480,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "constant-function",
-    "notes": null,
+    "notes": "`constant` turns a value into a function that answers with it, whatever it is asked. It is the\nK combinator wearing a friendlier name.\n\n```js\nconst constant = (a) => () => a\n\nconst always5 = constant(5)\nalways5()          // 5\nalways5('x')       // 5\nalways5(null, 1)   // 5\n```\n\nIt genuinely never looks at what it is given, which is what makes it safe in places an ordinary\nfunction would not be:\n\n```js\nconstant('kept')(() => { throw new Error('never runs') })   // 'kept'\n```\n\nIts use is anywhere an API demands a function but the input is beside the point:\n\n```js\nconst map = (fn) => (xs) => xs.map(fn)\n\nconst allZero = (xs) => xs.map(() => 0)   // names the list, and the element\nconst allZero = map(constant(0))          // neither\n\nallZero([1, 'two', { three: 3 }])          // [0, 0, 0]\n```\n\nIt also turns up as the default branch of a fold, and as the \"leave it alone\" case in optics,\nwhere you need a function with the right shape that does nothing interesting.",
     "rungs": [
       {
         "id": "implement",
@@ -498,7 +498,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "referential-transparency",
-    "notes": null,
+    "notes": "An expression is referentially transparent when you could **paste its result in its place** and\nnothing about the program would change.\n\n```js\nMath.max(2, 7)              // -> 7. Substitute it; nothing notices.\nJSON.stringify({ a: 1 })    // -> '{\"a\":1}'. Same.\n\narr.pop()                   // -> 3, but arr is now shorter\n                            // pasting 3 in would skip that\nprompt('Name?')             // -> 'ada', but it also asked a person\n```\n\nTwo things break it, and they are the same two that make a function impure: **reading something\nthat varies**, and **changing something observable**.\n\n```js\nlet TAX_RATE = 0.2\nconst addTax = (price) => price * (1 + TAX_RATE)\naddTax(100)          // 120 today\nTAX_RATE = 0.25\naddTax(100)          // 125. The call and its result are no longer the same thing.\n\nconst addTax = (price, rate) => price * (1 + rate)\n```\n\n```js\nconst firstItem = (xs) => xs.shift()   // removes it\nconst xs = [1, 2, 3]\nfirstItem(xs)   // 1\nfirstItem(xs)   // 2. Same call, different answer.\n\nconst firstItem = (xs) => xs[0]\n```\n\nThe reason to care is that it is what lets you reason about code by **substitution**, which is\nhow you read anything larger than a page: replace a call with what it means, and keep going.\nIt is also what makes [memoization](#memoization) safe, and what makes a compiler free to cache\nor reorder.",
     "rungs": [
       {
         "id": "recognize",
@@ -516,7 +516,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "equational-reasoning",
-    "notes": null,
+    "notes": "Equational reasoning is replacing an expression with an equal one, the way you would in algebra.\nThe laws are the licences.\n\n```js\nxs.map(f).map(g)                 // the functor composition law\nxs.map((x) => g(f(x)))           // one pass instead of two\n\nxs.concat([]).length             // the monoid identity\nxs.length\n```\n\nMoving a filter past a map needs the predicate rewritten, because it now sees the pre-map value:\n\n```js\nxs.map(f).filter(p)              // filter sees f(x)\nxs.filter((x) => p(f(x))).map(f) // same elements survive, and f runs on fewer of them\n```\n\nSome rewrites that look symmetrical are not:\n\n```js\nxs.filter(p).map(f)              // p sees the raw element\nxs.map(f).filter(p)              // p now sees a different shape. Not the same program.\n```\n\nAll of it rests on purity. The moment a function mutates, the rewrite stops being safe:\n\n```js\nconst xs = [1, 2, 3]\nxs.reverse().reverse()   // looks like a no-op\nxs                       // [1, 2, 3] by luck: reverse mutated twice and landed back\n\nconst ys = [1, 2, 3]\nconst zs = ys.reverse()  // ys is now [3, 2, 1] as well. Substituting ys for zs is wrong.\n```\n\nThis is the whole practical argument for purity. Not elegance: the ability to read a large\nprogram by replacing pieces with what they mean, without holding the rest of it in your head.",
     "rungs": [
       {
         "id": "recognize",
@@ -534,7 +534,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "idempotence",
-    "notes": null,
+    "notes": "Idempotent means applying it again changes nothing: `f(f(x))` equals `f(x)`.\n\n```js\nMath.abs(Math.abs(-5))    // 5, the same as Math.abs(-5)\n'  hi  '.trim().trim()    // 'hi', the same as one trim\n[3, 1].sort().sort()      // [1, 3], the same as one sort\n\n;((n) => n + 1)(((n) => n + 1)(0))   // 2, and one application gives 1. Not idempotent.\n```\n\nThe usual confusion is with \"safe to call twice\". A DELETE request is often called idempotent\nbecause the second one does no further harm, but that is about **effects**, not about a value\nsettling. Here the law is about the value:\n\n```js\nconst push = (xs) => [...xs, 0]\npush(push([]))    // [0, 0]\npush([])          // [0]      different, so not idempotent\n```\n\nWhen you write a normalizer, the trap is doing **some** of the work per pass rather than all of\nit in the first:\n\n```js\n// strips one +tag per call, so two tags need two passes\nconst normalize = (email) => {\n  const [local, domain] = email.split('@')\n  const parts = local.split('+')\n  return `${parts.slice(0, -1).join('+') || parts[0]}@${domain}`\n}\nnormalize('ada+a+b@x.com')              // 'ada+a@x.com'\nnormalize(normalize('ada+a+b@x.com'))   // 'ada@x.com'   not settled after one\n\n// everything from the first plus goes, in one pass\nconst normalize = (email) => {\n  const [local, domain] = email.trim().toLowerCase().split('@')\n  return `${local.split('+')[0]}@${domain}`\n}\n```\n\nAnd anything that appends a marker is never idempotent, however innocent it looks:\n\n```js\nconst normalize = (s) => s.trim() + ' [normalized]'   // grows on every pass\n```",
     "rungs": [
       {
         "id": "recognize",
@@ -552,7 +552,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "memoization",
-    "notes": null,
+    "notes": "Memoization trades memory for time: remember what a function returned for each argument, and\nnever compute the same one twice.\n\n```js\nconst memoize = (fn) => {\n  const cache = new Map()\n  return (x) => {\n    if (!cache.has(x)) cache.set(x, fn(x))\n    return cache.get(x)\n  }\n}\n```\n\nTwo mistakes are common and both pass a careless test.\n\n**A cache of size one.** It looks fine until the caller alternates:\n\n```js\nconst memoize = (fn) => {\n  let lastArg, lastResult\n  return (x) => {\n    if (x !== lastArg) { lastArg = x; lastResult = fn(x) }\n    return lastResult\n  }\n}\nconst sq = memoize((n) => n * n)\nsq(2); sq(3); sq(2)   // three computations, not two\n```\n\n**Asking whether the value is truthy.** A legitimate result of `0`, `''`, `false` or\n`undefined` then recomputes forever:\n\n```js\nif (!cache.get(x)) cache.set(x, fn(x))   // wrong question\nif (!cache.has(x)) cache.set(x, fn(x))   // right one\n```\n\nAnd the precondition behind all of it: the function has to be\n[referentially transparent](#referential-transparency). Memoize one that is not, and the cache\ndoes not speed it up, it makes it lie:\n\n```js\nlet counter = 0\nconst nextId = (prefix) => `${prefix}-${++counter}`\n\nnextId('user')            // 'user-1'\nnextId('user')            // 'user-2'   as intended\n\nconst cached = memoize(nextId)\ncached('user')            // 'user-1'\ncached('user')            // 'user-1'   the ids are no longer unique\n```",
     "rungs": [
       {
         "id": "implement",
@@ -570,7 +570,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "contracts",
-    "notes": null,
+    "notes": "A contract states what a function accepts and what it promises, and checks both at runtime.\n\n```js\nconst withContract = (inputChecks, outputCheck, fn) => (...args) => {\n  args.forEach((arg, i) => {\n    const check = inputChecks[i]\n    if (check && !check(arg)) {\n      throw new TypeError(`Argument ${i} did not meet the contract: ${String(arg)}`)\n    }\n  })\n  const result = fn(...args)\n  if (!outputCheck(result)) {\n    throw new TypeError(`Result did not meet the contract: ${String(result)}`)\n  }\n  return result\n}\n```\n\nBoth sides matter. Guarding only the inputs leaves the promise unkept:\n\n```js\nconst isPositive = (n) => typeof n === 'number' && n > 0\nconst discount = withContract([isPositive], isPositive, (p) => p - 100)\n\ndiscount(50)   // TypeError: Result did not meet the contract: -50\n               // without the output check this returns -50 and ruins someone's invoice\n```\n\nOrder matters too. Check the inputs **before** calling, or the bad argument has already done\nits work by the time you complain:\n\n```js\nconst guarded = (...args) => {\n  const result = fn(...args)     // already wrote to the database\n  checkInputs(args)              // too late to be useful\n  return result\n}\n```\n\nThe value of a contract is **where** it fails, not that it fails. So name the side and the\nposition:\n\n```js\nthrow new TypeError('invalid')             // the caller now goes hunting\nthrow new TypeError(`Argument 1 did not meet the contract: ${String(arg)}`)\n```\n\nIt overlaps with a type system but does not replace one: a checker runs before the program, a\ncontract runs on the real values, including the ones that arrived over the network.",
     "rungs": [
       {
         "id": "implement",
@@ -588,7 +588,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "type-signatures",
-    "notes": null,
+    "notes": "A signature says what goes in and what comes out. Every arrow is **one argument arriving**.\n\n```js\n// add :: Number -> Number -> Number\nconst add = (a) => (b) => a + b\n\n// add :: (Number, Number) -> Number     parentheses mean both at once\nconst add = (a, b) => a + b\n```\n\nSo the shape of the arrows tells you how to call it, and getting the order wrong is a different\nfunction:\n\n```js\n// map :: (a -> b) -> [a] -> [b]\nconst map = (fn) => (xs) => xs.map(fn)     // matches\nconst map = (xs) => (fn) => xs.map(fn)     // does not: the list arrives first\nconst map = (fn) => (xs) => xs.forEach(fn) // does not: forEach returns undefined, not [b]\n```\n\nThe interesting part is what a lowercase variable **forbids**. `a` means \"any type at all\",\nso the function cannot know anything about it, which rules out almost everything:\n\n```js\n// identity :: a -> a\nconst identity = (a) => a          // the only thing it could be\n\n// first :: a -> b -> a\nconst first = (a) => (b) => a      // the only a it has is the first argument\n\n// count :: [a] -> Number\nconst count = (xs) => xs.length              // fine: never looks at an element\nconst count = (xs) => xs.filter(Boolean).length   // not fine: it inspected an a\n```\n\nThat is why signatures are worth reading before implementations. `[a] -> Number` has very few\npossible honest implementations, and `a -> a` has exactly one.",
     "rungs": [
       {
         "id": "recognize",
@@ -606,7 +606,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "algebraic-data-type",
-    "notes": null,
+    "notes": "The names are arithmetic, and they mean it literally. A **product** holds several things at\nonce; a **sum** is one of several possibilities.\n\n```js\n// product: a width AND a height\n{ width: Number, height: Number }\n\n// sum: a Circle OR a Square\nCircle(Number) | Square(Number)\n```\n\nThe arithmetic is how many values the type can take:\n\n```js\n// { admin: Boolean, active: Boolean, role: 'read' | 'write' | 'own' }\n2 * 2 * 3      // 12 possible values. Products multiply.\n\n// Boolean | 'read' | 'write' | 'own'\n2 + 3          // 5 possible values. Sums add.\n```\n\nThe identities follow from that, and they are the part that feels strange until you count:\n\n```js\n// a record with no fields\n{}             // exactly 1 value: the empty record itself. Product identity.\n\n// a choice among no options\nnever          // 0 values: you cannot make one. Sum identity.\n```\n\nWhich is why a field of an impossible type makes the whole record impossible:\n\n```js\n5 * 0 * 3      // 0. If one field cannot be filled, no complete record exists.\n```\n\nThe practical value is that counting tells you how many cases a `match` has to handle, and\nturning a product into a sum is usually how you make illegal states unrepresentable. A record\nwith `loading`, `data` and `error` fields has 8 combinations and only 3 are meaningful;\na sum type has exactly 3.",
     "rungs": [
       {
         "id": "recognize",
@@ -624,7 +624,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "product-type",
-    "notes": null,
+    "notes": "A product type holds all of its fields at once, and its size is the **product** of their sizes.\n\n```js\n// { admin: Boolean, role: 'read' | 'write' | 'own' }\n2 * 3    // 6 possible values\n```\n\nEnumerating them is the same arithmetic, done constructively. Extend one field at a time:\n\n```js\nconst inhabitants = (fields) =>\n  fields.reduce(\n    (acc, values) => acc.flatMap((combo) => values.map((v) => [...combo, v])),\n    [[]]                        // one empty combination to build on\n  )\n\ninhabitants([[true, false], ['read', 'write']])\n// [[true, 'read'], [true, 'write'], [false, 'read'], [false, 'write']]\n```\n\nThe seed is the interesting part. Starting from `[]` rather than `[[]]` gives you nothing at\nall, because there is no combination to extend:\n\n```js\nfields.reduce(step, [])     // always []\nfields.reduce(step, [[]])   // the empty product, which has exactly one value\n```\n\nAnd a field with no values wipes out the whole type, exactly as multiplying by zero does:\n\n```js\ninhabitants([[1, 2], [], [3]])   // []\n```\n\nBuild a fresh combination each time rather than extending one in place, or every row ends up\nbeing the same array:\n\n```js\nvalues.map((v) => { combo.push(v); return combo })   // every row is the same object\nvalues.map((v) => [...combo, v])                     // each row is its own\n```",
     "rungs": [
       {
         "id": "recognize",
@@ -642,7 +642,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "sum-type",
-    "notes": null,
+    "notes": "A sum type is a value that is **exactly one** of several shapes. Each case carries a tag and\nwhatever that case needs.\n\n```js\nconst Loading = () => ({ type: 'loading' })\nconst Ok = (data) => ({ type: 'ok', data })\nconst Failed = (error) => ({ type: 'failed', error })\n```\n\nThat replaces a record where most combinations are meaningless. `{ loading, data, error }`\nhas eight states and three make sense; this has three.\n\nThe value of the tag is that a single function can dispatch on it, and **refuse** to run when a\ncase is unhandled:\n\n```js\nconst CASES = ['loading', 'ok', 'failed']\n\nconst match = (state, handlers) => {\n  const missing = CASES.filter((c) => typeof handlers[c] !== 'function')\n  if (missing.length) throw new TypeError(`match is missing a handler for: ${missing.join(', ')}`)\n  return handlers[state.type](state)\n}\n```\n\nWithout that check a forgotten case is silent, which is the exact failure exhaustiveness exists\nto prevent:\n\n```js\nconst match = (state, handlers) => handlers[state.type](state)\n\nmatch(Failed('boom'), { loading: () => '...', ok: (s) => s.data })\n// TypeError: handlers[state.type] is not a function, somewhere far from the cause\n```\n\nMore things are sum types than you would think. A list is one, and a recursive one:\n\n```js\n// [a] is either empty, or a head followed by a tail\nBoolean          // true | false, the smallest interesting sum\nOption a         // Some a | None\nEither e a       // Left e | Right a\n```",
     "rungs": [
       {
         "id": "implement",
@@ -660,7 +660,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "option",
-    "notes": null,
+    "notes": "Option puts \"there might be nothing here\" into the type, so the check happens once at the end\nrather than at every step.\n\n```js\nconst Some = (value) => ({\n  isSome: true, value,\n  map: (f) => Some(f(value)),\n  chain: (f) => f(value),\n  getOrElse: () => value\n})\nconst None = () => ({\n  isSome: false,\n  map: () => None(),        // f never runs\n  chain: () => None(),\n  getOrElse: (fallback) => fallback\n})\n```\n\n`map` is for a plain function; `chain` is for one that already returns an Option. Using map\nwhere chain belongs leaves you holding an Option of an Option:\n\n```js\nconst prop = (k) => (o) => (o != null && o[k] != null ? Some(o[k]) : None())\n\nSome(user).map(prop('address'))    // Some(Some({...}))\nSome(user).chain(prop('address'))  // Some({...})\n```\n\nThe payoff is a chain that short-circuits on the first miss, with no null checks in between:\n\n```js\nconst cityOf = (user) =>\n  prop('address')(user).chain(prop('city')).getOrElse('unknown')\n\ncityOf({ address: { city: 'Paris' } })   // 'Paris'\ncityOf({ address: {} })                  // 'unknown'\ncityOf({})                               // 'unknown'\ncityOf(null)                             // 'unknown'\n```\n\nCompare that with the version it replaces:\n\n```js\nconst cityOf = (user) => {\n  if (user == null) return 'unknown'\n  if (user.address == null) return 'unknown'\n  if (user.address.city == null) return 'unknown'\n  return user.address.city\n}\n```\n\n`getOrElse` is the way out, and it belongs **last**. Reaching for `.value` partway through\nthrows the whole thing away.",
     "rungs": [
       {
         "id": "implement",
@@ -678,7 +678,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "either",
-    "notes": null,
+    "notes": "Either is Option that **says why**. A failure carries a value, so the caller learns which step\nwent wrong.\n\n```js\nconst Left = (error) => ({\n  isRight: false,\n  map: () => Left(error),        // the failure passes straight through\n  chain: () => Left(error),\n  fold: (onLeft, onRight) => onLeft(error)\n})\nconst Right = (value) => ({\n  isRight: true,\n  map: (f) => Right(f(value)),\n  chain: (f) => f(value),\n  fold: (onLeft, onRight) => onRight(value)\n})\n```\n\nIt is **right-biased**: map and chain only ever touch the success side, which is what lets a\nfailure travel the length of a pipeline without being handled at every step.\n\n```js\nLeft('not found').map((n) => n * 100).map((n) => n + 1)\n// Left('not found'), and neither function ran\n```\n\n`fold` is the way out, and exactly one branch runs:\n\n```js\nresult.fold(\n  (err) => `failed: ${err}`,\n  (val) => `ok: ${val}`\n)\n```\n\nThe reason to prefer it over throwing is that each step keeps its own message, and the whole\nthing stays a value:\n\n```js\nconst parseJson = (s) => { try { return Right(JSON.parse(s)) } catch { return Left('not json') } }\nconst getAge = (o) => ('age' in o ? Right(o.age) : Left('no age'))\nconst checkPositive = (n) => (typeof n === 'number' && n > 0 ? Right(n) : Left('age must be positive'))\n\nconst parseAge = (json) => parseJson(json).chain(getAge).chain(checkPositive)\n\nparseAge('{\"age\": 30}')     // Right(30)\nparseAge('nope')            // Left('not json')\nparseAge('{\"name\":\"ada\"}')  // Left('no age')\nparseAge('{\"age\": -1}')     // Left('age must be positive')\n```\n\nThree different failures, three different messages, and no try/catch at the call site.",
     "rungs": [
       {
         "id": "implement",
@@ -696,7 +696,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "lens",
-    "notes": null,
+    "notes": "A lens is a getter and a setter travelling together, so the pair can be passed around and\ncomposed as one value.\n\n```js\nconst lens = (getter, setter) => ({ getter, setter })\n\nconst view = (l, s) => l.getter(s)\nconst set  = (l, value, s) => l.setter(value, s)\nconst over = (l, f, s) => set(l, f(view(l, s)), s)   // read, apply, write back\n\nconst lensProp = (key) =>\n  lens((s) => s[key], (value, s) => ({ ...s, [key]: value }))\n```\n\nThe setter has to **build**, not edit, or the caller's record changes underneath them:\n\n```js\n(value, s) => { s[key] = value; return s }    // mutates what you were given\n(value, s) => ({ ...s, [key]: value })        // a new record, siblings intact\n```\n\nComposing is where they earn their keep. A composed lens views through both and sets by setting\nthe inner one inside the outer one:\n\n```js\nconst composeLens = (outer, inner) =>\n  lens(\n    (s) => view(inner, view(outer, s)),\n    (value, s) => set(outer, set(inner, value, view(outer, s)), s)\n  )\n\nconst cityLens = composeLens(lensProp('address'), lensProp('city'))\n\nconst user = { name: 'ada', address: { city: 'London', postcode: 'N1' }, tags: ['a'] }\nset(cityLens, 'Paris', user)\n// { name: 'ada', address: { city: 'Paris', postcode: 'N1' }, tags: ['a'] }\n```\n\nNote what survived: `postcode` beside the field you changed, and `name` and `tags` around\nit. Replacing the whole nested object instead is the usual bug:\n\n```js\n(value, s) => set(outer, value, s)    // address becomes the string 'Paris'\n```\n\nThe three laws are worth knowing because they are what make a lens trustworthy: setting what\nyou just got changes nothing, getting what you just set gives it back, and the last set wins.",
     "rungs": [
       {
         "id": "implement",
@@ -714,7 +714,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "prism",
-    "notes": null,
+    "notes": "Where a lens always finds its focus, a prism focuses on a case that **might not be there**. It\nis the optic for a sum type: pick out the Right, the Some, the integer inside a string.\n\n```js\nconst preview = (s) => {          // String -> Option Number\n  const n = Number(s)\n  return Number.isInteger(n) && String(n) === s ? Some(n) : None()\n}\nconst review = (n) => String(n)   // Number -> String, always succeeds\n```\n\nThe test `String(n) === s` is doing the real work. A prism may only match a value it can\n**rebuild exactly**, which rules out a surprising number of near misses:\n\n```js\npreview('42')      // Some(42)\npreview('007')     // None. review(7) is '7', not '007', so the round trip would lose it.\npreview(' 7 ')     // None. Same reason.\npreview('1.5')     // None. Not an integer.\npreview('12abc')   // None, though parseInt would happily say 12.\npreview('')        // None, though Number('') is 0.\n```\n\nThose last two are the traps. `parseInt` stops at the first bad character and `Number('')`\nis zero, so both accept things nothing can rebuild:\n\n```js\nconst preview = (s) => {\n  const n = parseInt(s, 10)\n  return Number.isNaN(n) ? None() : Some(n)\n}\npreview('12abc')   // Some(12), and review(12) is '12'. The original is gone.\n```\n\nThe two laws say exactly that: rebuilding what you previewed gives the original back, and\npreviewing something you built always matches. Prisms compose with lenses, which is how you\nreach into a field that may or may not be the case you want.",
     "rungs": [
       {
         "id": "implement",
@@ -732,7 +732,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "iso",
-    "notes": null,
+    "notes": "An isomorphism is a pair of conversions that lose nothing, in **both** directions.\n\n```js\nconst toPair = (coords) => [coords.x, coords.y]\nconst toCoords = (pair) => ({ x: pair[0], y: pair[1] })\n\ntoCoords(toPair({ x: 1, y: 2 }))   // { x: 1, y: 2 }\ntoPair(toCoords([1, 2]))           // [1, 2]\n```\n\nBoth directions matter. One of them holding is not enough:\n\n```js\nconst to = (n) => String(n)\nconst from = (s) => Number(s)\n\nfrom(to(7))       // 7. This direction is fine.\nto(from('007'))   // '7'. This one is not. Number and String are not isomorphic.\n```\n\nAnything that discards information cannot be one, however innocent it looks:\n\n```js\nconst to = (n) => Math.round(n)\nconst from = (n) => n\nfrom(to(1.5))     // 2. The fraction is gone and nothing can put it back.\n```\n\nFloats need a tolerance, because the arithmetic does not round-trip exactly:\n\n```js\nconst toF = (c) => (c * 9) / 5 + 32\nconst toC = (f) => ((f - 32) * 5) / 9\n\ntoC(toF(0.1)) === 0.1              // false\nMath.abs(toC(toF(0.1)) - 0.1) < 1e-9   // true\n```\n\nAnd test with fractions, not whole numbers. A rounded conversion round-trips whole degrees\ncorrectly often enough to look lossless:\n\n```js\nconst toF = (c) => Math.round((c * 9) / 5 + 32)\nconst toC = (f) => Math.round(((f - 32) * 5) / 9)\n\ntoC(toF(10))    // 10. Passes.\ntoC(toF(0.5))   // 1.  Caught.\n```",
     "rungs": [
       {
         "id": "implement",
@@ -750,7 +750,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "traversal",
-    "notes": null,
+    "notes": "The optics hierarchy is about **how many** things you can be looking at:\n\n```js\n// lens       exactly one       user.name\n// prism      zero or one       the Right of an Either\n// traversal  zero or more      every even number in a list\n```\n\nA traversal reads them all and modifies them in place, structurally speaking:\n\n```js\nconst isEven = (n) => n % 2 === 0\n\nconst getAll = (xs) => xs.filter(isEven)\nconst modify = (f, xs) => xs.map((x) => (isEven(x) ? f(x) : x))\n\ngetAll([1, 2, 3, 4])            // [2, 4]\nmodify((n) => n * 10, [1, 2, 3, 4])   // [1, 20, 3, 40]\n```\n\nThe non-matching elements are the point. A traversal **narrows what you act on**, it does not\nremove anything:\n\n```js\nconst modify = (f, xs) => xs.filter(isEven).map(f)   // [20, 40]. The odds are gone.\nconst modify = (f, xs) => xs.map(f)                  // [10, 20, 30, 40]. Everything changed.\n```\n\nAnd it must not disturb what it was given:\n\n```js\nconst modify = (f, xs) => {\n  xs.forEach((x, i) => { if (isEven(x)) xs[i] = f(x) })\n  return xs                    // the caller's array just changed\n}\n```\n\nTwo consistency properties are worth checking. Modifying with identity changes nothing, and\nreading after a modify agrees with modifying what you read:\n\n```js\nmodify((x) => x, xs)              // the same list\ngetAll(modify(f, xs))             // agrees with getAll(xs).map(f)\n                                  // as long as f keeps elements inside the focus\n```\n\nThat caveat matters: if `f` turns an even number odd, the focus set itself moves, and the two\nsides stop agreeing for a good reason.",
     "rungs": [
       {
         "id": "implement",
@@ -768,7 +768,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "lambda-calculus",
-    "notes": null,
+    "notes": "The untyped lambda calculus has three things and no more: **variables**, **abstraction**\n(making a function), and **application** (calling one). No numbers, no booleans, no conditionals,\nno recursion. Everything else is encoded.\n\nA Church numeral encodes **n** as \"apply f n times\":\n\n```js\nconst zero  = (f) => (x) => x            // not at all\nconst one   = (f) => (x) => f(x)         // once\nconst two   = (f) => (x) => f(f(x))      // twice\n```\n\nOnce you read it that way, the rest follows. `succ` applies f one more time than n does:\n\n```js\nconst succ = (n) => (f) => (x) => f(n(f)(x))\n```\n\nAnd `add` applies m's worth on top of n's worth:\n\n```js\nconst add = (m) => (n) => (f) => (x) => m(f)(n(f)(x))\n```\n\nNotice what is absent: no `+`, no digit, nothing but functions calling functions. The only\nplace a real number appears is the escape hatch back to JavaScript:\n\n```js\nconst toInt = (n) => n((k) => k + 1)(0)   // run the numeral with \"add one\", starting at 0\n\ntoInt(zero)                    // 0\ntoInt(succ(succ(zero)))        // 2\ntoInt(add(two)(two))           // 4\n```\n\nYou can watch the encoding work by giving it a function that is not arithmetic at all:\n\n```js\nadd(two)(one)((s) => s + '!')('')   // '!!!'   applied three times\n```\n\nBooleans, pairs, lists and recursion all encode the same way, which is the point: three rules\nare enough to express any computation at all.",
     "rungs": [
       {
         "id": "guided",
@@ -786,7 +786,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "setoid",
-    "notes": null,
+    "notes": "A Setoid is a type that knows how to compare itself. The interesting part is not `equals`, it\nis the three laws it has to satisfy.\n\n```js\nconst Point = (x, y) => ({\n  x, y,\n  equals: (other) => other.x === x && other.y === y\n})\n\nPoint(1, 2).equals(Point(1, 2))   // true\n{ x: 1 } === { x: 1 }              // false. === asks whether it is the same object.\n```\n\n**Reflexive**: everything equals itself. **Symmetric**: the order does not matter.\n**Transitive**: equality chains.\n\nThe one people break is symmetry, usually by writing an ordering and calling it an equality:\n\n```js\nconst Score = (n) => ({ n, equals: (other) => other.n >= n })\n\nScore(1).equals(Score(2))   // true\nScore(2).equals(Score(1))   // false   not symmetric\n```\n\nReflexivity and transitivity both survive that, which is why checking one law is not enough.\n\nAlso worth guarding: comparing only part of the value passes the laws and is still wrong, and\nit is the kind of thing a quick test misses:\n\n```js\nconst Point = (x, y) => ({ x, y, equals: (other) => other.x === x })\nPoint(1, 2).equals(Point(1, 99))   // true, and reflexive, symmetric and transitive\n```\n\nThe laws tell you the relation is well-behaved, not that it means what you intended.",
     "rungs": [
       {
         "id": "implement",
@@ -804,7 +804,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "semigroup",
-    "notes": null,
+    "notes": "A Semigroup is a type with an associative `concat`. That is the whole definition: no identity,\nno inverse, nothing else.\n\n```js\nconst Max = (value) => ({\n  value,\n  concat: (other) => Max(value > other.value ? value : other.value)\n})\n\nMax(3).concat(Max(7))            // Max(7)\nMax(1).concat(Max(9)).concat(Max(5))   // Max(9)\n```\n\n`concat` has to stay **inside** the type, or the second link in the chain has nothing to call:\n\n```js\nconcat: (other) => Math.max(value, other.value)   // gives a number\nMax(1).concat(Max(2)).concat(Max(3))              // TypeError\n```\n\nAssociativity means the grouping cannot change the answer:\n\n```js\n(1 + 2) + 3 === 1 + (2 + 3)      // addition: yes\n(1 - 2) - 3 === 1 - (2 - 3)      // subtraction: -4 vs 2. No.\n(8 / 4) / 2 === 8 / (4 / 2)      // division: 1 vs 4. No.\n```\n\nEven \"always keep the left one\" is associative, which is why `First` is a legitimate semigroup\nif not a very exciting one.\n\nA type is usually a semigroup in **more than one way**, and the wrapper is how you choose:\n\n```js\nMax(3).concat(Max(7)).value    // 7\nMin(3).concat(Min(7)).value    // 3\nSum(3).concat(Sum(7)).value    // 10\n```\n\nThat is why they are wrapped at all. `Number` on its own does not say which combination you\nmeant.",
     "rungs": [
       {
         "id": "implement",
@@ -822,7 +822,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "monoid",
-    "notes": null,
+    "notes": "A Monoid is a [semigroup](#semigroup) with an `empty` that changes nothing on **either** side.\n\n```js\nSum.empty()     // Sum(0)     adding nothing changes nothing\nProduct.empty() // Product(1) multiplying by nothing changes nothing\nAll.empty()     // All(true)  \"and true\" changes nothing\nAny.empty()     // Any(false) \"or false\" changes nothing\n```\n\nThe wrong identity annihilates rather than steps aside, which is the mistake to watch for:\n\n```js\nProduct.empty = () => Product(0)\nProduct.empty().concat(Product(5))   // Product(0). Everything it touches becomes 0.\n```\n\nThe reason to care is folds. `empty` is exactly what gives an empty list an answer instead of\nan error:\n\n```js\nconst fold = (M, xs) => xs.reduce((a, b) => a.concat(b), M.empty())\n\nfold(Sum, [Sum(1), Sum(2)])   // Sum(3)\nfold(Sum, [])                 // Sum(0), not a crash\n\n[].reduce((a, b) => a + b)    // TypeError: Reduce of empty array with no initial value\n```\n\nNot every semigroup has one. Subtraction has a **one-sided** identity, which is not enough:\n\n```js\n5 - 0    // 5   right identity holds\n0 - 5    // -5  left identity does not\n```\n\nAnd no other value works either, so subtraction is a monoid under nothing. It is not even a\nsemigroup, since it is not associative:\n\n```js\n(1 - 2) - 3   // -4\n1 - (2 - 3)   // 2\n```",
     "rungs": [
       {
         "id": "implement",
@@ -840,7 +840,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "functor",
-    "notes": null,
+    "notes": "A functor is a container with a `map` that obeys two laws. The shape requirement comes first:\nmap has to hand back **the same kind of container**, or you cannot map again.\n\n```js\nconst Box = (value) => ({\n  value,\n  map: (f) => Box(f(value))\n})\n\nBox(2).map((x) => x + 1).map((x) => x * 10)   // Box(30)\n\nmap: (f) => f(value)          // unwraps instead\nBox(2).map(inc).map(dbl)      // TypeError: .map is not a function\n```\n\n**Identity**: mapping the identity function changes nothing.\n\n```js\nBox(3).map((x) => x)   // has to equal Box(3)\n```\n\nThat rules out a map which sneaks in extra work. **Composition**: mapping twice equals mapping\nthe composition.\n\n```js\nBox(3).map(f).map(g)              // has to equal\nBox(3).map((x) => g(f(x)))\n```\n\nThat rules out a map whose behaviour depends on anything but its argument and the value inside.\n\nA functor is allowed to **not run the function**, which surprises people. Maybe declines on\nnothing and both laws still hold, because they hold on the Nothing case vacuously:\n\n```js\nconst Maybe = (value) => ({\n  value,\n  map: (f) => (value == null ? Maybe(value) : Maybe(f(value)))\n})\n\nMaybe(null).map((x) => x.name)   // Maybe(null), no crash\n```\n\nBreaking a law while keeping the shape takes a little care, and that is the useful exercise:\n\n```js\nlet calls = 0\nconst BadBox = (value) => ({\n  value,\n  map: (f) => BadBox(f(value) + calls++)   // depends on history, so it cannot compose\n})\n```",
     "rungs": [
       {
         "id": "implement",
@@ -864,7 +864,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "pointed-functor",
-    "notes": null,
+    "notes": "A Pointed Functor is a functor with an `of`: a way into the container that does the **least\ninteresting thing possible**.\n\n```js\nBox.of = (value) => Box(value)\n\nBox.of(3)   // Box(3)\n```\n\nThat sounds too small to name, and the rules are what make it worth naming. `of` must add\nnothing:\n\n```js\nBox.of = (value) => Box(value * 2)      // no\nBox.of = (value) => value               // no, that is not a Box\n```\n\nAnd it must not be clever about what it is handed. Lifting a container gives you a container in\na container, and that is correct:\n\n```js\nBox.of(Box(1))                                  // Box(Box(1))\nBox.of = (v) => (v && v.map ? v : Box(v))       // wrong: of always adds exactly one layer\n```\n\nFlattening is [chain](#monad)'s job, not `of`'s.\n\nThe reason it earns a name is that everything above it is **stated in terms of it**. The\napplicative and monad laws all mention `of`, so without a predictable one there is nothing to\nstate them against:\n\n```js\nM.of(a).chain(f)      // has to equal f(a)              left identity\nm.chain(M.of)         // has to equal m                 right identity\nA.of((x) => x).ap(v)  // has to equal v                 applicative identity\n```\n\nA useful consequence: lifting then mapping is the same as applying then lifting.\n\n```js\nBox.of(n).map(f)      // equals Box.of(f(n))\n```",
     "rungs": [
       {
         "id": "implement",
@@ -882,7 +882,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "constant-functor",
-    "notes": null,
+    "notes": "`Const` is a functor whose `map` throws the function away and keeps what it is carrying.\n\n```js\nconst Const = (value) => ({\n  value,\n  map: (f) => Const(value)      // f is never called\n})\n\nConst(5).map((n) => n * 100)    // Const(5)\nConst('kept').map(() => 'replaced').map(() => 'again')   // Const('kept')\n```\n\nBoth functor laws hold, and they hold **because** nothing happens:\n\n```js\nConst(5).map((x) => x)              // Const(5). Identity, trivially.\nConst(5).map(f).map(g)              // Const(5)\nConst(5).map((x) => g(f(x)))        // Const(5). Composition, trivially.\n```\n\nThat makes it sound useless, and its use is genuinely non-obvious: it is how you get a **getter\nout of a setter**.\n\nA van Laarhoven lens is one function parameterized by a functor. Run it with a functor that\napplies its function and you get a setter. Run the very same code with `Const` and the\nmapping does nothing while the payload travels back out:\n\n```js\n// one definition\nconst nameLens = (F) => (f) => (s) => f(s.name).map((name) => ({ ...s, name }))\n\n// with Identity: a setter\nnameLens(Identity)((n) => Identity(n.toUpperCase()))({ name: 'ada', age: 36 })\n// Identity({ name: 'ADA', age: 36 })\n\n// with Const: a getter, because the rebuild is discarded\nnameLens(Const)((n) => Const(n))({ name: 'ada', age: 36 })\n// Const('ada')\n```\n\nOne traversal, two behaviours, decided entirely by which functor you hand it. That is the whole\ntrick behind optics libraries.",
     "rungs": [
       {
         "id": "implement",
@@ -900,7 +900,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "constant-monad",
-    "notes": null,
+    "notes": "`Const` with a `chain` that behaves like its `map`: drop the function, keep the value.\n\n```js\nconst Const = (value) => ({\n  value,\n  map: (f) => Const(value),\n  chain: (f) => Const(value)\n})\n\nConst(1).chain((n) => Const(n + 1))   // Const(1)\n```\n\nTwo of the three monad laws hold:\n\n```js\n// right identity: m.chain(of) equals m\nConst('kept').chain(Const)            // Const('kept')\n\n// associativity: the grouping does not matter\nConst('a').chain(f).chain(g)                  // Const('a')\nConst('a').chain((x) => f(x).chain(g))        // Const('a')\n```\n\n**Left identity cannot.** The law says `of(a).chain(f)` equals `f(a)`. Since `chain`\ndiscards `f`, the left side carries whatever `of` produced and the right side carries\nwhatever `f` chose, and those are different things:\n\n```js\nconst of = (x) => Const('')\nconst f = (x) => Const('something')\n\nof(1).chain(f)   // Const('')\nf(1)             // Const('something')\n```\n\nNo definition of `of` repairs it, because the two sides depend on different values. You could\nmake `of` return `Const('something')` and then pick a different `f`.\n\nSo the name is a name rather than a claim. `Const` is a lawful [functor](#functor) for any\ncarried type, and an Applicative when that type is a [monoid](#monoid), and not a lawful monad\nat all. That is recorded in this repo's `docs/upstream-notes.md` as a suggested correction to\nthe reference.",
     "rungs": [
       {
         "id": "implement",
@@ -918,7 +918,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "lift",
-    "notes": null,
+    "notes": "Lifting takes a function that knows nothing about containers and makes it work on them.\n\n```js\nconst liftA2 = (f) => (ma) => (mb) => ma.map((a) => (b) => f(a, b)).ap(mb)\n\nliftA2((a, b) => a + b)(Box(2))(Box(3))     // Box(5)\n```\n\nThe currying is not optional. `ap` supplies **one** argument, so what `map` puts inside the\ncontainer has to be a function waiting for the next one:\n\n```js\nma.map((a) => (b) => f(a, b)).ap(mb)   // Box holds a function of one argument. Works.\nma.map(f).ap(mb)                        // Box holds a function of two. ap gives it one.\n```\n\nWhat makes one definition serve every applicative is that it only ever uses `map` and\n`ap`. It never looks inside:\n\n```js\nliftA2((a, b) => a + b)(Box(2))(Box(3))              // Box(5)\nliftA2((a, b) => a + b)(List([1, 2]))(List([10, 20])) // List([11, 21, 12, 22])\nliftA2((a, b) => a + b)(Just(2))(Nothing())           // Nothing\n```\n\nSame code, three behaviours, because each container's `ap` decides what combining means. For\na list it is every pairing; for Maybe it is short-circuiting.\n\nReaching for a field would throw all of that away:\n\n```js\nconst liftA2 = (f) => (ma) => (mb) => Box(f(ma.value, mb.value))\n// works for Box, wrong for List, and actively broken for Maybe\n```\n\nThe general rule: a function written against an interface stays general; one written against a\nrepresentation does not.",
     "rungs": [
       {
         "id": "implement",
@@ -936,7 +936,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "applicative-functor",
-    "notes": null,
+    "notes": "`map` applies a plain function to a wrapped value. `ap` applies a function that is **itself\nwrapped**.\n\n```js\nconst Box = (value) => ({\n  value,\n  map: (f) => Box(f(value)),\n  ap: (other) => other.map(value)    // this Box holds the function\n})\n\nBox((n) => n + 1).ap(Box(2))   // Box(3)\n```\n\nWhich side holds the function matters, and getting it backwards is the usual slip:\n\n```js\nap: (other) => Box(other.value(value))   // argument applied to function\nBox((n) => n * 10).ap(Box(3))            // TypeError: 3 is not a function\n```\n\nThe payoff is functions of more than one argument. `map` cannot do this at all:\n\n```js\nconst add = (a) => (b) => a + b\n\nBox(2).map(add)              // Box(a function waiting for b) and now you are stuck\nBox(add).ap(Box(2)).ap(Box(3))   // Box(5)\n```\n\nThat is precisely what `ap` adds over `map`: the ability to keep feeding arguments in\nwithout ever unwrapping.\n\nAnd it subsumes `map`, which is why every applicative is a functor:\n\n```js\nBox.of(f).ap(x)   // the same as x.map(f)\n```\n\nThe laws worth knowing are homomorphism, which says lifting then applying matches applying then\nlifting, and interchange, which pins down that `ap` cannot care about evaluation order:\n\n```js\nA.of(f).ap(A.of(x))              // equals A.of(f(x))\nA.of(f).ap(A.of(y))              // equals A.of((g) => g(y)).ap(A.of(f))\n```",
     "rungs": [
       {
         "id": "implement",
@@ -954,7 +954,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "monad",
-    "notes": null,
+    "notes": "A monad is a pointed functor with `chain`. The difference from `map` is one thing: the\nfunction you give it **already returns a container**, so chain must not wrap again.\n\n```js\nconst Just = (value) => ({\n  isNothing: false, value,\n  map: (f) => Just(f(value)),      // f returns a plain value\n  chain: (f) => f(value)            // f returns a Maybe. Hand it straight back.\n})\n\nJust(2).map((n) => Just(n * 10))    // Just(Just(20))   nested\nJust(2).chain((n) => Just(n * 10))  // Just(20)\n```\n\nIt flattens **exactly one** level, which matters when the values are themselves containers:\n\n```js\nconst chain = (f, xs) => xs.reduce((acc, x) => acc.concat(f(x)), [])\n\nchain((n) => [n, n * 10], [1, 2])   // [1, 10, 2, 20]\nchain((n) => [[n]], [1, 2])         // [[1], [2]]   one layer off, not all of them\n[[1], [2]].flat(Infinity)           // [1, 2]       which is a different operation\n```\n\nThe reason to want it is short-circuiting. A step that fails ends the chain, and nothing after\nit runs:\n\n```js\nJust(1)\n  .chain(() => Nothing())\n  .chain((n) => Just(n * 100))   // never called\n// Nothing\n```\n\nThree laws. The identities say `of` is neutral on both sides, and associativity says nesting\nthe chains does not matter:\n\n```js\nM.of(a).chain(f)                        // equals f(a)\nm.chain(M.of)                           // equals m\nm.chain(f).chain(g)                     // equals m.chain((x) => f(x).chain(g))\n```\n\nThat last one is what lets you extract a middle section of a pipeline into its own named\nfunction without changing the result.",
     "rungs": [
       {
         "id": "implement",
@@ -972,7 +972,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "kleisli-composition",
-    "notes": null,
+    "notes": "Ordinary composition needs the output of one function to be the input of the next. Two functions\nthat each return a container do not line up:\n\n```js\nconst half = (n) => (n % 2 === 0 ? Just(n / 2) : Nothing())   // Number -> Maybe Number\n\ncompose(half, half)(8)   // half receives Just(4), and it expects a Number\n```\n\n`chain` is what bridges the gap, and `composeK` packages that up:\n\n```js\nconst composeK = (g, f) => (a) => f(a).chain(g)\n\nconst positive = (n) => (n > 0 ? Just(n) : Nothing())\nconst halfThenPositive = composeK(positive, half)\n\nhalfThenPositive(8)    // Just(4)\n```\n\nIt reads right to left, the same as `compose`, so the rightmost function runs first. Using\n`map` instead leaves you doubly wrapped:\n\n```js\nconst composeK = (g, f) => (a) => f(a).map(g)   // Just(Just(4))\n```\n\nA failure anywhere ends it, and the later steps never run:\n\n```js\nhalfThenPositive(7)     // Nothing. half failed, positive was never called.\nhalfThenPositive(-4)    // Nothing. half gave Just(-2), positive rejected it.\n```\n\nAnd it is associative, which is what makes it a [category](#category) rather than just a handy\nfunction: you can group a long chain into named stages freely.\n\n```js\ncomposeK(composeK(h, g), f)   // the same function as\ncomposeK(h, composeK(g, f))\n```",
     "rungs": [
       {
         "id": "implement",
@@ -990,7 +990,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "comonad",
-    "notes": null,
+    "notes": "A comonad is a monad with every arrow turned round. Put the signatures side by side:\n\n```js\n// Monad                          Comonad\n// of      :: a -> m a            extract :: w a -> a\n// chain   :: (a -> m b)          extend  :: (w a -> b)\n//            -> m a -> m b                  -> w a -> w b\n```\n\n`of` puts a value in; `extract` takes one out. `chain` takes a function that **produces**\na container; `extend` takes one that **consumes** a container.\n\n```js\nconst CoIdentity = (value) => ({\n  value,\n  map: (f) => CoIdentity(f(value)),\n  extract: () => value,\n  extend: (f) => CoIdentity(f(CoIdentity(value)))\n})\n```\n\nThe part that catches people is that `extend` hands the function the **whole container**, not\nthe value:\n\n```js\nCoIdentity(3).extend((w) => w.extract() + 1)   // CoIdentity(4)\n//                    ^ w is a CoIdentity, not 3\n\nextend: (f) => CoIdentity(f(value))            // wrong: f gets the bare value\n```\n\nThat is the whole point of the shape: `f` can look at the **context**, not just the value. For\nCoIdentity there is no context to look at, which is why the interesting comonads are things like\na zipper over a list, where `extract` is the element under the cursor and `extend` runs a\nfunction at every position with its neighbours available. A blur filter is an extend over an\nimage.\n\nThe laws mirror the monad laws exactly:\n\n```js\nw.extend((w) => w.extract())          // equals w\nw.extend(f).extract()                 // equals f(w)\nw.extend(f).extend(g)                 // equals w.extend((w) => g(w.extend(f)))\n```",
     "rungs": [
       {
         "id": "implement",
@@ -1008,7 +1008,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "free-monad",
-    "notes": null,
+    "notes": "A free monad turns a program into **data**. The instructions describe what should happen;\nnothing happens until an interpreter walks them.\n\n```js\nconst Write = (text) => ({ type: 'write', text })\nconst Read  = (key)  => ({ type: 'read', key })\n\nconst program = [Write('start'), Read('name'), Write('done')]\n// a plain array. Nothing has been written or read.\n```\n\nEach instruction has to carry enough for an interpreter to act:\n\n```js\nconst Read = () => ({ type: 'read' })          // read what?\nconst Read = (key) => ({ type: 'read', key })\n```\n\nThe interpreter is a lookup from tag to behaviour:\n\n```js\nconst interpret = (program, handlers) =>\n  program.map((instruction) => handlers[instruction.type](instruction))\n```\n\nAnd the payoff is two interpreters over one program:\n\n```js\ninterpret(program, {\n  write: (i) => i.text,\n  read: (i) => String(store[i.key])\n})   // ['start', 'ada', 'done']\n\ninterpret(program, {\n  write: (i) => `WROTE: ${i.text}`,\n  read: () => 'stub'\n})   // ['WROTE: start', 'stub', 'WROTE: done']\n```\n\nNo mocking, no dependency injection, no test doubles: the test interpreter is just another\nfunction. You can also write one that logs the program without running it, or one that counts\nhow many reads it would do.\n\nThe cost is real. Every instruction is an allocation, the interpreter is an indirection, and\nyou have built a small language that someone now has to learn. It earns its place when the same\nprogram genuinely needs more than one interpretation.\n\nThe name comes from getting a monad \"for free\" from any functor, which is the formal version of\nthis trick.",
     "rungs": [
       {
         "id": "apply",
@@ -1026,7 +1026,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "monad-transformer",
-    "notes": null,
+    "notes": "Two functors always compose. Two monads do not, which is the whole reason transformers exist.\nA `MaybeT` knows how to sit on top of another monad and give you Maybe behaviour inside it.\n\n```js\nconst MaybeT = (inner) => ({\n  inner,\n  map: (f) =>\n    MaybeT(inner.map((m) => (m.isNothing ? Nothing() : Just(f(m.value))))),\n  chain: (f) =>\n    MaybeT(inner.chain((m) => (m.isNothing ? Id(Nothing()) : f(m.value).runMaybeT()))),\n  runMaybeT: () => inner\n})\n```\n\nWithout it you are chaining twice at every step, once for each layer:\n\n```js\nouter.chain((maybe) =>\n  maybe.isNothing ? Id(Nothing()) : Id(Just(f(maybe.value)))\n)\n```\n\nWith it, one chain:\n\n```js\nMaybeT(Id(Just(1)))\n  .chain((n) => MaybeT(Id(Just(n + 1))))\n  .chain((n) => MaybeT(Id(Just(n * 10))))\n  .runMaybeT()      // Id(Just(20))\n```\n\nAnd a Nothing anywhere short-circuits the rest, through both layers:\n\n```js\nMaybeT(Id(Just(2)))\n  .chain(() => MaybeT(Id(Nothing())))\n  .map((n) => n * 100)         // never runs\n  .runMaybeT()                 // Id(Nothing())\n```\n\nThe mistake that makes the whole thing collapse is forgetting to unwrap what `f` returned:\n\n```js\nchain: (f) => MaybeT(inner.chain((m) => (m.isNothing ? Id(Nothing()) : f(m.value))))\n//                                                                     ^ a MaybeT, not its inner\n// you now hold a MaybeT of an Id of a MaybeT\n```\n\nStacks get unpleasant past two layers, which is why effect systems and\n[algebraic effects](#algebraic-effects) exist as alternatives.",
     "rungs": [
       {
         "id": "apply",
@@ -1044,7 +1044,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "bifunctor",
-    "notes": null,
+    "notes": "A Bifunctor has two positions, and `bimap` maps each with its own function.\n\n```js\nconst Pair = (first, second) => ({\n  first, second,\n  bimap: (f, g) => Pair(f(first), g(second))\n})\n\nPair(2, 'ab').bimap((n) => n * 10, (s) => s.toUpperCase())   // Pair(20, 'AB')\n```\n\nThe first function belongs to the first slot. Swapping them is a different function, and a\nsilent one if both slots happen to hold the same type:\n\n```js\nbimap: (f, g) => Pair(g(second), f(first))   // the slots have traded places\n```\n\nIt maps the **contents**, never the structure. A Left stays a Left:\n\n```js\nconst Left = (error) => ({\n  isRight: false,\n  bimap: (f, g) => Left(f(error))      // still a Left\n})\nconst Right = (value) => ({\n  isRight: true,\n  bimap: (f, g) => Right(g(value))     // still a Right\n})\n```\n\nOn Either exactly one of the two functions runs, which is what makes it the natural way to\ndecorate an error without disturbing the happy path:\n\n```js\nconst withContext = (e) => e.bimap((msg) => `while loading user: ${msg}`, (v) => v)\n\nwithContext(Left('not found'))   // Left('while loading user: not found')\nwithContext(Right(42))           // Right(42), untouched\n```\n\nMapping over a Right only is `map`; a bifunctor is what gives you access to the other side\nwithout unwrapping and rebuilding.",
     "rungs": [
       {
         "id": "implement",
@@ -1062,7 +1062,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "contravariant-functor",
-    "notes": null,
+    "notes": "A functor maps the **output**. A contravariant functor maps the **input**.\n\n```js\nconst Predicate = (run) => ({\n  run,\n  contramap: (f) => Predicate((x) => run(f(x)))   // f runs first, on the way in\n})\n\nconst isLong = Predicate((n) => n > 3)\nconst isLongString = isLong.contramap((s) => s.length)\n\nisLongString.run('hi')      // false\nisLongString.run('hello')   // true\n```\n\nA Predicate **consumes**; there is no output to map. Adapting it means adapting what it will\naccept, which is what turns a predicate about numbers into one about strings.\n\nThe composition law runs backwards, and this is the part worth committing to memory:\n\n```js\nu.map(f).map(g)                    // equals u.map((x) => g(f(x)))\nu.contramap(f).contramap(g)        // equals u.contramap((x) => f(g(x)))\n//                                                              ^^^^^^^ reversed\n```\n\nIt follows from the shape. Each `contramap` adds a step **earlier** in the pipeline, so the\nlast one added is the first to run.\n\nOne practical trap when testing these: structural equality is useless here. A Predicate's entire\ncontent is a closure, so comparing two of them compares nothing and every law passes:\n\n```js\ndeepEqual(Predicate(f), Predicate(g))   // true for any f and g\n```\n\nThey have to be judged by behaviour:\n\n```js\nconst same = (a, b) => [-7, -1, 0, 1, 5].every((x) => a.run(x) === b.run(x))\n```\n\nComparators, serializers, and anything else shaped `a -> something` are contravariant in\n`a` for the same reason.",
     "rungs": [
       {
         "id": "implement",
@@ -1080,7 +1080,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "profunctor",
-    "notes": null,
+    "notes": "A profunctor consumes on one side and produces on the other, so it can be adapted at both ends\nat once.\n\n```js\nconst Fn = (run) => ({\n  run,\n  promap: (f, g) => Fn((x) => g(run(f(x))))\n//                        ^^^^^^^^^^^^^^^ f on the way in, g on the way out\n})\n\nconst length = Fn((s) => s.length)\n\nconst trimmedIsEven = length.promap(\n  (s) => s.trim(),          // pre-process the input\n  (n) => n % 2 === 0        // post-process the output\n)\n\ntrimmedIsEven.run('  code  ')   // true   trims to 'code', length 4\ntrimmedIsEven.run(' hello ')    // false  trims to 'hello', length 5\n```\n\nOrder matters and is easy to get backwards. Running both functions on the output is a common\nslip and it silently changes what the thing means:\n\n```js\npromap: (f, g) => Fn((x) => g(f(run(x))))   // trims a number\n```\n\nThe variance follows from the direction of travel. The input side is\n[contravariant](#contravariant-functor), because adapting it means accepting a **wider** set of\nthings by converting them first. The output side is covariant, the ordinary kind.\n\nSo the composition law is mixed:\n\n```js\np.promap(f, g).promap(h, i)\n// equals\np.promap((x) => f(h(x)), (y) => i(g(y)))\n//        ^^^^^^^^^^^^^^ reversed     ^^^^^^^^^^^^^^ forwards\n```\n\nFunctions are the canonical profunctor, and profunctors are the foundation under the optics in\nthis glossary: a lens is a profunctor transformation.",
     "rungs": [
       {
         "id": "implement",
@@ -1098,7 +1098,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "alternative",
-    "notes": null,
+    "notes": "`alt` picks the first of two that actually has something. `zero` is the one that never does.\n\n```js\nconst Just = (v) => ({ isNothing: false, v, alt: () => Just(v) })       // keeps itself\nconst Nothing = () => ({ isNothing: true, alt: (other) => other })     // takes the offer\n\nJust(1).alt(Just(2))          // Just(1)\nNothing().alt(Just(2))        // Just(2)\nNothing().alt(Nothing())      // Nothing\n```\n\nChained, it reads as a list of fallbacks:\n\n```js\nNothing().alt(Nothing()).alt(Just('third')).alt(Just('fourth'))   // Just('third')\n```\n\n`zero` has to step aside on **both** sides, and mapping over it has to do nothing, since there\nis nothing inside to map:\n\n```js\nzero().alt(Just(1))    // Just(1)\nJust(1).alt(zero())    // Just(1)\nzero().map(f)          // zero()\n```\n\nThe practical use is trying sources in order of precedence:\n\n```js\nconst lookup = (key) => (source) => (key in source ? Just(source[key]) : Nothing())\n\nconst firstAvailable = (key, sources) =>\n  sources.map(lookup(key)).reduce((acc, m) => acc.alt(m), Nothing())\n\nfirstAvailable('port', [{}, { port: 8080 }, { port: 9090 }])   // Just(8080)\n```\n\nNote that the lookup tests the **key**, not the value. Present-but-falsy is still present, and\ntesting truthiness quietly skips a legitimate `false` or `0`:\n\n```js\nfirstAvailable('debug', [{ debug: false }, { debug: true }])   // Just(false), correctly\n```\n\nThis is the same shape as `??` in JavaScript, generalized to any container.",
     "rungs": [
       {
         "id": "implement",
@@ -1116,7 +1116,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "foldable",
-    "notes": null,
+    "notes": "Foldable means the structure can be collapsed to a single value. One method, and a family of\noperations comes with it.\n\n```js\nconst Leaf = (value) => ({\n  reduce: (f, seed) => f(seed, value),\n  toArray: () => [value]\n})\n\nconst Node = (left, value, right) => ({\n  reduce: (f, seed) => right.reduce(f, f(left.reduce(f, seed), value)),\n  //                   ^ right      ^ node     ^ left     in that order\n  toArray: () => [...left.toArray(), value, ...right.toArray()]\n})\n```\n\nOrder is part of the contract, not an implementation detail. Visiting the node before its left\nsubtree gives different answers for anything non-commutative:\n\n```js\nconst tree = Node(Leaf(1), 2, Node(Leaf(3), 4, Leaf(5)))\n\ntree.reduce((acc, x) => [...acc, x], [])   // [1, 2, 3, 4, 5]\ntree.reduce((a, b) => a + b, 0)            // 15, same either way\ntree.reduce((a, b) => a - b, 0)            // order-dependent, and now it matters\n```\n\nWhich is why the useful self-check is that `reduce` agrees with the structure's own idea of\nits elements:\n\n```js\ntree.reduce((acc, x) => [...acc, x], [])   // has to equal tree.toArray()\n```\n\nAnd once `reduce` exists, a whole family follows without knowing anything about the shape:\n\n```js\nconst sum      = (t) => t.reduce((a, b) => a + b, 0)\nconst length   = (t) => t.reduce((a) => a + 1, 0)\nconst toArray  = (t) => t.reduce((a, b) => [...a, b], [])\nconst contains = (t, x) => t.reduce((a, b) => a || b === x, false)\nconst maximum  = (t) => t.reduce((a, b) => (b > a ? b : a), -Infinity)\n```\n\nWhat Foldable does **not** give you is `map`: a fold cannot rebuild the structure it walked.\nThat needs [Functor](#functor), and doing both at once needs\n[Traversable](#traversable).",
     "rungs": [
       {
         "id": "implement",
@@ -1134,7 +1134,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "traversable",
-    "notes": null,
+    "notes": "Traversable swaps two layers. An array of Maybes becomes a Maybe of an array, so you check once\ninstead of at every element.\n\n```js\nconst sequence = (maybes) => {\n  const out = []\n  for (const m of maybes) {\n    if (m.isNothing) return Nothing()     // one failure sinks it\n    out.push(m.value)\n  }\n  return Just(out)\n}\n\nsequence([Just(1), Just(2), Just(3)])     // Just([1, 2, 3])\nsequence([Just(1), Nothing(), Just(3)])   // Nothing\n```\n\nAll-or-nothing is the contract. Dropping the failures is a perfectly good operation and it is\n**not** this one:\n\n```js\nJust(maybes.filter((m) => !m.isNothing).map((m) => m.value))   // Just([1, 3]). Different.\n```\n\nThe empty case succeeds, because nothing failed:\n\n```js\nsequence([])   // Just([]), not Nothing\n```\n\n`traverse` maps and sequences in one pass, which is what you actually reach for:\n\n```js\nconst traverse = (f, xs) => {\n  const out = []\n  for (const x of xs) {\n    const m = f(x)\n    if (m.isNothing) return Nothing()\n    out.push(m.value)\n  }\n  return Just(out)\n}\n\nconst parseNum = (s) => {\n  const n = Number(s)\n  return Number.isInteger(n) && s.trim() !== '' ? Just(n) : Nothing()\n}\n\ntraverse(parseNum, ['1', '2', '3'])   // Just([1, 2, 3])\ntraverse(parseNum, ['1', 'x', '3'])   // Nothing\ntraverse(parseNum, ['1', '', '3'])    // Nothing, and note Number('') is 0\n```\n\nSwap Maybe for a Promise-like and the same shape gives you \"run all of these and give me one\nresult\", which is what `Promise.all` is.",
     "rungs": [
       {
         "id": "implement",
@@ -1152,7 +1152,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "morphism",
-    "notes": null,
+    "notes": "A morphism is an arrow between two objects. In everyday code the objects are types and the\narrows are functions.\n\n```js\n// length :: String -> Number\n//           ^^^^^^    ^^^^^^ the objects\n// the function itself is the morphism\n```\n\nMost arrows do not reverse. Many strings share a length, so there is no way back:\n\n```js\nlength('abc')   // 3\nlength('xyz')   // 3   given 3, which string was it?\n```\n\nThe glossary's \"-morphism\" words are just names for the relationship an arrow has to its\nendpoints:\n\n```js\n// endomorphism   A -> A          same object at both ends\nconst upper = (s) => s.toUpperCase()\n\n// isomorphism    A -> B with an inverse\nconst toPair = (c) => [c.x, c.y]\nconst toCoords = (p) => ({ x: p[0], y: p[1] })\n\n// automorphism   A -> A with an inverse\nconst negate = (n) => -n\n\n// neither        A -> B, no way back\nconst length = (s) => s.length\n```\n\nThe other family in this glossary, catamorphism and its relatives, names arrows by the **shape\nof the recursion** rather than by the endpoints. Same suffix, different question being answered.\n\nThe reason any of it is worth naming: once you know arrows compose and that composition is\nassociative with an identity, you have a [category](#category), and every result about\ncategories applies.",
     "rungs": [
       {
         "id": "recognize",
@@ -1170,7 +1170,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "semigroupoid",
-    "notes": null,
+    "notes": "A Semigroupoid is anything with an associative `compose`. That is the entire definition, and\nit is the same step-up from [semigroup](#semigroup) that a category is from a monoid.\n\n```js\nconst Morphism = (f) => ({\n  f,\n  compose: (other) => Morphism((x) => f(other.f(x))),   // other runs first\n  run: (x) => f(x)\n})\n\nconst inc = Morphism((n) => n + 1)\nconst dbl = Morphism((n) => n * 2)\n\ninc.compose(dbl).run(5)    // 11   doubled to 10, then incremented\n```\n\nRight to left, matching `compose` everywhere else. Reversing it is a different function and a\nsilent one when the operations happen to commute:\n\n```js\ncompose: (other) => Morphism((x) => other.f(f(x)))\ninc.compose(dbl).run(5)    // 12. Incremented then doubled.\n```\n\nAnd it has to stay inside the wrapper, or a chain of three has nothing to call:\n\n```js\ncompose: (other) => (x) => f(other.f(x))   // a bare function\na.compose(b).compose(c)                     // TypeError\n```\n\nAssociativity is the only law:\n\n```js\na.compose(b).compose(c)     // the same morphism as\na.compose(b.compose(c))\n```\n\nWhat it lacks is an identity, and that is precisely what [category](#category) adds. The\nsemigroup-to-monoid step, one level up.",
     "rungs": [
       {
         "id": "implement",
@@ -1188,7 +1188,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "category",
-    "notes": null,
+    "notes": "A Category is a [semigroupoid](#semigroupoid) with an identity: associative composition, plus\nan arrow that changes nothing.\n\n```js\nMorphism.id = () => Morphism((x) => x)\n\nconst dbl = Morphism((n) => n * 2)\n\nMorphism.id().compose(dbl).run(5)   // 10\ndbl.compose(Morphism.id()).run(5)   // 10\n```\n\nBoth sides have to be neutral, and the identity has to be a **morphism**, not a bare function,\nor there is nothing to compose it with:\n\n```js\nMorphism.id = () => (x) => x         // a function\nMorphism.id().compose(dbl)           // TypeError: compose is not a function\n```\n\nWhat a category does **not** require is inverses. Most arrows cannot be reversed and that is\nfine; requiring them would make it a groupoid:\n\n```js\nconst length = Morphism((s) => s.length)   // perfectly good morphism, no way back\n```\n\nNor does it require the objects to be types or the arrows to be functions. Functions and types\nare one example. [Kleisli composition](#kleisli-composition) is another: the arrows are\n`a -> M b` and the identity is `M.of`, and that is a category for exactly the same reasons.\n\n```js\ncomposeK(composeK(h, g), f)   // associative\ncomposeK(M.of, f)             // the same as f\ncomposeK(f, M.of)             // the same as f\n```\n\nWhich is what the monad laws are, read sideways: the two identity laws and associativity say\nprecisely that Kleisli arrows form a category.",
     "rungs": [
       {
         "id": "implement",
@@ -1206,7 +1206,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "endomorphism",
-    "notes": null,
+    "notes": "An endomorphism takes a type and gives back the **same** type.\n\n```js\n// upper :: String -> String    yes\n// negate :: Number -> Number   yes\n// sort :: [a] -> [a]           yes\n// length :: String -> Number   no, different type out\n// head :: [a] -> a             no\n```\n\nThat sameness is what makes them always composable with each other, and that in turn makes them\na [monoid](#monoid) under composition:\n\n```js\nconst Endo = (run) => ({\n  run,\n  concat: (other) => Endo((x) => other.run(run(x)))\n})\nEndo.empty = () => Endo((x) => x)      // identity is the neutral element\n```\n\nThe laws come for free from composition being associative with an identity:\n\n```js\nEndo.empty().concat(dbl).run(5)   // 10\ndbl.concat(Endo.empty()).run(5)   // 10\n```\n\nWhich means a list of transformations folds into one, and the empty list has an answer:\n\n```js\nconst steps = [(n) => n + 1, (n) => n * 2, (n) => n - 3].map(Endo)\nconst pipeline = steps.reduce((a, b) => a.concat(b), Endo.empty())\n\npipeline.run(4)      // 7\n\nconst none = [].reduce((a, b) => a.concat(b), Endo.empty())\nnone.run(4)          // 4, rather than an error\n```\n\nThat last line is the practical payoff. A configurable pipeline with no steps configured is\nthe identity, not a special case you have to write a branch for.",
     "rungs": [
       {
         "id": "recognize",
@@ -1224,7 +1224,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "isomorphism",
-    "notes": null,
+    "notes": "An isomorphism is a pair of arrows whose compositions are the identity, in **both** directions.\n\n```js\nconst toCoords = (pair) => ({ x: pair[0], y: pair[1] })\nconst toPair = (coords) => [coords.x, coords.y]\n\ntoPair(toCoords([1, 2]))             // [1, 2]\ntoCoords(toPair({ x: 1, y: 2 }))     // { x: 1, y: 2 }\n```\n\nOne direction is not enough, and it is easy to be fooled by the one that works:\n\n```js\nconst to = String\nconst from = Number\n\nfrom(to(7))       // 7    holds\nto(from('007'))   // '7'  does not\n```\n\nThe two directions also have to agree about details like order, which is silent when both\nslots hold the same type:\n\n```js\nconst toPair = (c) => [c.x, c.y]\nconst toCoords = (p) => ({ x: p[1], y: p[0] })   // swapped\ntoCoords(toPair({ x: 1, y: 2 }))                  // { x: 2, y: 1 }\n```\n\nWhat it means in practice is that the two types carry the **same information**, so anything you\ncan do with one you can do with the other by converting, working, and converting back:\n\n```js\nconst scale = (n) => (coords) => ({ x: coords.x * n, y: coords.y * n })\nconst scalePair = (n) => (pair) => toPair(scale(n)(toCoords(pair)))\n```\n\nThat is why isomorphic is a stronger claim than convertible. `Number -> String` converts;\nit does not preserve.",
     "rungs": [
       {
         "id": "implement",
@@ -1242,7 +1242,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "homomorphism",
-    "notes": null,
+    "notes": "A homomorphism carries one structure into another so that **combining before the map equals\ncombining after**. That single equation is the whole definition.\n\n```js\nlength(a.concat(b)) === length(a) + length(b)\n//     ^^^^^^^^^^^ combine then map      ^^^ map then combine\n```\n\nSo `length` is a homomorphism from lists-under-concatenation to numbers-under-addition:\n\n```js\nlength([1, 2].concat([3]))         // 3\nlength([1, 2]) + length([3])       // 3\n```\n\nThe target operation has to be the right one. `maximum` does not preserve into addition, but\nit does into max:\n\n```js\nmaximum([1, 5].concat([3]))           // 5\nmaximum([1, 5]) + maximum([3])        // 8    not a homomorphism into (Number, +)\nMath.max(maximum([1, 5]), maximum([3])) // 5  but it is into (Number, max)\n```\n\nAnd anything that collapses duplicates breaks it, because the two sides stop counting the same\nthings:\n\n```js\nconst unique = (xs) => new Set(xs).size\nunique([1].concat([1]))            // 1\nunique([1]) + unique([1])          // 2\n```\n\nOne consequence worth remembering: the identity has to map to the identity, which follows from\nthe law and is a quick sanity check.\n\n```js\nlength([])   // 0, which is the identity for addition\n```\n\nThis is also the name of one of the applicative laws, `A.of(f).ap(A.of(x))` equals\n`A.of(f(x))`, which says `of` is structure-preserving in exactly this sense.",
     "rungs": [
       {
         "id": "implement",
@@ -1260,7 +1260,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "natural-transformation",
-    "notes": null,
+    "notes": "A natural transformation changes the **container** and leaves the **contents** alone.\n\n```js\n// head :: Array a -> Maybe a\nconst head = (xs) => (xs.length > 0 ? Just(xs[0]) : Nothing())\n\nhead([1, 2, 3])   // Just(1)\nhead([])          // Nothing\n```\n\nThe law says it cannot matter whether you map before or after:\n\n```js\nnat(fa.map(f))        // has to equal\nnat(fa).map(f)\n\nhead([1, 2].map((n) => n * 10))   // Just(10)\nhead([1, 2]).map((n) => n * 10)   // Just(10)\n```\n\nWhat that forbids is the transformation **looking at the values**. The moment it does, the two\nsides come apart:\n\n```js\nconst head = (xs) => (xs.length ? Just(xs[0] + 1) : Nothing())\n\nhead([1, 2].map((n) => n * 10))   // Just(11)\nhead([1, 2]).map((n) => n * 10)   // Just(20)\n```\n\nSo a natural transformation can only work on **shape**. Wrapping undefined instead of reporting\nemptiness breaks a different promise:\n\n```js\nconst head = (xs) => Just(xs[0])\nhead([])   // Just(undefined), which claims there is a value\n```\n\nIt **may** change how many elements there are. `head` drops all but one and is perfectly\nnatural; so are `reverse`, `Array -> Set`, and `Maybe -> Array`. Naturality constrains what\nit can know, not what it can keep.\n\nThe practical read: a conversion between two containers should be writable without ever\ninspecting an element. If you find yourself needing to, you are writing something else.",
     "rungs": [
       {
         "id": "implement",
@@ -1278,7 +1278,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "catamorphism",
-    "notes": null,
+    "notes": "A catamorphism tears a structure down to a single value. For a list that is a fold, and the\nonly things that vary are the step and the seed.\n\n```js\nconst cata = (step) => (seed) => (xs) => {\n  let acc = seed\n  for (const x of xs) acc = step(acc, x)\n  return acc\n}\n\nconst sum    = cata((a, b) => a + b)(0)\nconst max    = cata((a, b) => (b > a ? b : a))(-Infinity)\nconst length = cata((a) => a + 1)(0)\n```\n\nThe seed is not an implementation detail: it **is** the empty case, and getting it wrong is\nsilent until someone passes an empty list.\n\n```js\nsum([])                          // 0    correct\ncata((a, b) => a + b)(1)([])     // 1    quietly wrong\n```\n\nAnd it has to be the identity for the operation, or a non-empty list goes wrong too:\n\n```js\nconst max = cata((a, b) => (b > a ? b : a))(0)\nmax([-5, -2, -9])   // 0, which is not in the list\n```\n\nNote also that `length`'s step ignores its element entirely, which is what makes it work for\nlists of anything, including falsy values:\n\n```js\nlength([0, '', null, false, 1])   // 5\ncata((a, b) => (b ? a + 1 : a))(0)([0, '', null, false, 1])   // 1\n```\n\nThe name generalizes beyond lists: a catamorphism folds any recursive structure, so the same\nidea covers summing a tree or evaluating an expression. Its opposite is\n[anamorphism](#anamorphism), which builds one up.",
     "rungs": [
       {
         "id": "implement",
@@ -1296,7 +1296,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "anamorphism",
-    "notes": null,
+    "notes": "An anamorphism is an unfold: the opposite of a fold. A fold consumes a structure into a value;\nan unfold grows a structure out of one.\n\n```js\nconst unfold = (step, seed) => {\n  const out = []\n  let current = seed\n  let next = step(current)\n  while (next !== null) {      // null is how the step says stop\n    out.push(next[0])\n    current = next[1]\n    next = step(current)\n  }\n  return out\n}\n```\n\nThe step returns either `[value, nextSeed]` or `null`. That `null` is the entire\ntermination condition, and forgetting to honour it is an infinite loop:\n\n```js\nconst range = (from, to) => unfold((n) => (n < to ? [n, n + 1] : null), from)\nconst countDown = (n) => unfold((k) => (k > 0 ? [k, k - 1] : null), n)\n\nrange(2, 6)     // [2, 3, 4, 5]   inclusive start, exclusive end\ncountDown(5)    // [5, 4, 3, 2, 1]\n```\n\nBoundaries are where these go wrong, and by one:\n\n```js\nunfold((n) => (n <= to ? [n, n + 1] : null), from)   // range(2, 6) gives [2,3,4,5,6]\nunfold((k) => (k >= 0 ? [k, k - 1] : null), n)       // countDown(3) gives [3,2,1,0]\n```\n\nOnce you have it, sequences stop needing hand-written loops:\n\n```js\nconst digits = (n) =>\n  n === 0 ? [0] : unfold((k) => (k > 0 ? [k % 10, Math.floor(k / 10)] : null), n).reverse()\n\ndigits(1204)   // [1, 2, 0, 4]\ndigits(0)      // [0]   peeling from the right stops at once, so zero needs its own case\n```\n\nCompose an unfold with a fold and you have a [hylomorphism](#hylomorphism).",
     "rungs": [
       {
         "id": "implement",
@@ -1314,7 +1314,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "hylomorphism",
-    "notes": null,
+    "notes": "A hylomorphism builds a structure and immediately tears it down. Unfold, then fold, with the\nmiddle never really needed.\n\n```js\nconst hylo = (foldStep, foldSeed, unfoldStep) => (seed) =>\n  cata(foldStep, foldSeed, unfold(unfoldStep, seed))\n\nconst factorial = hylo(\n  (acc, n) => acc * n,                      // fold: multiply\n  1,                                        // seed: the identity for multiplication\n  (n) => (n > 0 ? [n, n - 1] : null)        // unfold: n down to 1\n)\n\nfactorial(5)   // 120\nfactorial(0)   // 1, because the unfold produces nothing and the seed stands\n```\n\nBoth boundaries matter, and both are silent when wrong:\n\n```js\nhylo((acc, n) => acc * n, 0, ...)                 // every factorial is 0\nhylo(..., 1, (n) => (n >= 0 ? [n, n - 1] : null)) // includes 0, so the product collapses\n```\n\nThe shape is general, not a factorial trick. Change the fold and you have something else\nentirely:\n\n```js\nconst sumTo = hylo((acc, n) => acc + n, 0, (n) => (n > 0 ? [n, n - 1] : null))\nsumTo(5)     // 15\n\nconst collect = hylo((acc, x) => [...acc, x], [], (n) => (n > 0 ? [n, n - 1] : null))\ncollect(3)   // [3, 2, 1]\n```\n\nWorth naming because the intermediate list is **pure overhead**: it is built one element at a\ntime and consumed one element at a time, and nothing else ever sees it. Recognizing the shape is\nwhat lets you fuse the two halves and never allocate it. A compiler doing deforestation is\nspotting exactly this.\n\nIt does not guarantee termination. An unfold that never returns null runs forever, and\ncomposing a fold onto it does not help.",
     "rungs": [
       {
         "id": "apply",
@@ -1332,7 +1332,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "paramorphism",
-    "notes": null,
+    "notes": "A [catamorphism](#catamorphism) gives its step the accumulator and one element. A paramorphism\nalso gives it **what is left**.\n\n```js\nconst para = (step) => (seed) => (xs) => {\n  let acc = seed\n  for (let i = 0; i < xs.length; i++) {\n    acc = step(acc, xs[i], xs.slice(i + 1))\n    //                     ^^^^^^^^^^^^^^^ the remainder\n  }\n  return acc\n}\n```\n\nThe remainder is what comes **after** the current element. Including it is the off-by-one to\nwatch for:\n\n```js\nxs.slice(i + 1)   // [1,2,3] at i=0 gives [2,3]\nxs.slice(i)       // gives [1,2,3], which includes the element you are on\n```\n\nWith it, `suffixes` falls out in a line. Without it there is nothing to return, because a\nplain fold has already consumed the tail:\n\n```js\nconst suffixes = para((acc, head, tail) => [...acc, tail])([])\n\nsuffixes([1, 2, 3])   // [[2, 3], [3], []]\nsuffixes([])          // []\n```\n\nEach suffix has to be its own array, or every row ends up pointing at the same list:\n\n```js\nstep(acc, xs[i], xs)   // the same array handed out every time\n```\n\nIt is still a fold, so everything an ordinary one does still works. The extra argument is simply\nignored when you do not need it:\n\n```js\nconst sum = para((acc, x) => acc + x)(0)\nsum([1, 2, 3])   // 6\n```\n\nWhat it gives you is the **unconsumed input**, not the result of folding it. Having that would\nbe circular.",
     "rungs": [
       {
         "id": "implement",
@@ -1350,7 +1350,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "apomorphism",
-    "notes": null,
+    "notes": "An [anamorphism](#anamorphism) can produce one element at a time or stop. An apomorphism adds a\nthird option: **stop, and here is the rest**.\n\n```js\n// the step returns one of:\n//   { next: [value, seed] }   keep going\n//   { done: [...values] }     finish with these, all at once\n//   null                      stop with nothing more\n\nconst apo = (step, seed) => {\n  const out = []\n  let current = seed\n  while (true) {\n    const result = step(current)\n    if (result === null) return out\n    if (result.done !== undefined) return out.concat(result.done)\n    out.push(result.next[0])\n    current = result.next[1]\n  }\n}\n```\n\nThat middle case is the whole point, and dropping it loses everything after the stopping point:\n\n```js\nif (result.done !== undefined) return out      // the remainder is thrown away\n```\n\nInserting into a sorted list is the natural example. Once you find the place, the rest of the\nlist is already correct and there is no reason to walk it:\n\n```js\nconst insert = (x, sorted) =>\n  apo((rest) => {\n    if (rest.length === 0) return { done: [x] }\n    if (x <= rest[0]) return { done: [x, ...rest] }   // place it, keep the rest as it is\n    return { next: [rest[0], rest.slice(1)] }\n  }, sorted)\n\ninsert(3, [1, 2, 4, 5])   // [1, 2, 3, 4, 5]\ninsert(0, [1, 2, 3])      // [0, 1, 2, 3]\ninsert(9, [1, 2, 3])      // [1, 2, 3, 9]\ninsert(1, [])             // [1]\n```\n\nA hand-written loop reaches the same answer. What the shape gives you is the ability to say\n\"and the remainder is this\" as part of the unfold itself, rather than as an escape from it.",
     "rungs": [
       {
         "id": "implement",

@@ -3,12 +3,69 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const monoid: ExerciseSet = {
   termId: 'monoid',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'identity',
+      statement:
+        "Can supply an empty that is neutral on both sides, and knows the wrong one annihilates instead.",
+    },
+    {
+      id: 'empty-fold',
+      statement:
+        "Knows the identity is what gives a fold of the empty list an answer.",
+    },
+    {
+      id: 'not-every-semigroup',
+      statement:
+        "Can show that an operation may have a one-sided identity and no two-sided one.",
+    },
+  ],
+  notes: `A Monoid is a [semigroup](#semigroup) with an \`empty\` that changes nothing on **either** side.
+
+\`\`\`js
+Sum.empty()     // Sum(0)     adding nothing changes nothing
+Product.empty() // Product(1) multiplying by nothing changes nothing
+All.empty()     // All(true)  "and true" changes nothing
+Any.empty()     // Any(false) "or false" changes nothing
+\`\`\`
+
+The wrong identity annihilates rather than steps aside, which is the mistake to watch for:
+
+\`\`\`js
+Product.empty = () => Product(0)
+Product.empty().concat(Product(5))   // Product(0). Everything it touches becomes 0.
+\`\`\`
+
+The reason to care is folds. \`empty\` is exactly what gives an empty list an answer instead of
+an error:
+
+\`\`\`js
+const fold = (M, xs) => xs.reduce((a, b) => a.concat(b), M.empty())
+
+fold(Sum, [Sum(1), Sum(2)])   // Sum(3)
+fold(Sum, [])                 // Sum(0), not a crash
+
+[].reduce((a, b) => a + b)    // TypeError: Reduce of empty array with no initial value
+\`\`\`
+
+Not every semigroup has one. Subtraction has a **one-sided** identity, which is not enough:
+
+\`\`\`js
+5 - 0    // 5   right identity holds
+0 - 5    // -5  left identity does not
+\`\`\`
+
+And no other value works either, so subtraction is a monoid under nothing. It is not even a
+semigroup, since it is not associative:
+
+\`\`\`js
+(1 - 2) - 3   // -4
+1 - (2 - 3)   // 2
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['identity', 'empty-fold'],
       kind: 'code',
       role: 'implement',
       title: 'A semigroup with a neutral element',
@@ -117,6 +174,7 @@ Any.empty = () => Any(true)
 
     {
       id: 'break',
+      covers: ['not-every-semigroup', 'identity'],
       kind: 'code',
       role: 'break',
       inverted: true,

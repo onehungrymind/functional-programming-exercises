@@ -3,12 +3,72 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const applicativeFunctor: ExerciseSet = {
   termId: 'applicative-functor',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'wrapped-function',
+      statement:
+        "Can apply a function that is itself inside a container, and knows the receiver holds the function.",
+    },
+    {
+      id: 'multiple-arguments',
+      statement:
+        "Can apply a curried function to several wrapped values in sequence.",
+    },
+    {
+      id: 'stronger-than-functor',
+      statement:
+        "Knows map can be written from of and ap, so every applicative is a functor, and can say what ap adds.",
+    },
+  ],
+  notes: `\`map\` applies a plain function to a wrapped value. \`ap\` applies a function that is **itself
+wrapped**.
+
+\`\`\`js
+const Box = (value) => ({
+  value,
+  map: (f) => Box(f(value)),
+  ap: (other) => other.map(value)    // this Box holds the function
+})
+
+Box((n) => n + 1).ap(Box(2))   // Box(3)
+\`\`\`
+
+Which side holds the function matters, and getting it backwards is the usual slip:
+
+\`\`\`js
+ap: (other) => Box(other.value(value))   // argument applied to function
+Box((n) => n * 10).ap(Box(3))            // TypeError: 3 is not a function
+\`\`\`
+
+The payoff is functions of more than one argument. \`map\` cannot do this at all:
+
+\`\`\`js
+const add = (a) => (b) => a + b
+
+Box(2).map(add)              // Box(a function waiting for b) and now you are stuck
+Box(add).ap(Box(2)).ap(Box(3))   // Box(5)
+\`\`\`
+
+That is precisely what \`ap\` adds over \`map\`: the ability to keep feeding arguments in
+without ever unwrapping.
+
+And it subsumes \`map\`, which is why every applicative is a functor:
+
+\`\`\`js
+Box.of(f).ap(x)   // the same as x.map(f)
+\`\`\`
+
+The laws worth knowing are homomorphism, which says lifting then applying matches applying then
+lifting, and interchange, which pins down that \`ap\` cannot care about evaluation order:
+
+\`\`\`js
+A.of(f).ap(A.of(x))              // equals A.of(f(x))
+A.of(f).ap(A.of(y))              // equals A.of((g) => g(y)).ap(A.of(f))
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['wrapped-function', 'multiple-arguments', 'stronger-than-functor'],
       kind: 'code',
       role: 'implement',
       title: 'Apply a wrapped function to a wrapped value',
@@ -108,6 +168,7 @@ Box.of = Box
 
     {
       id: 'apply',
+      covers: ['multiple-arguments'],
       kind: 'code',
       role: 'apply',
       title: 'Combine two Maybes without unwrapping either',

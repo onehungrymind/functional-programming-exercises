@@ -2,12 +2,79 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const memoization: ExerciseSet = {
   termId: 'memoization',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'cache-per-argument',
+      statement:
+        "Can cache by argument so each distinct input is computed once and earlier answers survive new ones.",
+    },
+    {
+      id: 'falsy-results',
+      statement:
+        "Knows to ask whether the key is present rather than whether the value is truthy, so a cached 0 or undefined is kept.",
+    },
+    {
+      id: 'needs-purity',
+      statement:
+        "Knows memoizing an impure function makes it report a stale answer, and can demonstrate it.",
+    },
+  ],
+  notes: `Memoization trades memory for time: remember what a function returned for each argument, and
+never compute the same one twice.
+
+\`\`\`js
+const memoize = (fn) => {
+  const cache = new Map()
+  return (x) => {
+    if (!cache.has(x)) cache.set(x, fn(x))
+    return cache.get(x)
+  }
+}
+\`\`\`
+
+Two mistakes are common and both pass a careless test.
+
+**A cache of size one.** It looks fine until the caller alternates:
+
+\`\`\`js
+const memoize = (fn) => {
+  let lastArg, lastResult
+  return (x) => {
+    if (x !== lastArg) { lastArg = x; lastResult = fn(x) }
+    return lastResult
+  }
+}
+const sq = memoize((n) => n * n)
+sq(2); sq(3); sq(2)   // three computations, not two
+\`\`\`
+
+**Asking whether the value is truthy.** A legitimate result of \`0\`, \`''\`, \`false\` or
+\`undefined\` then recomputes forever:
+
+\`\`\`js
+if (!cache.get(x)) cache.set(x, fn(x))   // wrong question
+if (!cache.has(x)) cache.set(x, fn(x))   // right one
+\`\`\`
+
+And the precondition behind all of it: the function has to be
+[referentially transparent](#referential-transparency). Memoize one that is not, and the cache
+does not speed it up, it makes it lie:
+
+\`\`\`js
+let counter = 0
+const nextId = (prefix) => \`\${prefix}-\${++counter}\`
+
+nextId('user')            // 'user-1'
+nextId('user')            // 'user-2'   as intended
+
+const cached = memoize(nextId)
+cached('user')            // 'user-1'
+cached('user')            // 'user-1'   the ids are no longer unique
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['cache-per-argument', 'falsy-results'],
       kind: 'code',
       role: 'implement',
       title: 'Cache by argument',
@@ -127,6 +194,7 @@ const memoize = (fn) => {
 
     {
       id: 'break',
+      covers: ['needs-purity'],
       kind: 'code',
       role: 'break',
       inverted: true,

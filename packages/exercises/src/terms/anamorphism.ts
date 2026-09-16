@@ -2,12 +2,73 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const anamorphism: ExerciseSet = {
   termId: 'anamorphism',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'build-from-a-seed',
+      statement:
+        "Can write an unfold whose step either produces the next value and seed, or signals the end.",
+    },
+    {
+      id: 'termination',
+      statement:
+        "Knows the step is what stops it, and can get an inclusive or exclusive boundary right.",
+    },
+    {
+      id: 'use-it',
+      statement:
+        "Can express a generator of a sequence as an unfold rather than a hand-written loop.",
+    },
+  ],
+  notes: `An anamorphism is an unfold: the opposite of a fold. A fold consumes a structure into a value;
+an unfold grows a structure out of one.
+
+\`\`\`js
+const unfold = (step, seed) => {
+  const out = []
+  let current = seed
+  let next = step(current)
+  while (next !== null) {      // null is how the step says stop
+    out.push(next[0])
+    current = next[1]
+    next = step(current)
+  }
+  return out
+}
+\`\`\`
+
+The step returns either \`[value, nextSeed]\` or \`null\`. That \`null\` is the entire
+termination condition, and forgetting to honour it is an infinite loop:
+
+\`\`\`js
+const range = (from, to) => unfold((n) => (n < to ? [n, n + 1] : null), from)
+const countDown = (n) => unfold((k) => (k > 0 ? [k, k - 1] : null), n)
+
+range(2, 6)     // [2, 3, 4, 5]   inclusive start, exclusive end
+countDown(5)    // [5, 4, 3, 2, 1]
+\`\`\`
+
+Boundaries are where these go wrong, and by one:
+
+\`\`\`js
+unfold((n) => (n <= to ? [n, n + 1] : null), from)   // range(2, 6) gives [2,3,4,5,6]
+unfold((k) => (k >= 0 ? [k, k - 1] : null), n)       // countDown(3) gives [3,2,1,0]
+\`\`\`
+
+Once you have it, sequences stop needing hand-written loops:
+
+\`\`\`js
+const digits = (n) =>
+  n === 0 ? [0] : unfold((k) => (k > 0 ? [k % 10, Math.floor(k / 10)] : null), n).reverse()
+
+digits(1204)   // [1, 2, 0, 4]
+digits(0)      // [0]   peeling from the right stops at once, so zero needs its own case
+\`\`\`
+
+Compose an unfold with a fold and you have a [hylomorphism](#hylomorphism).`,
   rungs: [
     {
       id: 'implement',
+      covers: ['build-from-a-seed', 'termination'],
       kind: 'code',
       role: 'implement',
       title: 'Build a structure from a seed',
@@ -150,6 +211,7 @@ const countDown = (n) => unfold((k) => (k >= 0 ? [k, k - 1] : null), n)
 
     {
       id: 'apply',
+      covers: ['use-it', 'termination'],
       kind: 'code',
       role: 'apply',
       title: 'Unfold the digits of a number',

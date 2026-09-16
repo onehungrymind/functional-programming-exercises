@@ -2,12 +2,69 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const sideEffects: ExerciseSet = {
   termId: 'side-effects',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'reads-count-too',
+      statement:
+        "Can spot an effect whether it writes or reads, and knows reading the clock is as much an effect as writing to disk.",
+    },
+    {
+      id: 'separate',
+      statement:
+        "Can split a function that computes and acts into one that computes and one that acts.",
+    },
+    {
+      id: 'push-to-edge',
+      statement:
+        "Knows effects are not eliminated but relocated, and can say where they should end up.",
+    },
+  ],
+  notes: `A side effect is any interaction with the world outside the function, in **either direction**.
+Writing is the obvious half; reading is the half people miss.
+
+\`\`\`js
+localStorage.setItem('k', v)   // writes
+const now = Date.now()         // reads, and gives a different answer every time
+cart.items.push(item)          // writes to something the caller still holds
+console.log(total)             // writes, even though it feels harmless
+\`\`\`
+
+The move is to separate the calculation from the action, so the interesting part can be tested
+without a fixture:
+
+\`\`\`js
+const report = (items) => {
+  const total = items.reduce((a, i) => a + i.price, 0)
+  console.log(\`Total: \${total}\`)      // computing and acting, tangled
+  return total
+}
+
+const summarize = (items) => \`Total: \${items.reduce((a, i) => a + i.price, 0)}\`
+const report = (items) => {
+  const line = summarize(items)
+  console.log(line)                   // the only line that touches the world
+  return line
+}
+\`\`\`
+
+You are not removing the effect. You are moving it, and it keeps moving up until it reaches
+somewhere you are content for it to live, usually one thin layer at the edge:
+
+\`\`\`js
+// deep in the code, reading the clock
+const isExpired = (token) => token.expiresAt < Date.now()
+
+// at the edge, once
+const now = Date.now()
+const expired = tokens.filter((t) => isExpired(t, now))
+\`\`\`
+
+The test for whether you have succeeded: can the calculation run in a test with no setup and no
+mocking?`,
   rungs: [
     {
       id: 'recognize',
+      covers: ['reads-count-too'],
       kind: 'choice',
       role: 'recognize',
       multi: true,
@@ -50,6 +107,7 @@ export const sideEffects: ExerciseSet = {
 
     {
       id: 'implement',
+      covers: ['separate', 'push-to-edge'],
       kind: 'code',
       role: 'implement',
       title: 'Push the effects to the edge',

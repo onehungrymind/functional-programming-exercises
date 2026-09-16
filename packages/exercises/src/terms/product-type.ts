@@ -2,12 +2,68 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const productType: ExerciseSet = {
   termId: 'product-type',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'all-at-once',
+      statement:
+        "Knows a product holds every field at once, and can count its inhabitants by multiplying.",
+    },
+    {
+      id: 'enumerate',
+      statement:
+        "Can produce every combination of a product's fields, and knows the count is the product of the field sizes.",
+    },
+    {
+      id: 'zero-field',
+      statement:
+        "Knows a field with no possible values makes the whole product impossible, and the empty product has exactly one value.",
+    },
+  ],
+  notes: `A product type holds all of its fields at once, and its size is the **product** of their sizes.
+
+\`\`\`js
+// { admin: Boolean, role: 'read' | 'write' | 'own' }
+2 * 3    // 6 possible values
+\`\`\`
+
+Enumerating them is the same arithmetic, done constructively. Extend one field at a time:
+
+\`\`\`js
+const inhabitants = (fields) =>
+  fields.reduce(
+    (acc, values) => acc.flatMap((combo) => values.map((v) => [...combo, v])),
+    [[]]                        // one empty combination to build on
+  )
+
+inhabitants([[true, false], ['read', 'write']])
+// [[true, 'read'], [true, 'write'], [false, 'read'], [false, 'write']]
+\`\`\`
+
+The seed is the interesting part. Starting from \`[]\` rather than \`[[]]\` gives you nothing at
+all, because there is no combination to extend:
+
+\`\`\`js
+fields.reduce(step, [])     // always []
+fields.reduce(step, [[]])   // the empty product, which has exactly one value
+\`\`\`
+
+And a field with no values wipes out the whole type, exactly as multiplying by zero does:
+
+\`\`\`js
+inhabitants([[1, 2], [], [3]])   // []
+\`\`\`
+
+Build a fresh combination each time rather than extending one in place, or every row ends up
+being the same array:
+
+\`\`\`js
+values.map((v) => { combo.push(v); return combo })   // every row is the same object
+values.map((v) => [...combo, v])                     // each row is its own
+\`\`\``,
   rungs: [
     {
       id: 'recognize',
+      covers: ['all-at-once'],
       kind: 'choice',
       role: 'recognize',
       multi: false,
@@ -23,6 +79,7 @@ export const productType: ExerciseSet = {
 
     {
       id: 'implement',
+      covers: ['enumerate', 'zero-field'],
       kind: 'code',
       role: 'implement',
       title: 'Build every inhabitant',

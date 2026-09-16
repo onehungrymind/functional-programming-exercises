@@ -3,12 +3,75 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const iso: ExerciseSet = {
   termId: 'iso',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'both-round-trips',
+      statement:
+        "Knows an isomorphism needs both round trips to hold, and can name a pair that satisfies only one.",
+    },
+    {
+      id: 'lossless',
+      statement:
+        "Can tell a lossless conversion from one that discards information, and knows rounding is never an isomorphism.",
+    },
+    {
+      id: 'float-tolerance',
+      statement:
+        "Knows a float round trip needs a tolerance, and that testing with whole numbers can let a lossy pair pass.",
+    },
+  ],
+  notes: `An isomorphism is a pair of conversions that lose nothing, in **both** directions.
+
+\`\`\`js
+const toPair = (coords) => [coords.x, coords.y]
+const toCoords = (pair) => ({ x: pair[0], y: pair[1] })
+
+toCoords(toPair({ x: 1, y: 2 }))   // { x: 1, y: 2 }
+toPair(toCoords([1, 2]))           // [1, 2]
+\`\`\`
+
+Both directions matter. One of them holding is not enough:
+
+\`\`\`js
+const to = (n) => String(n)
+const from = (s) => Number(s)
+
+from(to(7))       // 7. This direction is fine.
+to(from('007'))   // '7'. This one is not. Number and String are not isomorphic.
+\`\`\`
+
+Anything that discards information cannot be one, however innocent it looks:
+
+\`\`\`js
+const to = (n) => Math.round(n)
+const from = (n) => n
+from(to(1.5))     // 2. The fraction is gone and nothing can put it back.
+\`\`\`
+
+Floats need a tolerance, because the arithmetic does not round-trip exactly:
+
+\`\`\`js
+const toF = (c) => (c * 9) / 5 + 32
+const toC = (f) => ((f - 32) * 5) / 9
+
+toC(toF(0.1)) === 0.1              // false
+Math.abs(toC(toF(0.1)) - 0.1) < 1e-9   // true
+\`\`\`
+
+And test with fractions, not whole numbers. A rounded conversion round-trips whole degrees
+correctly often enough to look lossless:
+
+\`\`\`js
+const toF = (c) => Math.round((c * 9) / 5 + 32)
+const toC = (f) => Math.round(((f - 32) * 5) / 9)
+
+toC(toF(10))    // 10. Passes.
+toC(toF(0.5))   // 1.  Caught.
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['lossless', 'float-tolerance'],
       kind: 'code',
       role: 'implement',
       title: 'Two views of the same thing',
@@ -128,6 +191,7 @@ const toCoords = (pair) => ({ x: pair[0], y: pair[1] })
 
     {
       id: 'recognize',
+      covers: ['both-round-trips'],
       kind: 'choice',
       role: 'recognize',
       multi: true,

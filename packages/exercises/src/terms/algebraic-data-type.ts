@@ -2,12 +2,68 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const algebraicDataType: ExerciseSet = {
   termId: 'algebraic-data-type',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'sum-vs-product',
+      statement:
+        "Can classify a type as a sum or a product, and say which word in its description gave it away.",
+    },
+    {
+      id: 'counting',
+      statement:
+        "Can count the inhabitants of a composite type, multiplying for products and adding for sums.",
+    },
+    {
+      id: 'identities',
+      statement:
+        "Knows the empty product has one inhabitant and the empty sum has none, and can say why.",
+    },
+  ],
+  notes: `The names are arithmetic, and they mean it literally. A **product** holds several things at
+once; a **sum** is one of several possibilities.
+
+\`\`\`js
+// product: a width AND a height
+{ width: Number, height: Number }
+
+// sum: a Circle OR a Square
+Circle(Number) | Square(Number)
+\`\`\`
+
+The arithmetic is how many values the type can take:
+
+\`\`\`js
+// { admin: Boolean, active: Boolean, role: 'read' | 'write' | 'own' }
+2 * 2 * 3      // 12 possible values. Products multiply.
+
+// Boolean | 'read' | 'write' | 'own'
+2 + 3          // 5 possible values. Sums add.
+\`\`\`
+
+The identities follow from that, and they are the part that feels strange until you count:
+
+\`\`\`js
+// a record with no fields
+{}             // exactly 1 value: the empty record itself. Product identity.
+
+// a choice among no options
+never          // 0 values: you cannot make one. Sum identity.
+\`\`\`
+
+Which is why a field of an impossible type makes the whole record impossible:
+
+\`\`\`js
+5 * 0 * 3      // 0. If one field cannot be filled, no complete record exists.
+\`\`\`
+
+The practical value is that counting tells you how many cases a \`match\` has to handle, and
+turning a product into a sum is usually how you make illegal states unrepresentable. A record
+with \`loading\`, \`data\` and \`error\` fields has 8 combinations and only 3 are meaningful;
+a sum type has exactly 3.`,
   rungs: [
     {
       id: 'recognize',
+      covers: ['sum-vs-product'],
       kind: 'choice',
       role: 'recognize',
       multi: true,
@@ -45,6 +101,7 @@ export const algebraicDataType: ExerciseSet = {
 
     {
       id: 'implement',
+      covers: ['counting', 'identities'],
       kind: 'code',
       role: 'implement',
       title: 'Count the inhabitants',

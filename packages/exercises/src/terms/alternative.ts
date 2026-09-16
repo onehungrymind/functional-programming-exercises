@@ -3,12 +3,72 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const alternative: ExerciseSet = {
   termId: 'alternative',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'first-success',
+      statement:
+        "Can write an alt that keeps the first thing that has something, and a zero that steps aside.",
+    },
+    {
+      id: 'annihilation',
+      statement:
+        "Knows zero must be neutral on both sides, and that mapping over it does nothing.",
+    },
+    {
+      id: 'chain-fallbacks',
+      statement:
+        "Can try several sources in order and take the first that has the value, with present-but-falsy still counting as present.",
+    },
+  ],
+  notes: `\`alt\` picks the first of two that actually has something. \`zero\` is the one that never does.
+
+\`\`\`js
+const Just = (v) => ({ isNothing: false, v, alt: () => Just(v) })       // keeps itself
+const Nothing = () => ({ isNothing: true, alt: (other) => other })     // takes the offer
+
+Just(1).alt(Just(2))          // Just(1)
+Nothing().alt(Just(2))        // Just(2)
+Nothing().alt(Nothing())      // Nothing
+\`\`\`
+
+Chained, it reads as a list of fallbacks:
+
+\`\`\`js
+Nothing().alt(Nothing()).alt(Just('third')).alt(Just('fourth'))   // Just('third')
+\`\`\`
+
+\`zero\` has to step aside on **both** sides, and mapping over it has to do nothing, since there
+is nothing inside to map:
+
+\`\`\`js
+zero().alt(Just(1))    // Just(1)
+Just(1).alt(zero())    // Just(1)
+zero().map(f)          // zero()
+\`\`\`
+
+The practical use is trying sources in order of precedence:
+
+\`\`\`js
+const lookup = (key) => (source) => (key in source ? Just(source[key]) : Nothing())
+
+const firstAvailable = (key, sources) =>
+  sources.map(lookup(key)).reduce((acc, m) => acc.alt(m), Nothing())
+
+firstAvailable('port', [{}, { port: 8080 }, { port: 9090 }])   // Just(8080)
+\`\`\`
+
+Note that the lookup tests the **key**, not the value. Present-but-falsy is still present, and
+testing truthiness quietly skips a legitimate \`false\` or \`0\`:
+
+\`\`\`js
+firstAvailable('debug', [{ debug: false }, { debug: true }])   // Just(false), correctly
+\`\`\`
+
+This is the same shape as \`??\` in JavaScript, generalized to any container.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['first-success', 'annihilation'],
       kind: 'code',
       role: 'implement',
       title: 'Fall back to the other one',
@@ -123,6 +183,7 @@ Just.zero = () => Nothing()
 
     {
       id: 'apply',
+      covers: ['chain-fallbacks', 'first-success'],
       kind: 'code',
       role: 'apply',
       title: 'Try several sources in order',

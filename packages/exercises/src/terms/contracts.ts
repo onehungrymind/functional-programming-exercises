@@ -2,12 +2,76 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const contracts: ExerciseSet = {
   termId: 'contracts',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'both-sides',
+      statement:
+        "Can guard both what goes in and what comes out, and knows checking only the inputs leaves half the promise unkept.",
+    },
+    {
+      id: 'fail-at-the-boundary',
+      statement:
+        "Knows the value is in where it fails, so the inputs must be checked before the function runs.",
+    },
+    {
+      id: 'useful-message',
+      statement:
+        "Can throw a message that names which side and which position broke, so the caller does not have to guess.",
+    },
+  ],
+  notes: `A contract states what a function accepts and what it promises, and checks both at runtime.
+
+\`\`\`js
+const withContract = (inputChecks, outputCheck, fn) => (...args) => {
+  args.forEach((arg, i) => {
+    const check = inputChecks[i]
+    if (check && !check(arg)) {
+      throw new TypeError(\`Argument \${i} did not meet the contract: \${String(arg)}\`)
+    }
+  })
+  const result = fn(...args)
+  if (!outputCheck(result)) {
+    throw new TypeError(\`Result did not meet the contract: \${String(result)}\`)
+  }
+  return result
+}
+\`\`\`
+
+Both sides matter. Guarding only the inputs leaves the promise unkept:
+
+\`\`\`js
+const isPositive = (n) => typeof n === 'number' && n > 0
+const discount = withContract([isPositive], isPositive, (p) => p - 100)
+
+discount(50)   // TypeError: Result did not meet the contract: -50
+               // without the output check this returns -50 and ruins someone's invoice
+\`\`\`
+
+Order matters too. Check the inputs **before** calling, or the bad argument has already done
+its work by the time you complain:
+
+\`\`\`js
+const guarded = (...args) => {
+  const result = fn(...args)     // already wrote to the database
+  checkInputs(args)              // too late to be useful
+  return result
+}
+\`\`\`
+
+The value of a contract is **where** it fails, not that it fails. So name the side and the
+position:
+
+\`\`\`js
+throw new TypeError('invalid')             // the caller now goes hunting
+throw new TypeError(\`Argument 1 did not meet the contract: \${String(arg)}\`)
+\`\`\`
+
+It overlaps with a type system but does not replace one: a checker runs before the program, a
+contract runs on the real values, including the ones that arrived over the network.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['both-sides', 'fail-at-the-boundary', 'useful-message'],
       kind: 'code',
       role: 'implement',
       title: 'Wrap a function in a contract',
@@ -141,6 +205,7 @@ const withContract = (inputChecks, outputCheck, fn) => (...args) => {
 
     {
       id: 'recognize',
+      covers: ['fail-at-the-boundary'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

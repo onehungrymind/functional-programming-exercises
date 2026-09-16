@@ -2,12 +2,74 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const apomorphism: ExerciseSet = {
   termId: 'apomorphism',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'early-finish',
+      statement:
+        "Knows an apomorphism can stop generating and hand back the whole remainder in one step.",
+    },
+    {
+      id: 'three-outcomes',
+      statement:
+        "Can write a step that continues, finishes with a whole structure, or stops with nothing.",
+    },
+    {
+      id: 'use-it',
+      statement:
+        "Can express something that stops early and keeps the rest untouched, such as inserting into a sorted list.",
+    },
+  ],
+  notes: `An [anamorphism](#anamorphism) can produce one element at a time or stop. An apomorphism adds a
+third option: **stop, and here is the rest**.
+
+\`\`\`js
+// the step returns one of:
+//   { next: [value, seed] }   keep going
+//   { done: [...values] }     finish with these, all at once
+//   null                      stop with nothing more
+
+const apo = (step, seed) => {
+  const out = []
+  let current = seed
+  while (true) {
+    const result = step(current)
+    if (result === null) return out
+    if (result.done !== undefined) return out.concat(result.done)
+    out.push(result.next[0])
+    current = result.next[1]
+  }
+}
+\`\`\`
+
+That middle case is the whole point, and dropping it loses everything after the stopping point:
+
+\`\`\`js
+if (result.done !== undefined) return out      // the remainder is thrown away
+\`\`\`
+
+Inserting into a sorted list is the natural example. Once you find the place, the rest of the
+list is already correct and there is no reason to walk it:
+
+\`\`\`js
+const insert = (x, sorted) =>
+  apo((rest) => {
+    if (rest.length === 0) return { done: [x] }
+    if (x <= rest[0]) return { done: [x, ...rest] }   // place it, keep the rest as it is
+    return { next: [rest[0], rest.slice(1)] }
+  }, sorted)
+
+insert(3, [1, 2, 4, 5])   // [1, 2, 3, 4, 5]
+insert(0, [1, 2, 3])      // [0, 1, 2, 3]
+insert(9, [1, 2, 3])      // [1, 2, 3, 9]
+insert(1, [])             // [1]
+\`\`\`
+
+A hand-written loop reaches the same answer. What the shape gives you is the ability to say
+"and the remainder is this" as part of the unfold itself, rather than as an escape from it.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['early-finish', 'three-outcomes', 'use-it'],
       kind: 'code',
       role: 'implement',
       title: 'An unfold that can finish early',
@@ -185,6 +247,7 @@ const insert = (x, sorted) =>
 
     {
       id: 'recognize',
+      covers: ['early-finish'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

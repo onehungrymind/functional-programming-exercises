@@ -3,12 +3,71 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const naturalTransformation: ExerciseSet = {
   termId: 'natural-transformation',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'changes-the-container',
+      statement:
+        "Can convert one functor into another without touching the values inside.",
+    },
+    {
+      id: 'naturality',
+      statement:
+        "Can state the naturality law and say what it forbids: looking at the values on the way through.",
+    },
+    {
+      id: 'may-drop-elements',
+      statement:
+        "Knows it may change how many elements there are, as head does, and still be natural.",
+    },
+  ],
+  notes: `A natural transformation changes the **container** and leaves the **contents** alone.
+
+\`\`\`js
+// head :: Array a -> Maybe a
+const head = (xs) => (xs.length > 0 ? Just(xs[0]) : Nothing())
+
+head([1, 2, 3])   // Just(1)
+head([])          // Nothing
+\`\`\`
+
+The law says it cannot matter whether you map before or after:
+
+\`\`\`js
+nat(fa.map(f))        // has to equal
+nat(fa).map(f)
+
+head([1, 2].map((n) => n * 10))   // Just(10)
+head([1, 2]).map((n) => n * 10)   // Just(10)
+\`\`\`
+
+What that forbids is the transformation **looking at the values**. The moment it does, the two
+sides come apart:
+
+\`\`\`js
+const head = (xs) => (xs.length ? Just(xs[0] + 1) : Nothing())
+
+head([1, 2].map((n) => n * 10))   // Just(11)
+head([1, 2]).map((n) => n * 10)   // Just(20)
+\`\`\`
+
+So a natural transformation can only work on **shape**. Wrapping undefined instead of reporting
+emptiness breaks a different promise:
+
+\`\`\`js
+const head = (xs) => Just(xs[0])
+head([])   // Just(undefined), which claims there is a value
+\`\`\`
+
+It **may** change how many elements there are. \`head\` drops all but one and is perfectly
+natural; so are \`reverse\`, \`Array -> Set\`, and \`Maybe -> Array\`. Naturality constrains what
+it can know, not what it can keep.
+
+The practical read: a conversion between two containers should be writable without ever
+inspecting an element. If you find yourself needing to, you are writing something else.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['changes-the-container', 'naturality', 'may-drop-elements'],
       kind: 'code',
       role: 'implement',
       title: 'Change the container, not the contents',
@@ -99,6 +158,7 @@ const head = (xs) => (xs.length > 0 ? Just(xs[xs.length - 1]) : Nothing())
 
     {
       id: 'recognize',
+      covers: ['naturality'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

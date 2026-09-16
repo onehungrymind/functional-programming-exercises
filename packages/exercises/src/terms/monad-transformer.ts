@@ -2,12 +2,77 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const monadTransformer: ExerciseSet = {
   termId: 'monad-transformer',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'monads-do-not-compose',
+      statement:
+        "Knows two monads do not compose in general, so each one ships a transformer that knows how to sit on another.",
+    },
+    {
+      id: 'one-chain',
+      statement:
+        "Can chain through a stacked monad in one step rather than unwrapping each layer.",
+    },
+    {
+      id: 'unwrap-the-result',
+      statement:
+        "Knows chain must unwrap what the function returned, or the layers multiply.",
+    },
+  ],
+  notes: `Two functors always compose. Two monads do not, which is the whole reason transformers exist.
+A \`MaybeT\` knows how to sit on top of another monad and give you Maybe behaviour inside it.
+
+\`\`\`js
+const MaybeT = (inner) => ({
+  inner,
+  map: (f) =>
+    MaybeT(inner.map((m) => (m.isNothing ? Nothing() : Just(f(m.value))))),
+  chain: (f) =>
+    MaybeT(inner.chain((m) => (m.isNothing ? Id(Nothing()) : f(m.value).runMaybeT()))),
+  runMaybeT: () => inner
+})
+\`\`\`
+
+Without it you are chaining twice at every step, once for each layer:
+
+\`\`\`js
+outer.chain((maybe) =>
+  maybe.isNothing ? Id(Nothing()) : Id(Just(f(maybe.value)))
+)
+\`\`\`
+
+With it, one chain:
+
+\`\`\`js
+MaybeT(Id(Just(1)))
+  .chain((n) => MaybeT(Id(Just(n + 1))))
+  .chain((n) => MaybeT(Id(Just(n * 10))))
+  .runMaybeT()      // Id(Just(20))
+\`\`\`
+
+And a Nothing anywhere short-circuits the rest, through both layers:
+
+\`\`\`js
+MaybeT(Id(Just(2)))
+  .chain(() => MaybeT(Id(Nothing())))
+  .map((n) => n * 100)         // never runs
+  .runMaybeT()                 // Id(Nothing())
+\`\`\`
+
+The mistake that makes the whole thing collapse is forgetting to unwrap what \`f\` returned:
+
+\`\`\`js
+chain: (f) => MaybeT(inner.chain((m) => (m.isNothing ? Id(Nothing()) : f(m.value))))
+//                                                                     ^ a MaybeT, not its inner
+// you now hold a MaybeT of an Id of a MaybeT
+\`\`\`
+
+Stacks get unpleasant past two layers, which is why effect systems and
+[algebraic effects](#algebraic-effects) exist as alternatives.`,
   rungs: [
     {
       id: 'apply',
+      covers: ['one-chain', 'unwrap-the-result'],
       kind: 'code',
       role: 'apply',
       title: 'Stack Maybe on top of another monad',
@@ -148,6 +213,7 @@ const MaybeT = (inner) => ({
 
     {
       id: 'recognize',
+      covers: ['monads-do-not-compose'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

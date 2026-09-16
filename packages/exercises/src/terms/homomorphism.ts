@@ -2,12 +2,69 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const homomorphism: ExerciseSet = {
   termId: 'homomorphism',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'structure-preserving',
+      statement:
+        "Knows a homomorphism makes combining before the map equal combining after, and can state that as an equation.",
+    },
+    {
+      id: 'identify',
+      statement:
+        "Can tell whether a map between two combining operations preserves the structure, including cases where it does not.",
+    },
+    {
+      id: 'identity-maps-to-identity',
+      statement:
+        "Knows the identity of the source has to map to the identity of the target.",
+    },
+  ],
+  notes: `A homomorphism carries one structure into another so that **combining before the map equals
+combining after**. That single equation is the whole definition.
+
+\`\`\`js
+length(a.concat(b)) === length(a) + length(b)
+//     ^^^^^^^^^^^ combine then map      ^^^ map then combine
+\`\`\`
+
+So \`length\` is a homomorphism from lists-under-concatenation to numbers-under-addition:
+
+\`\`\`js
+length([1, 2].concat([3]))         // 3
+length([1, 2]) + length([3])       // 3
+\`\`\`
+
+The target operation has to be the right one. \`maximum\` does not preserve into addition, but
+it does into max:
+
+\`\`\`js
+maximum([1, 5].concat([3]))           // 5
+maximum([1, 5]) + maximum([3])        // 8    not a homomorphism into (Number, +)
+Math.max(maximum([1, 5]), maximum([3])) // 5  but it is into (Number, max)
+\`\`\`
+
+And anything that collapses duplicates breaks it, because the two sides stop counting the same
+things:
+
+\`\`\`js
+const unique = (xs) => new Set(xs).size
+unique([1].concat([1]))            // 1
+unique([1]) + unique([1])          // 2
+\`\`\`
+
+One consequence worth remembering: the identity has to map to the identity, which follows from
+the law and is a quick sanity check.
+
+\`\`\`js
+length([])   // 0, which is the identity for addition
+\`\`\`
+
+This is also the name of one of the applicative laws, \`A.of(f).ap(A.of(x))\` equals
+\`A.of(f(x))\`, which says \`of\` is structure-preserving in exactly this sense.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['structure-preserving', 'identity-maps-to-identity'],
       kind: 'code',
       role: 'implement',
       title: 'A map that preserves the structure',
@@ -106,6 +163,7 @@ const combineLengths = (a, b) => a + b
 
     {
       id: 'recognize',
+      covers: ['identify', 'structure-preserving'],
       kind: 'choice',
       role: 'recognize',
       multi: true,

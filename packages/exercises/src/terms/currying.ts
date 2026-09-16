@@ -2,12 +2,69 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const currying: ExerciseSet = {
   termId: 'currying',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'one-at-a-time',
+      statement:
+        "Can recognize a fully curried definition, and knows every step takes exactly one argument.",
+    },
+    {
+      id: 'write-it',
+      statement:
+        "Can curry a two-argument function by hand, and knows nothing should run until the last argument arrives.",
+    },
+    {
+      id: 'enables-point-free',
+      statement:
+        "Can say why currying makes point-free style possible, and can use it to drop a named argument.",
+    },
+  ],
+  notes: `A curried function takes its arguments **one at a time**, returning a new function at every
+step until the last.
+
+\`\`\`js
+const add = (a, b) => a + b          // not curried: arity 2
+const add = (a) => (b) => a + b      // curried: three unary steps in disguise
+
+add(2)      // a function
+add(2)(3)   // 5
+\`\`\`
+
+Partly curried is not curried. Every step has to take exactly one:
+
+\`\`\`js
+const sum3 = (a) => (b, c) => a + b + c     // step 2 takes two
+const clamp = (min) => (max) => (x) => Math.min(max, Math.max(min, x))   // curried
+\`\`\`
+
+Nothing should happen until the last argument lands. That is what makes an intermediate step
+worth keeping and reusing:
+
+\`\`\`js
+const curry2 = (f) => (a) => (b) => f(a, b)
+
+let calls = 0
+const spy = curry2((a, b) => { calls++; return a + b })
+const add10 = spy(10)
+calls        // 0, nothing has run
+add10(1)     // 11
+add10(5)     // 15
+\`\`\`
+
+The payoff is [point-free style](#point-free-style). Because every argument arrives on its own,
+the last one can simply be left off:
+
+\`\`\`js
+const map = (fn) => (list) => list.map(fn)
+const add = (a) => (b) => a + b
+
+const incrementAll = (numbers) => map(add(1))(numbers)   // names the list
+const incrementAll = map(add(1))                         // does not
+\`\`\``,
   rungs: [
     {
       id: 'recognize',
+      covers: ['one-at-a-time'],
       kind: 'choice',
       role: 'recognize',
       multi: true,
@@ -45,6 +102,7 @@ export const currying: ExerciseSet = {
 
     {
       id: 'implement',
+      covers: ['write-it', 'one-at-a-time'],
       kind: 'code',
       role: 'implement',
       title: 'Write curry2',
@@ -113,6 +171,7 @@ const curry2 = (f) => (a) => (b) => f(a, b)
 
     {
       id: 'apply',
+      covers: ['enables-point-free'],
       kind: 'code',
       role: 'apply',
       title: 'Go point-free',

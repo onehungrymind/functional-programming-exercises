@@ -2,12 +2,64 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const lift: ExerciseSet = {
   termId: 'lift',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'one-definition',
+      statement:
+        "Can write liftA2 once and have it work on any applicative, because it uses only map and ap.",
+    },
+    {
+      id: 'curry-first',
+      statement:
+        "Knows the function has to be curried before ap, since ap supplies one argument at a time.",
+    },
+    {
+      id: 'never-reach-inside',
+      statement:
+        "Knows lifting must not read a field like .value, and can say why that would restrict it to one shape.",
+    },
+  ],
+  notes: `Lifting takes a function that knows nothing about containers and makes it work on them.
+
+\`\`\`js
+const liftA2 = (f) => (ma) => (mb) => ma.map((a) => (b) => f(a, b)).ap(mb)
+
+liftA2((a, b) => a + b)(Box(2))(Box(3))     // Box(5)
+\`\`\`
+
+The currying is not optional. \`ap\` supplies **one** argument, so what \`map\` puts inside the
+container has to be a function waiting for the next one:
+
+\`\`\`js
+ma.map((a) => (b) => f(a, b)).ap(mb)   // Box holds a function of one argument. Works.
+ma.map(f).ap(mb)                        // Box holds a function of two. ap gives it one.
+\`\`\`
+
+What makes one definition serve every applicative is that it only ever uses \`map\` and
+\`ap\`. It never looks inside:
+
+\`\`\`js
+liftA2((a, b) => a + b)(Box(2))(Box(3))              // Box(5)
+liftA2((a, b) => a + b)(List([1, 2]))(List([10, 20])) // List([11, 21, 12, 22])
+liftA2((a, b) => a + b)(Just(2))(Nothing())           // Nothing
+\`\`\`
+
+Same code, three behaviours, because each container's \`ap\` decides what combining means. For
+a list it is every pairing; for Maybe it is short-circuiting.
+
+Reaching for a field would throw all of that away:
+
+\`\`\`js
+const liftA2 = (f) => (ma) => (mb) => Box(f(ma.value, mb.value))
+// works for Box, wrong for List, and actively broken for Maybe
+\`\`\`
+
+The general rule: a function written against an interface stays general; one written against a
+representation does not.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['one-definition', 'curry-first', 'never-reach-inside'],
       kind: 'code',
       role: 'implement',
       title: 'Lift an ordinary function into a container',
@@ -95,6 +147,7 @@ const liftA2 = (f) => (ma) => (mb) => ma.map((a) => (b) => f(a, b)).ap(mb)
 
     {
       id: 'recognize',
+      covers: ['never-reach-inside'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

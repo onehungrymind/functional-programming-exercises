@@ -2,12 +2,64 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const functionComposition: ExerciseSet = {
   termId: 'function-composition',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'both-directions',
+      statement:
+        "Can write variadic compose and pipe, and knows which way each one reads.",
+    },
+    {
+      id: 'laws',
+      statement:
+        "Knows composition is associative and that identity is neutral, and can say what those buy you.",
+    },
+    {
+      id: 'build-a-pipeline',
+      statement:
+        "Can express a multi-step transformation as one composed function, in the order the steps happen.",
+    },
+  ],
+  notes: `Composition threads a value through a list of functions. The only real decision is which way
+to read:
+
+\`\`\`js
+const compose = (...fns) => (x) => fns.reduceRight((acc, fn) => fn(acc), x)
+const pipe    = (...fns) => (x) => fns.reduce((acc, fn) => fn(acc), x)
+
+const inc = (n) => n + 1
+const dbl = (n) => n * 2
+
+compose(inc, dbl)(5)   // 11   dbl first, the way the maths reads
+pipe(inc, dbl)(5)      // 12   inc first, the way the steps happen
+\`\`\`
+
+They are the same function with the list reversed, so \`compose(a, b, c)\` and
+\`pipe(c, b, a)\` are interchangeable. Pick one per codebase and stop thinking about it.
+
+Composition is **associative**, which is why a pipeline of ten can be grouped into three named
+stages without changing anything:
+
+\`\`\`js
+compose(compose(f, g), h)   // the same function as
+compose(f, compose(g, h))
+\`\`\`
+
+And **identity is neutral**, which is why composing nothing has to be the identity rather than
+an error:
+
+\`\`\`js
+const id = (x) => x
+compose(id, f)(x)   // same as f(x)
+compose(f, id)(x)   // same as f(x)
+compose()(9)        // 9
+\`\`\`
+
+Those two laws are exactly what makes a [category](#category), which is the general version of
+this idea.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['both-directions', 'laws'],
       kind: 'code',
       role: 'implement',
       title: 'Write compose and pipe',
@@ -114,6 +166,7 @@ const pipe = (...fns) => (x) => fns.reduce((acc, fn) => fn(acc), x)
 
     {
       id: 'apply',
+      covers: ['build-a-pipeline'],
       kind: 'code',
       role: 'apply',
       title: 'Read a name out of a record',

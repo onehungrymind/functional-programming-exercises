@@ -2,12 +2,69 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const constantMonad: ExerciseSet = {
   termId: 'constant-monad',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'chain-keeps',
+      statement:
+        "Can write a chain that discards its function and keeps the carried value, matching the reference behaviour.",
+    },
+    {
+      id: 'two-laws-hold',
+      statement:
+        "Knows right identity and associativity hold, and can check them.",
+    },
+    {
+      id: 'left-identity-fails',
+      statement:
+        "Can show that left identity cannot hold for it, and say why no definition of of would fix it.",
+    },
+  ],
+  notes: `\`Const\` with a \`chain\` that behaves like its \`map\`: drop the function, keep the value.
+
+\`\`\`js
+const Const = (value) => ({
+  value,
+  map: (f) => Const(value),
+  chain: (f) => Const(value)
+})
+
+Const(1).chain((n) => Const(n + 1))   // Const(1)
+\`\`\`
+
+Two of the three monad laws hold:
+
+\`\`\`js
+// right identity: m.chain(of) equals m
+Const('kept').chain(Const)            // Const('kept')
+
+// associativity: the grouping does not matter
+Const('a').chain(f).chain(g)                  // Const('a')
+Const('a').chain((x) => f(x).chain(g))        // Const('a')
+\`\`\`
+
+**Left identity cannot.** The law says \`of(a).chain(f)\` equals \`f(a)\`. Since \`chain\`
+discards \`f\`, the left side carries whatever \`of\` produced and the right side carries
+whatever \`f\` chose, and those are different things:
+
+\`\`\`js
+const of = (x) => Const('')
+const f = (x) => Const('something')
+
+of(1).chain(f)   // Const('')
+f(1)             // Const('something')
+\`\`\`
+
+No definition of \`of\` repairs it, because the two sides depend on different values. You could
+make \`of\` return \`Const('something')\` and then pick a different \`f\`.
+
+So the name is a name rather than a claim. \`Const\` is a lawful [functor](#functor) for any
+carried type, and an Applicative when that type is a [monoid](#monoid), and not a lawful monad
+at all. That is recorded in this repo's \`docs/upstream-notes.md\` as a suggested correction to
+the reference.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['chain-keeps', 'two-laws-hold'],
       kind: 'code',
       role: 'implement',
       title: 'A chain that keeps the contents',
@@ -99,6 +156,7 @@ const Const = (value) => ({
 
     {
       id: 'break',
+      covers: ['left-identity-fails'],
       kind: 'code',
       role: 'break',
       inverted: true,

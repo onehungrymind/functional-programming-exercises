@@ -2,12 +2,75 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const paramorphism: ExerciseSet = {
   termId: 'paramorphism',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'sees-the-remainder',
+      statement:
+        "Knows a paramorphism gives the step the unconsumed remainder as well as the accumulator and the element.",
+    },
+    {
+      id: 'excludes-current',
+      statement:
+        "Knows the remainder is what comes after the current element, not including it.",
+    },
+    {
+      id: 'use-it',
+      statement:
+        "Can express something that needs the remainder, such as the suffixes of a list, which an ordinary fold cannot.",
+    },
+  ],
+  notes: `A [catamorphism](#catamorphism) gives its step the accumulator and one element. A paramorphism
+also gives it **what is left**.
+
+\`\`\`js
+const para = (step) => (seed) => (xs) => {
+  let acc = seed
+  for (let i = 0; i < xs.length; i++) {
+    acc = step(acc, xs[i], xs.slice(i + 1))
+    //                     ^^^^^^^^^^^^^^^ the remainder
+  }
+  return acc
+}
+\`\`\`
+
+The remainder is what comes **after** the current element. Including it is the off-by-one to
+watch for:
+
+\`\`\`js
+xs.slice(i + 1)   // [1,2,3] at i=0 gives [2,3]
+xs.slice(i)       // gives [1,2,3], which includes the element you are on
+\`\`\`
+
+With it, \`suffixes\` falls out in a line. Without it there is nothing to return, because a
+plain fold has already consumed the tail:
+
+\`\`\`js
+const suffixes = para((acc, head, tail) => [...acc, tail])([])
+
+suffixes([1, 2, 3])   // [[2, 3], [3], []]
+suffixes([])          // []
+\`\`\`
+
+Each suffix has to be its own array, or every row ends up pointing at the same list:
+
+\`\`\`js
+step(acc, xs[i], xs)   // the same array handed out every time
+\`\`\`
+
+It is still a fold, so everything an ordinary one does still works. The extra argument is simply
+ignored when you do not need it:
+
+\`\`\`js
+const sum = para((acc, x) => acc + x)(0)
+sum([1, 2, 3])   // 6
+\`\`\`
+
+What it gives you is the **unconsumed input**, not the result of folding it. Having that would
+be circular.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['sees-the-remainder', 'excludes-current', 'use-it'],
       kind: 'code',
       role: 'implement',
       title: 'A fold that can see what is left',
@@ -127,6 +190,7 @@ const suffixes = para((acc, head, tail) => [...acc, tail])([])
 
     {
       id: 'recognize',
+      covers: ['sees-the-remainder'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

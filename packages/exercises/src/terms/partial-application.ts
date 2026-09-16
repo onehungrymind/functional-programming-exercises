@@ -2,12 +2,68 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const partialApplication: ExerciseSet = {
   termId: 'partial-application',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'fix-some-now',
+      statement:
+        "Can fix some arguments now and leave the rest for later, and knows the fixed ones stay on the left.",
+    },
+    {
+      id: 'vs-currying',
+      statement:
+        "Can say how partial application differs from currying: it takes as many arguments as you give it, in one go.",
+    },
+    {
+      id: 'reuse',
+      statement:
+        "Can build a reusable specialized function from a general one without naming the remaining argument.",
+    },
+  ],
+  notes: `Partial application fixes some of a function's arguments and hands back a function waiting
+for the rest.
+
+\`\`\`js
+const partial = (fn, ...fixed) => (...rest) => fn(...fixed, ...rest)
+
+const add = (a, b) => a + b
+const add10 = partial(add, 10)
+add10(5)    // 15
+add10(1)    // 11   reusable
+\`\`\`
+
+The fixed arguments stay on the **left**, which matters the moment the function is not
+commutative:
+
+\`\`\`js
+const sub = (a, b) => a - b
+partial(sub, 10)(3)   // 7,  10 - 3
+
+// getting the order wrong is silent until it is not
+const partial = (fn, ...fixed) => (...rest) => fn(...rest, ...fixed)
+partial(sub, 10)(3)   // -7, 3 - 10
+\`\`\`
+
+This is the difference from [currying](#currying). A curried function takes exactly one
+argument at a time; partial application takes however many you hand it, all at once:
+
+\`\`\`js
+const vol = (l, w, h) => l * w * h
+
+partial(vol, 2, 3)(4)     // 24   two fixed in one call
+curry(vol)(2)(3)(4)       // 24   one at a time, always
+\`\`\`
+
+Nothing runs until the rest arrive, which is what makes the returned function worth keeping:
+
+\`\`\`js
+const log = (level, message) => console.log(\`[\${level}] \${message}\`)
+const warn = partial(log, 'WARN')   // nothing printed yet
+warn('disk filling up')             // [WARN] disk filling up
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['fix-some-now', 'vs-currying'],
       kind: 'code',
       role: 'implement',
       title: 'Write partial',
@@ -88,6 +144,7 @@ const partial = (fn, ...fixed) => (...rest) => fn(...fixed, ...rest)
 
     {
       id: 'apply',
+      covers: ['reuse', 'fix-some-now'],
       kind: 'code',
       role: 'apply',
       title: 'Build fivePlus',

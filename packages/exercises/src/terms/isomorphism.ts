@@ -3,12 +3,66 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const isomorphism: ExerciseSet = {
   termId: 'isomorphism',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'pair-of-arrows',
+      statement:
+        "Can write a pair of morphisms that undo each other in both directions.",
+    },
+    {
+      id: 'both-ways',
+      statement:
+        "Knows one round trip holding is not enough, and can name a pair that satisfies only one.",
+    },
+    {
+      id: 'same-information',
+      statement:
+        "Knows two isomorphic types carry the same information, so a function on one transfers to the other.",
+    },
+  ],
+  notes: `An isomorphism is a pair of arrows whose compositions are the identity, in **both** directions.
+
+\`\`\`js
+const toCoords = (pair) => ({ x: pair[0], y: pair[1] })
+const toPair = (coords) => [coords.x, coords.y]
+
+toPair(toCoords([1, 2]))             // [1, 2]
+toCoords(toPair({ x: 1, y: 2 }))     // { x: 1, y: 2 }
+\`\`\`
+
+One direction is not enough, and it is easy to be fooled by the one that works:
+
+\`\`\`js
+const to = String
+const from = Number
+
+from(to(7))       // 7    holds
+to(from('007'))   // '7'  does not
+\`\`\`
+
+The two directions also have to agree about details like order, which is silent when both
+slots hold the same type:
+
+\`\`\`js
+const toPair = (c) => [c.x, c.y]
+const toCoords = (p) => ({ x: p[1], y: p[0] })   // swapped
+toCoords(toPair({ x: 1, y: 2 }))                  // { x: 2, y: 1 }
+\`\`\`
+
+What it means in practice is that the two types carry the **same information**, so anything you
+can do with one you can do with the other by converting, working, and converting back:
+
+\`\`\`js
+const scale = (n) => (coords) => ({ x: coords.x * n, y: coords.y * n })
+const scalePair = (n) => (pair) => toPair(scale(n)(toCoords(pair)))
+\`\`\`
+
+That is why isomorphic is a stronger claim than convertible. \`Number -> String\` converts;
+it does not preserve.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['pair-of-arrows', 'same-information'],
       kind: 'code',
       role: 'implement',
       title: 'A pair of morphisms that undo each other',
@@ -73,6 +127,7 @@ const coordsToPair = (coords) => [coords.x, coords.y]
 
     {
       id: 'recognize',
+      covers: ['both-ways'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

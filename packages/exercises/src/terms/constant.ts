@@ -2,12 +2,70 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const constant: ExerciseSet = {
   termId: 'constant',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'binding-not-value',
+      statement:
+        "Knows `const` stops the binding being reassigned and says nothing about the value it points at.",
+    },
+    {
+      id: 'freeze-is-shallow',
+      statement:
+        "Knows `Object.freeze` protects one level only, and can say what is still writable underneath.",
+    },
+    {
+      id: 'deep-freeze',
+      statement:
+        "Can freeze a whole structure, including arrays and cycles, and return it for use inline.",
+    },
+  ],
+  notes: `\`const\` is about the **binding**, not the value. It stops you pointing the name somewhere
+else; it says nothing about what you point at.
+
+\`\`\`js
+const xs = [1, 2]
+xs.push(3)      // fine. xs still points at the same array.
+xs = [3]        // TypeError: Assignment to constant variable.
+\`\`\`
+
+\`Object.freeze\` protects the value, but only one level down:
+
+\`\`\`js
+const config = Object.freeze({ db: { host: 'localhost' } })
+config.db = {}            // ignored, or throws in strict mode
+config.db.host = 'evil'   // allowed. freeze did not reach here.
+config.db.host            // 'evil'
+\`\`\`
+
+Worse, outside strict mode the failed write is **silent**, which is a good reason to be in
+strict mode:
+
+\`\`\`js
+const o = Object.freeze({ a: 1 })
+o.a = 2      // sloppy mode: does nothing at all, no error
+o.a          // 1
+\`\`\`
+
+Going all the way down means recursing, and skipping anything already frozen, which also stops
+a self-referencing object sending you round forever:
+
+\`\`\`js
+const deepFreeze = (o) => {
+  if (o && typeof o === 'object' && !Object.isFrozen(o)) {
+    Object.freeze(o)
+    for (const key of Object.keys(o)) deepFreeze(o[key])
+  }
+  return o                    // return it, so it can be used inline
+}
+
+const a = { name: 'a' }
+a.self = a
+deepFreeze(a)                 // terminates, because a is frozen before the recursion
+\`\`\``,
   rungs: [
     {
       id: 'recognize',
+      covers: ['binding-not-value', 'freeze-is-shallow'],
       kind: 'choice',
       role: 'recognize',
       multi: true,
@@ -40,6 +98,7 @@ export const constant: ExerciseSet = {
 
     {
       id: 'implement',
+      covers: ['deep-freeze', 'freeze-is-shallow'],
       kind: 'code',
       role: 'implement',
       title: 'Freeze all the way down',

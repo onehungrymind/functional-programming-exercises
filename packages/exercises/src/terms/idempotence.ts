@@ -3,12 +3,72 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const idempotence: ExerciseSet = {
   termId: 'idempotence',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'the-law',
+      statement:
+        "Can state the law, f(f(x)) equals f(x), and classify a function against it.",
+    },
+    {
+      id: 'not-repetition',
+      statement:
+        "Knows idempotent means applying it again changes nothing, not that it can be called safely twice.",
+    },
+    {
+      id: 'make-it-so',
+      statement:
+        "Can make a normalizer idempotent, doing all of the work in the first pass rather than some of it each time.",
+    },
+  ],
+  notes: `Idempotent means applying it again changes nothing: \`f(f(x))\` equals \`f(x)\`.
+
+\`\`\`js
+Math.abs(Math.abs(-5))    // 5, the same as Math.abs(-5)
+'  hi  '.trim().trim()    // 'hi', the same as one trim
+[3, 1].sort().sort()      // [1, 3], the same as one sort
+
+;((n) => n + 1)(((n) => n + 1)(0))   // 2, and one application gives 1. Not idempotent.
+\`\`\`
+
+The usual confusion is with "safe to call twice". A DELETE request is often called idempotent
+because the second one does no further harm, but that is about **effects**, not about a value
+settling. Here the law is about the value:
+
+\`\`\`js
+const push = (xs) => [...xs, 0]
+push(push([]))    // [0, 0]
+push([])          // [0]      different, so not idempotent
+\`\`\`
+
+When you write a normalizer, the trap is doing **some** of the work per pass rather than all of
+it in the first:
+
+\`\`\`js
+// strips one +tag per call, so two tags need two passes
+const normalize = (email) => {
+  const [local, domain] = email.split('@')
+  const parts = local.split('+')
+  return \`\${parts.slice(0, -1).join('+') || parts[0]}@\${domain}\`
+}
+normalize('ada+a+b@x.com')              // 'ada+a@x.com'
+normalize(normalize('ada+a+b@x.com'))   // 'ada@x.com'   not settled after one
+
+// everything from the first plus goes, in one pass
+const normalize = (email) => {
+  const [local, domain] = email.trim().toLowerCase().split('@')
+  return \`\${local.split('+')[0]}@\${domain}\`
+}
+\`\`\`
+
+And anything that appends a marker is never idempotent, however innocent it looks:
+
+\`\`\`js
+const normalize = (s) => s.trim() + ' [normalized]'   // grows on every pass
+\`\`\``,
   rungs: [
     {
       id: 'recognize',
+      covers: ['the-law', 'not-repetition'],
       kind: 'choice',
       role: 'recognize',
       multi: true,
@@ -41,6 +101,7 @@ export const idempotence: ExerciseSet = {
 
     {
       id: 'implement',
+      covers: ['make-it-so', 'the-law'],
       kind: 'code',
       role: 'implement',
       title: 'Make normalizeEmail idempotent',

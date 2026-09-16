@@ -3,12 +3,71 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const comonad: ExerciseSet = {
   termId: 'comonad',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'arrows-reversed',
+      statement:
+        "Knows a comonad is a monad with the arrows reversed: extract takes a value out where of puts one in.",
+    },
+    {
+      id: 'extend-sees-context',
+      statement:
+        "Can write extend, and knows the function it takes receives the whole container rather than the value inside.",
+    },
+    {
+      id: 'laws',
+      statement:
+        "Can check the two identity laws and associativity for a comonad instance.",
+    },
+  ],
+  notes: `A comonad is a monad with every arrow turned round. Put the signatures side by side:
+
+\`\`\`js
+// Monad                          Comonad
+// of      :: a -> m a            extract :: w a -> a
+// chain   :: (a -> m b)          extend  :: (w a -> b)
+//            -> m a -> m b                  -> w a -> w b
+\`\`\`
+
+\`of\` puts a value in; \`extract\` takes one out. \`chain\` takes a function that **produces**
+a container; \`extend\` takes one that **consumes** a container.
+
+\`\`\`js
+const CoIdentity = (value) => ({
+  value,
+  map: (f) => CoIdentity(f(value)),
+  extract: () => value,
+  extend: (f) => CoIdentity(f(CoIdentity(value)))
+})
+\`\`\`
+
+The part that catches people is that \`extend\` hands the function the **whole container**, not
+the value:
+
+\`\`\`js
+CoIdentity(3).extend((w) => w.extract() + 1)   // CoIdentity(4)
+//                    ^ w is a CoIdentity, not 3
+
+extend: (f) => CoIdentity(f(value))            // wrong: f gets the bare value
+\`\`\`
+
+That is the whole point of the shape: \`f\` can look at the **context**, not just the value. For
+CoIdentity there is no context to look at, which is why the interesting comonads are things like
+a zipper over a list, where \`extract\` is the element under the cursor and \`extend\` runs a
+function at every position with its neighbours available. A blur filter is an extend over an
+image.
+
+The laws mirror the monad laws exactly:
+
+\`\`\`js
+w.extend((w) => w.extract())          // equals w
+w.extend(f).extract()                 // equals f(w)
+w.extend(f).extend(g)                 // equals w.extend((w) => g(w.extend(f)))
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['extend-sees-context', 'laws'],
       kind: 'code',
       role: 'implement',
       title: 'extract and extend',
@@ -102,6 +161,7 @@ const CoIdentity = (value) => ({
 
     {
       id: 'recognize',
+      covers: ['arrows-reversed'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

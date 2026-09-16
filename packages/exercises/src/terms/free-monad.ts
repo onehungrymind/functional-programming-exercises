@@ -2,12 +2,76 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const freeMonad: ExerciseSet = {
   termId: 'free-monad',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'program-as-data',
+      statement:
+        "Knows a free monad turns a program into data, so nothing happens until an interpreter runs it.",
+    },
+    {
+      id: 'instruction-carries',
+      statement:
+        "Can add an instruction that carries what an interpreter needs to act on it.",
+    },
+    {
+      id: 'many-interpreters',
+      statement:
+        "Can run one program under two interpreters and get different behaviour with no change to the program.",
+    },
+  ],
+  notes: `A free monad turns a program into **data**. The instructions describe what should happen;
+nothing happens until an interpreter walks them.
+
+\`\`\`js
+const Write = (text) => ({ type: 'write', text })
+const Read  = (key)  => ({ type: 'read', key })
+
+const program = [Write('start'), Read('name'), Write('done')]
+// a plain array. Nothing has been written or read.
+\`\`\`
+
+Each instruction has to carry enough for an interpreter to act:
+
+\`\`\`js
+const Read = () => ({ type: 'read' })          // read what?
+const Read = (key) => ({ type: 'read', key })
+\`\`\`
+
+The interpreter is a lookup from tag to behaviour:
+
+\`\`\`js
+const interpret = (program, handlers) =>
+  program.map((instruction) => handlers[instruction.type](instruction))
+\`\`\`
+
+And the payoff is two interpreters over one program:
+
+\`\`\`js
+interpret(program, {
+  write: (i) => i.text,
+  read: (i) => String(store[i.key])
+})   // ['start', 'ada', 'done']
+
+interpret(program, {
+  write: (i) => \`WROTE: \${i.text}\`,
+  read: () => 'stub'
+})   // ['WROTE: start', 'stub', 'WROTE: done']
+\`\`\`
+
+No mocking, no dependency injection, no test doubles: the test interpreter is just another
+function. You can also write one that logs the program without running it, or one that counts
+how many reads it would do.
+
+The cost is real. Every instruction is an allocation, the interpreter is an indirection, and
+you have built a small language that someone now has to learn. It earns its place when the same
+program genuinely needs more than one interpretation.
+
+The name comes from getting a monad "for free" from any functor, which is the formal version of
+this trick.`,
   rungs: [
     {
       id: 'apply',
+      covers: ['instruction-carries', 'many-interpreters'],
       kind: 'code',
       role: 'apply',
       title: 'Add an instruction to the program',
@@ -152,6 +216,7 @@ const runTest = (program) => program.filter((i) => i.type === 'write').map((i) =
 
     {
       id: 'recognize',
+      covers: ['program-as-data'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

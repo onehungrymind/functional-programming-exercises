@@ -3,12 +3,77 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const monad: ExerciseSet = {
   termId: 'monad',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'chain-does-not-rewrap',
+      statement:
+        "Knows chain is for a function that already returns a container, so the result is not wrapped twice.",
+    },
+    {
+      id: 'short-circuits',
+      statement:
+        "Can build a chain where a failure partway through skips the rest.",
+    },
+    {
+      id: 'flatten-one-level',
+      statement:
+        "Knows chain removes exactly one layer, and can show it on a container of containers.",
+    },
+    {
+      id: 'three-laws',
+      statement:
+        "Can state the two identity laws and associativity, and check an instance against them.",
+    },
+  ],
+  notes: `A monad is a pointed functor with \`chain\`. The difference from \`map\` is one thing: the
+function you give it **already returns a container**, so chain must not wrap again.
+
+\`\`\`js
+const Just = (value) => ({
+  isNothing: false, value,
+  map: (f) => Just(f(value)),      // f returns a plain value
+  chain: (f) => f(value)            // f returns a Maybe. Hand it straight back.
+})
+
+Just(2).map((n) => Just(n * 10))    // Just(Just(20))   nested
+Just(2).chain((n) => Just(n * 10))  // Just(20)
+\`\`\`
+
+It flattens **exactly one** level, which matters when the values are themselves containers:
+
+\`\`\`js
+const chain = (f, xs) => xs.reduce((acc, x) => acc.concat(f(x)), [])
+
+chain((n) => [n, n * 10], [1, 2])   // [1, 10, 2, 20]
+chain((n) => [[n]], [1, 2])         // [[1], [2]]   one layer off, not all of them
+[[1], [2]].flat(Infinity)           // [1, 2]       which is a different operation
+\`\`\`
+
+The reason to want it is short-circuiting. A step that fails ends the chain, and nothing after
+it runs:
+
+\`\`\`js
+Just(1)
+  .chain(() => Nothing())
+  .chain((n) => Just(n * 100))   // never called
+// Nothing
+\`\`\`
+
+Three laws. The identities say \`of\` is neutral on both sides, and associativity says nesting
+the chains does not matter:
+
+\`\`\`js
+M.of(a).chain(f)                        // equals f(a)
+m.chain(M.of)                           // equals m
+m.chain(f).chain(g)                     // equals m.chain((x) => f(x).chain(g))
+\`\`\`
+
+That last one is what lets you extract a middle section of a pipeline into its own named
+function without changing the result.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['chain-does-not-rewrap', 'short-circuits', 'three-laws'],
       kind: 'code',
       role: 'implement',
       title: 'chain for Maybe',
@@ -116,6 +181,7 @@ Just.of = Just
 
     {
       id: 'apply',
+      covers: ['flatten-one-level', 'chain-does-not-rewrap'],
       kind: 'code',
       role: 'apply',
       title: 'chain for Array',

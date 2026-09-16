@@ -2,12 +2,78 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const io: ExerciseSet = {
   termId: 'io',
-  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
-  // rungs mapped onto it.
-  rubricTodo: true,
+  rubric: [
+    {
+      id: 'description-not-action',
+      statement:
+        "Knows an IO is a description of an effect, and that building or mapping one performs nothing.",
+    },
+    {
+      id: 'map-and-chain',
+      statement:
+        "Can give IO a map and a chain, and knows chain must run the inner IO rather than wrapping it again.",
+    },
+    {
+      id: 'reusable',
+      statement:
+        "Knows running the same IO twice performs the effect twice, and can say why that is the point.",
+    },
+  ],
+  notes: `IO wraps an effect as a **value**. The effect is a function sitting inside, waiting, and
+nothing happens until you ask.
+
+\`\`\`js
+const IO = (effect) => ({
+  run: effect,
+  map: (f) => IO(() => f(effect())),
+  chain: (f) => IO(() => f(effect()).run())
+})
+
+const readName = IO(() => window.localStorage.getItem('name'))
+// nothing has been read yet
+readName.run()   // now it has
+\`\`\`
+
+Building and mapping must perform nothing. Assembling a whole program is still just assembling:
+
+\`\`\`js
+let reads = 0
+const program = IO(() => { reads++; return 'ada' })
+  .map((n) => n.toUpperCase())
+  .map((n) => \`Hello, \${n}\`)
+
+reads              // 0, the program is only described
+program.run()      // 'Hello, ADA'
+reads              // 1
+\`\`\`
+
+The common mistake is performing the effect while building:
+
+\`\`\`js
+map: (f) => {
+  const value = effect()      // ran at build time
+  return IO(() => f(value))
+}
+\`\`\`
+
+And \`chain\` has to **run** the inner IO, or you end up holding an IO of an IO:
+
+\`\`\`js
+chain: (f) => IO(() => f(effect()))          // gives IO(IO(6))
+chain: (f) => IO(() => f(effect()).run())    // gives IO(6)
+\`\`\`
+
+Because it is a description rather than a result, running it twice performs it twice. That is
+the feature: the value is reusable, and the caller decides when and how often.
+
+\`\`\`js
+program.run()   // reads storage
+program.run()   // reads it again, freshly
+\`\`\``,
   rungs: [
     {
       id: 'implement',
+      covers: ['description-not-action', 'map-and-chain', 'reusable'],
       kind: 'code',
       role: 'implement',
       title: 'An IO that does nothing until you run it',
@@ -139,6 +205,7 @@ const IO = (effect) => ({
 
     {
       id: 'apply',
+      covers: ['description-not-action'],
       kind: 'code',
       role: 'apply',
       title: 'Describe a program without running it',
