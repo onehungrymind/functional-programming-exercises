@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FP Jargon · Practice mode POC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eaeae8; --grid:rgba(0,0,0,.045); --panel:#f4f4f2; --card:#ebebe8; --card2:#e3e3df;
+  --line:#d4d4cf; --line2:#bdbdb6; --text:#1e1e1c; --muted:#6b6b66; --faint:#9a9a93;
+  --accent:#3b82f6; --ok:#10a36f; --okbg:rgba(16,163,111,.1); --no:#d33b3b; --nobg:rgba(211,59,59,.08);
+  --tok-kw:#d23f5c; --tok-fn:#2f6fd6; --tok-str:#1f8a5b; --tok-num:#c2621c; --tok-com:#8f8f88; --tok-punc:#5b5b57;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+:root[data-theme="dark"]{
+  --bg:#121212; --grid:rgba(255,255,255,.04); --panel:#181818; --card:#1f1f1f; --card2:#262626;
+  --line:#2e2e2e; --line2:#404040; --text:#e6e6e3; --muted:#9a9a95; --faint:#6a6a66;
+  --okbg:rgba(16,163,111,.16); --nobg:rgba(211,59,59,.14);
+  --tok-kw:#ff7b93; --tok-fn:#7aa9ff; --tok-str:#6fd3a0; --tok-num:#f0a06a; --tok-com:#6f6f6a; --tok-punc:#a8a8a3;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;font-size:12px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 10px;cursor:pointer}
+button:hover{border-color:var(--line2)}
+button:focus-visible,.node:focus-visible,.opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+button.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+button.ghost:hover{color:var(--text);border-color:var(--line)}
+.app{display:flex;height:100vh;overflow:hidden}
+.stage{position:relative;flex:1;min-width:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:28px 28px}
+.brand{position:absolute;top:18px;left:20px;display:flex;gap:12px;align-items:center;z-index:2}
+.logo{width:34px;height:34px;border:1px solid var(--line2);display:grid;place-items:center;background:var(--panel);font-weight:700}
+.brand h1{margin:0;font-size:15px;font-weight:500;display:flex;gap:8px;align-items:center}
+.badge{font-size:10px;border:1px solid var(--line2);padding:1px 6px;color:var(--muted);font-weight:400;letter-spacing:.06em}
+.brand p{margin:0;font-size:11px;color:var(--muted)}
+.stage-foot{position:absolute;left:20px;bottom:18px;display:flex;gap:8px;z-index:2;align-items:center}
+.legend{font-size:11px;color:var(--muted);border:1px solid var(--line);background:var(--panel);padding:5px 10px;display:flex;gap:14px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:2px solid var(--muted)}
+.legend i.done{border-color:var(--ok);background:var(--ok)}
+svg.graph{width:100%;height:100%;display:block}
+.node{cursor:pointer}
+.node text{font-family:var(--mono);font-size:10px;fill:var(--muted)}
+.node .dot{fill:var(--panel);stroke-width:1.2}
+.node.dim{opacity:.28}
+.node.sel .dot{stroke-width:2.4}
+.node.sel text{fill:var(--text);font-weight:500}
+.edge{stroke:var(--line2);stroke-width:1}
+.edge.ref{stroke-dasharray:3 3}
+.edge.hot{stroke:var(--accent);stroke-width:1.6}
+.edge.dim{opacity:.25}
+.halo-label{font-family:var(--mono);font-size:9px;fill:var(--muted);letter-spacing:.08em}
+.drawer{flex:0 0 min(600px,52vw);width:min(600px,52vw);min-width:0;border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
+.dhead{padding:16px 22px 0;border-bottom:1px solid var(--line)}
+.drow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chip{font-size:11px;padding:2px 8px;border:1px solid;display:inline-flex;gap:6px;align-items:center}
+.chip b{width:7px;height:7px;display:inline-block}
+.anchor{font-size:11px;color:var(--faint);margin-left:8px}
+.dhead h2{font-size:22px;font-weight:500;margin:10px 0 12px;letter-spacing:-.01em}
+.tabs{display:flex;gap:0;margin-top:4px}
+.tab{background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;padding:8px 14px;color:var(--muted)}
+.tab[aria-selected="true"]{color:var(--text);border-bottom-color:var(--text)}
+.tab .count{color:var(--faint);margin-left:6px}
+.dbody{flex:1;overflow:auto;padding:18px 22px 28px}
+.sect{font-size:10px;letter-spacing:.12em;color:var(--muted);margin:0 0 8px;display:flex;justify-content:space-between}
+.defbox{background:var(--card);border:1px solid var(--line);padding:14px 16px;margin-bottom:22px}
+.prose{margin:0 0 14px}
+.code{background:var(--card);border:1px solid var(--line);margin:0 0 18px;overflow:hidden}
+.code-h{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted)}
+.code pre{margin:0;padding:10px 0;overflow-x:auto;counter-reset:ln}
+.code pre span.l{display:block;padding:0 14px 0 0;white-space:pre}
+.code pre span.l::before{counter-increment:ln;content:counter(ln);display:inline-block;width:34px;text-align:right;margin-right:14px;color:var(--faint)}
+.t-kw{color:var(--tok-kw)} .t-fn{color:var(--tok-fn)} .t-str{color:var(--tok-str)} .t-num{color:var(--tok-num)} .t-com{color:var(--tok-com);font-style:italic} .t-p{color:var(--tok-punc)}
+.related{display:flex;flex-wrap:wrap;gap:6px}
+.related button{font-size:11px}
+.rungs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.rung{display:flex;align-items:center;gap:7px;padding:6px 10px;font-size:11px}
+.rung .st{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--faint)}
+.rung.done .st{background:var(--ok);border-color:var(--ok)}
+.rung[aria-current="step"]{border-color:var(--text)}
+.kind{font-size:10px;color:var(--faint);letter-spacing:.08em}
+.task h3{font-size:15px;font-weight:500;margin:2px 0 6px}
+.task p{margin:0 0 14px;color:var(--text)}
+.opts{display:grid;gap:8px;margin-bottom:12px}
+.opt{width:100%;min-width:0;border:1px solid var(--line);background:var(--card);padding:0;cursor:pointer;text-align:left;display:grid;grid-template-columns:34px 1fr;align-items:stretch;border-radius:0}
+.opt .box{display:grid;place-items:center;border-right:1px solid var(--line);color:var(--muted);font-size:13px}
+.opt pre{min-width:0;overflow-wrap:anywhere;margin:0;padding:9px 12px;white-space:pre-wrap;font-family:var(--mono);font-size:12px}
+.opt[aria-pressed="true"]{border-color:var(--text)}
+.opt[aria-pressed="true"] .box{color:var(--text)}
+.opt.right{border-color:var(--ok);background:var(--okbg)}
+.opt.wrong{border-color:var(--no);background:var(--nobg)}
+.why{grid-column:2;padding:0 12px 9px;font-size:11.5px;color:var(--muted)}
+.editor{border:1px solid var(--line);background:var(--card);margin-bottom:10px;position:relative}
+.editor-h{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted)}
+.editor-host{min-height:190px}
+.cm-editor{font-size:12.5px;background:transparent!important}
+.cm-editor.cm-focused{outline:none!important}
+.cm-scroller{font-family:var(--mono)!important;line-height:1.6!important}
+.cm-gutters{background:transparent!important;border-right:0!important;color:var(--faint)!important}
+.cm-activeLine,.cm-activeLineGutter{background:rgba(127,127,127,.07)!important}
+.cm-content{caret-color:var(--text)}
+.cm-cursor{border-left-color:var(--text)!important}
+.cm-selectionBackground,.cm-content ::selection{background:rgba(59,130,246,.22)!important}
+.fb-wrap{position:relative;display:grid;grid-template-columns:40px 1fr;font-size:12.5px;line-height:1.6}
+.fb-gut{padding:10px 8px 10px 0;text-align:right;color:var(--faint);white-space:pre;user-select:none}
+.fb-area{position:relative}
+.fb-area pre,.fb-area textarea{margin:0;padding:10px 12px 10px 4px;font-family:var(--mono);font-size:12.5px;line-height:1.6;white-space:pre;overflow:hidden;tab-size:2;border:0}
+.fb-area textarea{position:absolute;inset:0;width:100%;height:100%;resize:none;background:transparent;color:transparent;caret-color:var(--text);outline:none}
+.status{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap}
+.status .msg{font-size:11.5px;color:var(--muted)}
+.status .msg.ok{color:var(--ok)} .status .msg.no{color:var(--no)}
+.actions{display:flex;gap:6px}
+kbd{font-family:var(--mono);font-size:10px;border:1px solid var(--line2);padding:0 4px;color:var(--muted)}
+.results{border:1px solid var(--line);background:var(--card)}
+.res{display:grid;grid-template-columns:22px 1fr;padding:8px 12px;border-top:1px solid var(--line);gap:4px}
+.res:first-child{border-top:0}
+.res .mk{font-weight:700}
+.res.ok .mk{color:var(--ok)} .res.no .mk{color:var(--no)} .res.skip .mk{color:var(--faint)}
+.res .dt{grid-column:2;font-size:11.5px;color:var(--muted);white-space:pre-wrap;word-break:break-word}
+.fatal{border:1px solid var(--no);background:var(--nobg);padding:9px 12px;font-size:12px;white-space:pre-wrap}
+.logs{margin-top:10px;font-size:11.5px;color:var(--muted);border:1px dashed var(--line2);padding:8px 12px;white-space:pre-wrap}
+.cleared{border:1px solid var(--ok);background:var(--okbg);padding:10px 12px;margin:12px 0 0;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.empty{border:1px dashed var(--line2);padding:18px;color:var(--muted)}
+.dfoot{border-top:1px solid var(--line);padding:9px 22px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between}
+.dfoot a{color:var(--muted)}
+.pulse{animation:pulse .6s ease-out}
+@keyframes pulse{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+@media (max-width:900px){.app{flex-direction:column;height:auto}.stage{height:56vh;flex:none}.drawer{flex:none;width:100%;border-left:0;border-top:1px solid var(--line)}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <main class="stage" aria-label="Concept graph">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">λ</div>
+      <div>
+        <h1>FP Jargon <span class="badge">PRACTICE POC</span></h1>
+        <p id="brandSub">3 concepts with exercises, 16 in view</p>
+      </div>
+    </div>
+    <svg class="graph" id="graph" viewBox="-10 -30 770 730" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Graph of functional programming concepts"></svg>
+    <div class="stage-foot">
+      <button id="themeBtn" type="button">Dark theme</button>
+      <button id="resetBtn" type="button" class="ghost">Reset progress</button>
+      <div class="legend"><span><i></i>Not started</span><span><i style="border-color:var(--accent)"></i>In progress</span><span><i class="done"></i>All rungs done</span></div>
+    </div>
+  </main>
+  <aside class="drawer" id="drawer" aria-live="polite"></aside>
+</div>
+<script type="text/plain" id="engineSrc">
+function runSuite(code, testSrc, exportNames) {
+  var logs = [];
+  var fmt = function (v) {
+    try {
+      if (typeof v === 'function') return v.name ? '[fn ' + v.name + ']' : '[fn]';
+      if (v && typeof v.inspect === 'function') return v.inspect();
+      if (v === undefined) return 'undefined';
+      return JSON.stringify(v);
+    } catch (e) { return String(v); }
+  };
+  var eq = function (a, b) {
+    if (a === b) return true;
+    if (typeof a === 'number' && typeof b === 'number') return Number.isNaN(a) && Number.isNaN(b);
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    var ka = Object.keys(a).filter(function (k) { return typeof a[k] !== 'function'; });
+    var kb = Object.keys(b).filter(function (k) { return typeof b[k] !== 'function'; });
+    if (ka.length !== kb.length) return false;
+    return ka.every(function (k) { return eq(a[k], b[k]); });
+  };
+  var freeze = function (o) {
+    if (o && typeof o === 'object' && !Object.isFrozen(o)) {
+      Object.freeze(o);
+      Object.keys(o).forEach(function (k) { freeze(o[k]); });
+    }
+    return o;
+  };
+  var clone = function (o) { return JSON.parse(JSON.stringify(o)); };
+  var rnd = function (a, b) { return Math.floor(realRandom() * (b - a + 1)) + a; };
+  var realRandom = Math.random;
+  var realNow = Date.now;
+  var effects = [];
+  var FNS = [
+    { name: 'x => x + 1', f: function (x) { return x + 1; } },
+    { name: 'x => x * 2', f: function (x) { return x * 2; } },
+    { name: 'x => x - 7', f: function (x) { return x - 7; } },
+    { name: 'x => x * x', f: function (x) { return x * x; } },
+    { name: 'x => -x', f: function (x) { return -x; } }
+  ];
+  var G = {
+    int: function () { return rnd(-50, 50); },
+    fn: function () { return FNS[rnd(0, FNS.length - 1)]; }
+  };
+  var results = [];
+  var check = function (name, fn) {
+    try {
+      var r = fn();
+      if (r === true || r === undefined) results.push({ name: name, ok: true });
+      else results.push({ name: name, ok: false, detail: typeof r === 'string' ? r : 'Returned ' + fmt(r) });
+    } catch (e) {
+      results.push({ name: name, ok: false, detail: (e && e.name ? e.name + ': ' : '') + (e && e.message ? e.message : String(e)) });
+    }
+  };
+  var law = function (name, runs, prop) {
+    for (var i = 0; i < runs; i++) {
+      var out;
+      try { out = prop(G); } catch (e) {
+        results.push({ name: name, ok: false, detail: 'Threw on run ' + (i + 1) + ': ' + e.message });
+        return false;
+      }
+      if (out !== true) {
+        results.push({ name: name, ok: false, detail: typeof out === 'string' ? out : 'Failed on run ' + (i + 1) });
+        return false;
+      }
+    }
+    results.push({ name: name, ok: true, detail: runs + ' random cases' });
+    return true;
+  };
+  var fakeConsole = { log: function () { logs.push([].slice.call(arguments).map(fmt).join(' ')); } };
+  fakeConsole.info = fakeConsole.warn = fakeConsole.error = fakeConsole.log;
+
+  var exp;
+  Math.random = function () { effects.push('Math.random()'); return realRandom(); };
+  Date.now = function () { effects.push('Date.now()'); return realNow(); };
+  try {
+    var body = '"use strict";\n' + code + '\n;return {' +
+      exportNames.map(function (n) { return n + ': typeof ' + n + " === 'undefined' ? undefined : " + n; }).join(', ') + '};';
+    try {
+      exp = new Function('console', body)(fakeConsole);
+    } catch (e) {
+      return { fatal: (e.name || 'Error') + ': ' + e.message, results: [], logs: logs };
+    }
+    effects.length = 0;
+    var missing = exportNames.filter(function (n) { return exp[n] === undefined; });
+    if (missing.length) return { fatal: 'Define ' + missing.join(', ') + ' so it can be checked.', results: [], logs: logs };
+    var T = { check: check, law: law, eq: eq, fmt: fmt, freeze: freeze, clone: clone, G: G, effects: effects, src: code };
+    new Function('exp', 'T', testSrc)(exp, T);
+  } finally {
+    Math.random = realRandom;
+    Date.now = realNow;
+  }
+  return { results: results, logs: logs };
+}
+
+</script>
+<script>
+var EXERCISES = {
+  currying: [
+    {
+      id: 'recognize', title: 'Spot the curried functions', kind: 'choice', multi: true,
+      prompt: 'A curried function takes one argument at a time. Select every definition below that is fully curried.',
+      options: [
+        { code: 'const add = (a, b) => a + b', ok: false, why: 'Takes both arguments at once, so its arity is 2.' },
+        { code: 'const add = a => b => a + b', ok: true, why: 'Each call takes one argument and returns the next function.' },
+        { code: 'const clamp = min => max => x =>\n  Math.min(max, Math.max(min, x))', ok: true, why: 'Three unary steps. Curried functions can be as deep as you need.' },
+        { code: 'const sum3 = a => (b, c) => a + b + c', ok: false, why: 'The second step takes two arguments, so it is only partly curried.' },
+        { code: 'const sumAll = (...xs) =>\n  xs.reduce((a, b) => a + b, 0)', ok: false, why: 'Variadic: it takes any number of arguments in one call.' }
+      ]
+    },
+    {
+      id: 'implement', title: 'Write curry2', kind: 'code', exports: ['curry2'],
+      prompt: 'Turn any two-argument function into a curried one. Nothing should run until both arguments have arrived.',
+      starter: "// curry2 :: ((a, b) -> c) -> a -> b -> c\nconst curry2 = (f) => {\n  // return a function that takes a,\n  // which returns a function that takes b\n}\n",
+      solution: "const curry2 = (f) => (a) => (b) => f(a, b)\n",
+      broken: "const curry2 = (f) => (a, b) => f(a, b)\n",
+      tests: [
+        "const {curry2} = exp; const {check, fmt} = T;",
+        "const sub = (a, b) => a - b;",
+        "check('curry2(sub) returns a function', () => typeof curry2(sub) === 'function' || 'Got ' + fmt(curry2(sub)));",
+        "check('curry2(sub)(10)(3) is 7', () => { const r = curry2(sub)(10)(3); return r === 7 || 'Got ' + fmt(r); });",
+        "check('Every step takes exactly one argument', () => { const s1 = curry2(sub); const s2 = s1(1); return (s1.length === 1 && s2.length === 1) || 'Step arities were ' + s1.length + ' and ' + (typeof s2 === 'function' ? s2.length : fmt(s2)); });",
+        "check('f waits until both arguments arrive', () => { let calls = 0; const spy = (a, b) => { calls++; return a + b; }; const step = curry2(spy)(1); return calls === 0 || 'f was called after only one argument'; });",
+        "check('Partially applied steps are reusable', () => { const add = curry2((a, b) => a + b); const add10 = add(10); return (add10(1) === 11 && add10(5) === 15) || 'add(10) gave ' + fmt(add10(1)) + ' then ' + fmt(add10(5)); });"
+      ].join('\n')
+    },
+    {
+      id: 'apply', title: 'Go point-free', kind: 'code', exports: ['incrementAll'],
+      prompt: 'Because map and add are curried, incrementAll never needs to name its list. Rewrite it so the definition has no arrow function.',
+      starter: "const map = (fn) => (list) => list.map(fn)\nconst add = (a) => (b) => a + b\n\n// Rewrite without mentioning numbers:\nconst incrementAll = (numbers) => map(add(1))(numbers)\n",
+      solution: "const map = (fn) => (list) => list.map(fn)\nconst add = (a) => (b) => a + b\n\nconst incrementAll = map(add(1))\n",
+      broken: "const map = (fn) => (list) => list.map(fn)\nconst add = (a) => (b) => a + b\n\nconst incrementAll = (numbers) => map(add(1))(numbers)\n",
+      tests: [
+        "const {incrementAll} = exp; const {check, eq, fmt, src} = T;",
+        "check('incrementAll([1, 2, 3]) is [2, 3, 4]', () => { const r = incrementAll([1, 2, 3]); return eq(r, [2, 3, 4]) || 'Got ' + fmt(r); });",
+        "check('Works on an empty list', () => { const r = incrementAll([]); return eq(r, []) || 'Got ' + fmt(r); });",
+        "check('Definition is point-free', () => { const m = src.match(/const\\s+incrementAll\\s*=\\s*([^\\n]*)/); if (!m) return 'Could not find the incrementAll definition'; return !/=>|function/.test(m[1]) || 'The definition still introduces a parameter: ' + m[1].trim(); });"
+      ].join('\n')
+    }
+  ],
+  'pure-function': [
+    {
+      id: 'recognize', title: 'Which one is pure?', kind: 'choice', multi: false,
+      prompt: 'A pure function depends only on its inputs and changes nothing outside itself. Pick the pure one.',
+      options: [
+        { code: "let greeting\nconst greet = (name) => {\n  greeting = `Hi, ${name}`\n}", ok: false, why: 'Writes to greeting, which lives outside the function.' },
+        { code: "const greet = () => `Hi, ${window.name}`", ok: false, why: 'Reads window.name, so the same call can return different results.' },
+        { code: "const greet = (name) => `Hi, ${name}`", ok: true, why: 'The output is determined by name alone and nothing else is touched.' },
+        { code: "const greet = (name) => {\n  console.log(name)\n  return `Hi, ${name}`\n}", ok: false, why: 'Logging is a side effect, even though the return value is predictable.' }
+      ]
+    },
+    {
+      id: 'implement', title: 'Purify addItem', kind: 'code', exports: ['addItem'],
+      prompt: 'This addItem mutates the cart and reads the clock. Make it pure: return a new cart, leave the input alone, and take the timestamp as a third argument.',
+      starter: "// addItem :: (Cart, Item, Number) -> Cart\nconst addItem = (cart, item, now) => {\n  cart.items.push(item)\n  cart.updatedAt = Date.now()\n  return cart\n}\n",
+      solution: "const addItem = (cart, item, now) => ({\n  ...cart,\n  items: [...cart.items, item],\n  updatedAt: now\n})\n",
+      broken: "const addItem = (cart, item, now) => {\n  cart.items.push(item)\n  cart.updatedAt = Date.now()\n  return cart\n}\n",
+      tests: [
+        "const {addItem} = exp; const {check, eq, fmt, freeze, clone, effects} = T;",
+        "const base = () => ({ id: 'c1', items: [{ sku: 'a', qty: 1 }], updatedAt: 0 });",
+        "check('Adds the item', () => { const r = addItem(base(), { sku: 'b', qty: 2 }, 100); return (r && eq(r.items, [{ sku: 'a', qty: 1 }, { sku: 'b', qty: 2 }])) || 'items were ' + fmt(r && r.items); });",
+        "check('Leaves the input cart untouched', () => { const c = freeze(base()); addItem(c, { sku: 'b', qty: 2 }, 100); return eq(c, base()) || 'The cart changed'; });",
+        "check('Returns a new cart object', () => { const c = base(); const r = addItem(c, { sku: 'b', qty: 2 }, 100); return r !== c || 'You returned the same object you were given'; });",
+        "check('Uses the timestamp you pass in', () => { const r = addItem(base(), { sku: 'b', qty: 2 }, 12345); return (r && r.updatedAt === 12345) || 'updatedAt was ' + fmt(r && r.updatedAt); });",
+        "check('Calling twice with the same cart gives the same output', () => { const c = base(); const r1 = clone(addItem(c, { sku: 'b', qty: 2 }, 7)); const r2 = clone(addItem(c, { sku: 'b', qty: 2 }, 7)); return eq(r1, r2) || 'First call: ' + fmt(r1) + '\\nSecond call: ' + fmt(r2); });",
+        "check('Never reads the clock or random numbers', () => { effects.length = 0; addItem(base(), { sku: 'b', qty: 2 }, 1); return effects.length === 0 || 'Called ' + effects.join(', '); });"
+      ].join('\n')
+    }
+  ],
+  functor: [
+    {
+      id: 'implement', title: 'Give Box a lawful map', kind: 'code', exports: ['Box'],
+      prompt: 'A functor is a container with a map that obeys two laws: mapping identity changes nothing, and mapping f then g equals mapping their composition.',
+      starter: "// map :: Box a ~> (a -> b) -> Box b\nconst Box = (value) => ({\n  value,\n  map: (f) => {\n    // return a new Box\n  },\n  inspect: () => `Box(${JSON.stringify(value)})`\n})\n",
+      solution: "const Box = (value) => ({\n  value,\n  map: (f) => Box(f(value)),\n  inspect: () => `Box(${JSON.stringify(value)})`\n})\n",
+      broken: "const Box = (value) => ({\n  value,\n  map: (f) => f(value),\n  inspect: () => `Box(${JSON.stringify(value)})`\n})\n",
+      tests: [
+        "const {Box} = exp; const {check, law, eq, fmt} = T;",
+        "const isBox = (b) => b && typeof b.map === 'function' && 'value' in b;",
+        "check('map returns a Box, not a raw value', () => { const r = Box(2).map(x => x + 1); return isBox(r) || 'Got ' + fmt(r); });",
+        "check('Box(2).map(x => x + 1) holds 3', () => { const r = Box(2).map(x => x + 1); return (isBox(r) && r.value === 3) || 'Got ' + fmt(r); });",
+        "law('Identity: b.map(x => x) equals b', 60, (G) => { const n = G.int(); const r = Box(n).map(x => x); return (isBox(r) && eq(r.value, n)) || 'Box(' + n + ').map(x => x) gave ' + fmt(r); });",
+        "law('Composition: map(f).map(g) equals map(x => g(f(x)))', 60, (G) => { const n = G.int(); const f = G.fn(), g = G.fn(); const a = Box(n).map(f.f); const left = isBox(a) ? a.map(g.f) : a; const right = Box(n).map(x => g.f(f.f(x))); return (isBox(left) && isBox(right) && eq(left.value, right.value)) || 'n = ' + n + ', f = ' + f.name + ', g = ' + g.name + ': got ' + fmt(left) + ' and ' + fmt(right); });"
+      ].join('\n')
+    },
+    {
+      id: 'apply', title: 'A Maybe that skips missing values', kind: 'code', exports: ['Maybe'],
+      prompt: 'Maybe is a functor whose map does nothing when the value is null or undefined. Use it to read a nested property without crashing.',
+      starter: "const Maybe = (value) => ({\n  value,\n  isNothing: () => value === null || value === undefined,\n  map: (f) => {\n    // skip f when there is nothing inside\n  },\n  inspect: () => `Maybe(${JSON.stringify(value)})`\n})\n",
+      solution: "const Maybe = (value) => ({\n  value,\n  isNothing: () => value === null || value === undefined,\n  map: (f) => (value === null || value === undefined ? Maybe(value) : Maybe(f(value))),\n  inspect: () => `Maybe(${JSON.stringify(value)})`\n})\n",
+      broken: "const Maybe = (value) => ({\n  value,\n  isNothing: () => value === null || value === undefined,\n  map: (f) => Maybe(f(value)),\n  inspect: () => `Maybe(${JSON.stringify(value)})`\n})\n",
+      tests: [
+        "const {Maybe} = exp; const {check, law, eq, fmt} = T;",
+        "const isM = (m) => m && typeof m.map === 'function' && 'value' in m;",
+        "check('Maybe(3).map(x => x + 1) holds 4', () => { const r = Maybe(3).map(x => x + 1); return (isM(r) && r.value === 4) || 'Got ' + fmt(r); });",
+        "check('Maybe(null).map(f) never calls f', () => { let called = false; const r = Maybe(null).map(() => { called = true; }); return (!called && isM(r)) || (called ? 'f was called on null' : 'Got ' + fmt(r)); });",
+        "check('Reads user.address.street safely', () => { const street = (u) => Maybe(u).map(u => u.address).map(a => a.street).value; const ok = street({ address: { street: 'Main' } }) === 'Main'; const missing = street({}); return (ok && (missing === undefined || missing === null)) || 'Got ' + fmt(street({ address: { street: 'Main' } })) + ' and ' + fmt(missing); });",
+        "law('Identity law holds', 40, (G) => { const n = G.int(); const r = Maybe(n).map(x => x); return (isM(r) && r.value === n) || 'Maybe(' + n + ') changed to ' + fmt(r); });",
+        "law('Composition law holds', 40, (G) => { const n = G.int(); const f = G.fn(), g = G.fn(); const l = Maybe(n).map(f.f).map(g.f); const r = Maybe(n).map(x => g.f(f.f(x))); return (isM(l) && isM(r) && l.value === r.value) || 'f = ' + f.name + ', g = ' + g.name + ': ' + fmt(l) + ' vs ' + fmt(r); });"
+      ].join('\n')
+    },
+    {
+      id: 'break', title: 'Break a law on purpose', kind: 'code', exports: ['BadBox'], inverted: true,
+      prompt: 'Write BadBox whose map still returns a BadBox but quietly breaks a functor law. You pass when the law checker catches it.',
+      starter: "const BadBox = (value) => ({\n  value,\n  map: (f) => BadBox(f(value)),\n  inspect: () => `BadBox(${JSON.stringify(value)})`\n})\n",
+      solution: "let calls = 0\nconst BadBox = (value) => ({\n  value,\n  map: (f) => BadBox(f(value) + calls++),\n  inspect: () => `BadBox(${JSON.stringify(value)})`\n})\n",
+      broken: "const BadBox = (value) => ({\n  value,\n  map: (f) => BadBox(f(value)),\n  inspect: () => `BadBox(${JSON.stringify(value)})`\n})\n",
+      tests: [
+        "const {BadBox} = exp; const {check, eq, fmt, G} = T;",
+        "const isB = (b) => b && typeof b.map === 'function' && 'value' in b;",
+        "check('map still returns a BadBox', () => { const r = BadBox(1).map(x => x + 1); return isB(r) || 'Got ' + fmt(r) + '. Breaking the shape is too easy; break a law instead.'; });",
+        "check('The law checker finds a counterexample', () => { for (let i = 0; i < 80; i++) { const n = G.int(); const id = BadBox(n).map(x => x); if (!isB(id) || !eq(id.value, n)) return true; const f = G.fn(), g = G.fn(); const l = BadBox(n).map(f.f); const left = isB(l) ? l.map(g.f) : l; const right = BadBox(n).map(x => g.f(f.f(x))); if (!isB(left) || !eq(left.value, right.value)) return true; } return 'Both laws held on 80 random cases. Your BadBox is still lawful.'; });"
+      ].join('\n')
+    }
+  ]
+};
+if (typeof module !== 'undefined') module.exports = EXERCISES;
+
+</script>
+<script type="module">
+const DEPS = 'deps=@codemirror/state@6.4.1,@codemirror/view@6.28.1,@codemirror/language@6.10.2,@lezer/highlight@1.2.0';
+try {
+  const [cm, lang, language, hl] = await Promise.all([
+    import('https://esm.sh/codemirror@6.0.1?' + DEPS),
+    import('https://esm.sh/@codemirror/lang-javascript@6.2.2?' + DEPS),
+    import('https://esm.sh/@codemirror/language@6.10.2?' + DEPS),
+    import('https://esm.sh/@lezer/highlight@1.2.0')
+  ]);
+  const t = hl.tags;
+  const style = language.HighlightStyle.define([
+    { tag: [t.keyword, t.operatorKeyword, t.definitionKeyword, t.modifier], color: 'var(--tok-kw)' },
+    { tag: [t.function(t.variableName), t.function(t.propertyName), t.definition(t.variableName)], color: 'var(--tok-fn)' },
+    { tag: [t.string, t.special(t.string)], color: 'var(--tok-str)' },
+    { tag: [t.number, t.bool, t.null], color: 'var(--tok-num)' },
+    { tag: t.comment, color: 'var(--tok-com)', fontStyle: 'italic' },
+    { tag: [t.punctuation, t.operator, t.bracket], color: 'var(--tok-punc)' }
+  ]);
+  window.CM = { EditorView: cm.EditorView, basicSetup: cm.basicSetup, javascript: lang.javascript, highlight: language.syntaxHighlighting(style) };
+  window.dispatchEvent(new Event('cm-ready'));
+} catch (err) {
+  console.warn('CodeMirror did not load, using the fallback editor.', err);
+  window.dispatchEvent(new Event('cm-failed'));
+}
+</script>
+<script>
+(function () {
+  'use strict';
+
+  var CATS = {
+    'core-functions': { name: 'Core Functions', color: '#3b82f6' },
+    'composition': { name: 'Composition & Flow', color: '#10b981' },
+    'purity-state': { name: 'Purity & Reasoning', color: '#f59e0b' },
+    'algebraic-structures': { name: 'Algebraic Structures', color: '#ec4899' }
+  };
+
+  var TERMS = {
+    'function': { title: 'Function', cat: 'core-functions', x: 215, y: 350,
+      def: 'An expression with exactly one parameter and exactly one return value that depends entirely on the argument. By this definition a function is always pure.' },
+    'higher-order-functions-hof': { title: 'Higher-Order Functions (HOF)', cat: 'core-functions', x: 300, y: 235,
+      def: 'A function that takes a function as an argument, returns a function, or both.' },
+    'arity': { title: 'Arity', cat: 'core-functions', x: 330, y: 445,
+      def: 'The number of arguments a function takes: nullary, unary, binary, ternary, and so on.' },
+    'pure-function': { title: 'Pure Function', cat: 'core-functions', x: 150, y: 440, practice: true,
+      def: 'A function whose return value is determined only by its inputs and which produces no side effects. Same input, same output, every time.',
+      example: "const greet = (name) => `Hi, ${name}`\n\ngreet('Brianne') // 'Hi, Brianne'\n\n// Not pure: reads state outside itself\nwindow.name = 'Brianne'\nconst greet2 = () => `Hi, ${window.name}`" },
+    'side-effects': { title: 'Side effects', cat: 'purity-state', x: 95, y: 615,
+      def: 'Anything a function does besides returning a value that touches external mutable state: logging, writing a variable, reading the clock.' },
+    'referential-transparency': { title: 'Referential Transparency', cat: 'purity-state', x: 215, y: 585,
+      def: 'An expression that can be replaced with its value without changing the behavior of the program.' },
+    'currying': { title: 'Currying', cat: 'composition', x: 470, y: 420, practice: true,
+      def: 'Converting a function that takes several arguments into a sequence of functions that each take one argument.',
+      example: "const sum = (a, b) => a + b\n\nconst curriedSum = (a) => (b) => a + b\n\ncurriedSum(40)(2) // 42\n\nconst add2 = curriedSum(2) // (b) => 2 + b\nadd2(10) // 12" },
+    'partial-application': { title: 'Partial Application', cat: 'composition', x: 560, y: 520,
+      def: 'Creating a new function by pre-filling some of the arguments of an existing one.' },
+    'auto-currying': { title: 'Auto Currying', cat: 'composition', x: 620, y: 395,
+      def: 'Wrapping a multi-argument function so that calling it with too few arguments returns a function that waits for the rest.' },
+    'point-free-style': { title: 'Point-Free Style', cat: 'composition', x: 505, y: 300,
+      def: 'Defining functions without naming their arguments, usually by composing curried or higher-order functions.' },
+    'function-composition': { title: 'Function Composition', cat: 'composition', x: 410, y: 175,
+      def: 'Combining two functions so the output of one becomes the input of the other.' },
+    'functor': { title: 'Functor', cat: 'algebraic-structures', x: 560, y: 125, practice: true,
+      def: 'An object with a map function that runs a function over its contents and obeys two laws: identity and composition.',
+      example: "// Identity\nobject.map(x => x)            // same as object\n\n// Composition\nobject.map(x => g(f(x)))      // same as\nobject.map(f).map(g)" },
+    'pointed-functor': { title: 'Pointed Functor', cat: 'algebraic-structures', x: 665, y: 70,
+      def: 'A functor with an of function that puts any single value into it, like Array.of.' },
+    'monad': { title: 'Monad', cat: 'algebraic-structures', x: 655, y: 210,
+      def: 'An object with of and chain, where chain is like map but flattens the nested result.' }
+  };
+
+  var LINKS = [
+    ['currying', 'partial-application', 'core'], ['currying', 'arity', 'core'], ['auto-currying', 'currying', 'core'],
+    ['partial-application', 'higher-order-functions-hof', 'core'], ['point-free-style', 'currying', 'core'],
+    ['point-free-style', 'function-composition', 'core'], ['point-free-style', 'higher-order-functions-hof', 'core'],
+    ['pure-function', 'side-effects', 'core'], ['pure-function', 'referential-transparency', 'core'],
+    ['functor', 'pointed-functor', 'core'], ['function', 'pure-function', 'core'],
+    ['higher-order-functions-hof', 'function-composition', 'core'], ['monad', 'pointed-functor', 'reference'],
+    ['monad', 'functor', 'reference'], ['function', 'referential-transparency', 'reference'], ['function', 'side-effects', 'reference']
+  ];
+
+  var HALOS = [
+    { cat: 'core-functions', x: 235, y: 380, r: 150, label: 'CORE FUNCTIONS' },
+    { cat: 'composition', x: 515, y: 380, r: 160, label: 'COMPOSITION & FLOW' },
+    { cat: 'purity-state', x: 150, y: 600, r: 85, label: 'PURITY & REASONING' },
+    { cat: 'algebraic-structures', x: 610, y: 130, r: 105, label: 'ALGEBRAIC STRUCTURES' }
+  ];
+
+  var STORE_KEY = 'fpj-practice-poc-v1';
+  var store = { done: {}, drafts: {}, choices: {} };
+  try { var saved = localStorage.getItem(STORE_KEY); if (saved) store = Object.assign(store, JSON.parse(saved)); } catch (e) {}
+  var save = function () { try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {} };
+
+  var state = { term: 'currying', tab: 'practice', rung: 0 };
+  var editor = null;
+  var runTimer = null;
+  var runSeq = 0;
+
+  var $ = function (s, el) { return (el || document).querySelector(s); };
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var key = function (term, rungId) { return term + '/' + rungId; };
+  var rungsFor = function (id) { return EXERCISES[id] || []; };
+  var doneCount = function (id) { return rungsFor(id).filter(function (r) { return store.done[key(id, r.id)]; }).length; };
+
+  function highlight(code) {
+    var re = /(\/\/[^\n]*)|(`(?:\\.|[^`\\])*`|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|\b(const|let|var|function|return|if|else|new|typeof|for|of|in|true|false|null|undefined|this|throw|try|catch)\b|\b(\d+(?:\.\d+)?)\b|([A-Za-z_$][\w$]*)(?=\s*(?:\(|=\s*(?:\(|[A-Za-z_$][\w$]*\s*=>)))|(=>|[{}()[\];,.])/g;
+    var out = '', last = 0, m;
+    while ((m = re.exec(code))) {
+      out += esc(code.slice(last, m.index));
+      var cls = m[1] ? 't-com' : m[2] ? 't-str' : m[3] ? 't-kw' : m[4] ? 't-num' : m[5] ? 't-fn' : 't-p';
+      out += '<span class="' + cls + '">' + esc(m[0]) + '</span>';
+      last = re.lastIndex;
+    }
+    return out + esc(code.slice(last));
+  }
+  function codeBlock(code, label) {
+    var lines = highlight(code).split('\n').map(function (l) { return '<span class="l">' + (l || ' ') + '</span>'; }).join('');
+    return '<div class="code"><div class="code-h"><span>○ ' + (label || 'JS') + '</span></div><pre>' + lines + '</pre></div>';
+  }
+
+  function parseHash() {
+    var parts = location.hash.replace(/^#/, '').split('/');
+    if (parts[0] && TERMS[parts[0]]) {
+      state.term = parts[0];
+      state.tab = parts[1] === 'practice' && TERMS[parts[0]].practice ? 'practice' : 'learn';
+      var rs = rungsFor(state.term);
+      var idx = rs.findIndex(function (r) { return r.id === parts[2]; });
+      state.rung = idx >= 0 ? idx : firstOpenRung(state.term);
+    }
+  }
+  function firstOpenRung(id) {
+    var rs = rungsFor(id);
+    for (var i = 0; i < rs.length; i++) if (!store.done[key(id, rs[i].id)]) return i;
+    return 0;
+  }
+  function setHash() {
+    var h = state.term;
+    if (state.tab === 'practice') h += '/practice/' + rungsFor(state.term)[state.rung].id;
+    if (location.hash.slice(1) !== h) history.replaceState(null, '', '#' + h);
+  }
+  function go(term, tab, rung) {
+    state.term = term;
+    state.tab = tab || (TERMS[term].practice ? 'practice' : 'learn');
+    state.rung = rung === undefined ? firstOpenRung(term) : rung;
+    setHash();
+    renderGraph();
+    renderDrawer();
+  }
+
+  function renderGraph() {
+    var svg = $('#graph');
+    var sel = state.term;
+    var neighbors = {};
+    LINKS.forEach(function (l) { if (l[0] === sel) neighbors[l[1]] = 1; if (l[1] === sel) neighbors[l[0]] = 1; });
+    var h = '';
+    HALOS.forEach(function (o) {
+      var c = CATS[o.cat].color;
+      h += '<circle cx="' + o.x + '" cy="' + o.y + '" r="' + o.r + '" fill="' + c + '" fill-opacity=".05" stroke="' + c + '" stroke-opacity=".22" stroke-dasharray="2 4"/>';
+      h += '<text class="halo-label" x="' + o.x + '" y="' + (o.y - o.r - 8) + '" text-anchor="middle">' + o.label + '</text>';
+    });
+    LINKS.forEach(function (l) {
+      var a = TERMS[l[0]], b = TERMS[l[1]];
+      var hot = l[0] === sel || l[1] === sel;
+      h += '<line class="edge' + (l[2] === 'reference' ? ' ref' : '') + (hot ? ' hot' : ' dim') + '" x1="' + a.x + '" y1="' + a.y + '" x2="' + b.x + '" y2="' + b.y + '"/>';
+    });
+    Object.keys(TERMS).forEach(function (id) {
+      var t = TERMS[id], c = CATS[t.cat].color;
+      var isSel = id === sel, near = neighbors[id];
+      var r = t.practice ? 15 : 11;
+      var cls = 'node' + (isSel ? ' sel' : '') + (!isSel && !near ? ' dim' : '');
+      h += '<g class="' + cls + '" data-id="' + id + '" tabindex="0" role="button" aria-label="' + esc(t.title) + (t.practice ? ', ' + doneCount(id) + ' of ' + rungsFor(id).length + ' exercises done' : '') + '">';
+      if (isSel) h += '<circle cx="' + t.x + '" cy="' + t.y + '" r="' + (r + 7) + '" fill="none" stroke="' + c + '" stroke-opacity=".35"/>';
+      h += '<circle class="dot" cx="' + t.x + '" cy="' + t.y + '" r="' + r + '" stroke="' + c + '"/>';
+      if (t.practice) {
+        var total = rungsFor(id).length, dn = doneCount(id);
+        var circ = 2 * Math.PI * (r - 4);
+        var col = dn === total ? 'var(--ok)' : dn > 0 ? 'var(--accent)' : 'var(--line2)';
+        h += '<circle cx="' + t.x + '" cy="' + t.y + '" r="' + (r - 4) + '" fill="none" stroke="var(--line)" stroke-width="3"/>';
+        h += '<circle id="ring-' + id + '" cx="' + t.x + '" cy="' + t.y + '" r="' + (r - 4) + '" fill="none" stroke="' + col + '" stroke-width="3" stroke-dasharray="' + (circ * dn / total).toFixed(1) + ' ' + circ.toFixed(1) + '" stroke-dashoffset="' + (circ / 4).toFixed(1) + '" style="transform-box:fill-box;transform-origin:center"/>';
+      } else {
+        h += '<text x="' + t.x + '" y="' + (t.y + 3.5) + '" text-anchor="middle" style="fill:' + c + ';font-size:10px">λ</text>';
+      }
+      h += '<text x="' + t.x + '" y="' + (t.y + r + 14) + '" text-anchor="middle">' + esc(t.title) + '</text></g>';
+    });
+    svg.innerHTML = h;
+    var total = 0, practice = 0;
+    Object.keys(TERMS).forEach(function (id) { total++; if (TERMS[id].practice) practice++; });
+    $('#brandSub').textContent = practice + ' concepts with exercises, ' + total + ' in view';
+  }
+
+  function renderDrawer() {
+    destroyEditor();
+    var t = TERMS[state.term], cat = CATS[t.cat];
+    var rs = rungsFor(state.term);
+    var h = '<div class="dhead"><div class="drow"><div><span class="chip" style="color:' + cat.color + ';border-color:' + cat.color + '55;background:' + cat.color + '14"><b style="background:' + cat.color + '"></b>' + cat.name + '</span><span class="anchor">#' + state.term + '</span></div>' +
+      '<a href="https://hemanth.github.io/functional-programming-jargon/#' + state.term + '" target="_blank" rel="noopener" style="font-size:11px;color:var(--muted)">Open on FP Jargon</a></div>' +
+      '<h2>' + esc(t.title) + '</h2>' +
+      '<div class="tabs" role="tablist"><button class="tab" role="tab" data-tab="learn" aria-selected="' + (state.tab === 'learn') + '">Learn</button>' +
+      '<button class="tab" role="tab" data-tab="practice" aria-selected="' + (state.tab === 'practice') + '">Practice<span class="count">' + (rs.length ? doneCount(state.term) + '/' + rs.length : 'none yet') + '</span></button></div></div>';
+    h += '<div class="dbody" id="dbody"></div>';
+    h += '<div class="dfoot"><span>Definitions from FP Jargon by Hemanth HM, MIT</span><a href="https://github.com/hemanth/functional-programming-jargon" target="_blank" rel="noopener">View source on GitHub</a></div>';
+    $('#drawer').innerHTML = h;
+    if (state.tab === 'learn') renderLearn(); else renderPractice();
+  }
+
+  function renderLearn() {
+    var t = TERMS[state.term];
+    var h = '<div class="sect"><span>DEFINITION</span></div><div class="defbox">' + esc(t.def) + '</div>';
+    if (t.example) h += '<div class="sect"><span>EXAMPLE</span><span>1 CODE BLOCK</span></div>' + codeBlock(t.example);
+    var rel = [];
+    LINKS.forEach(function (l) { if (l[0] === state.term) rel.push(l[1]); if (l[1] === state.term) rel.push(l[0]); });
+    if (rel.length) {
+      h += '<div class="sect" style="margin-top:4px"><span>CONNECTED CONCEPTS</span></div><div class="related">' +
+        rel.map(function (id) { return '<button type="button" data-go="' + id + '">' + esc(TERMS[id].title) + '</button>'; }).join('') + '</div>';
+    }
+    if (t.practice) h += '<div style="margin-top:22px"><button class="primary" data-tab="practice" type="button">Practice ' + esc(t.title) + '</button></div>';
+    $('#dbody').innerHTML = h;
+  }
+
+  function renderPractice() {
+    var rs = rungsFor(state.term);
+    var body = $('#dbody');
+    if (!rs.length) {
+      body.innerHTML = '<div class="empty">Exercises for ' + esc(TERMS[state.term].title) + ' aren\'t written yet. In the full build, each concept gets a recognize, implement, break-it, and apply rung. Try Currying, Pure Function, or Functor.</div>';
+      return;
+    }
+    var r = rs[state.rung];
+    var h = '<div class="rungs" role="list">' + rs.map(function (x, i) {
+      return '<button type="button" role="listitem" class="rung' + (store.done[key(state.term, x.id)] ? ' done' : '') + '" data-rung="' + i + '"' + (i === state.rung ? ' aria-current="step"' : '') + '><span class="st"></span>' + (i + 1) + '. ' + esc(x.title) + '</button>';
+    }).join('') + '</div>';
+    h += '<div class="task"><div class="kind">' + (r.kind === 'choice' ? 'RECOGNIZE' : r.inverted ? 'BREAK IT' : r.id.toUpperCase()) + '</div><h3>' + esc(r.title) + '</h3><p>' + esc(r.prompt) + '</p></div>';
+    h += r.kind === 'choice' ? choiceMarkup(r) : codeMarkup(r);
+    h += '<div id="cleared"></div>';
+    body.innerHTML = h;
+    if (r.kind === 'code') mountEditor(r);
+    showCleared();
+  }
+
+  function choiceMarkup(r) {
+    var picked = store.choices[key(state.term, r.id)] || [];
+    var graded = !!store.done[key(state.term, r.id)];
+    return '<div class="opts" id="opts">' + r.options.map(function (o, i) {
+      var on = picked.indexOf(i) >= 0;
+      var cls = graded ? (o.ok ? ' right' : on ? ' wrong' : '') : '';
+      return '<button type="button" class="opt' + cls + '" data-opt="' + i + '" aria-pressed="' + on + '"><span class="box">' + (r.multi ? (on ? '■' : '□') : (on ? '●' : '○')) + '</span><pre>' + highlight(o.code) + '</pre>' + (graded ? '<span class="why">' + esc(o.why) + '</span>' : '') + '</button>';
+    }).join('') + '</div><div class="status"><span class="msg" id="msg">' + (r.multi ? 'Select all that apply.' : 'Select one.') + '</span><div class="actions"><button type="button" class="primary" id="checkChoice">Check answer</button></div></div><div id="choiceFb"></div>';
+  }
+
+  function gradeChoice(r) {
+    var k = key(state.term, r.id);
+    var picked = store.choices[k] || [];
+    var msg = $('#msg');
+    if (!picked.length) { msg.textContent = 'Pick an option first.'; msg.className = 'msg no'; return; }
+    var wrongPicks = [], missed = [];
+    r.options.forEach(function (o, i) {
+      var on = picked.indexOf(i) >= 0;
+      if (on && !o.ok) wrongPicks.push(i);
+      if (!on && o.ok) missed.push(i);
+    });
+    var els = document.querySelectorAll('.opt');
+    if (!wrongPicks.length && !missed.length) {
+      markDone(k);
+      renderPractice();
+      return;
+    }
+    els.forEach(function (el) { el.classList.remove('right', 'wrong'); var w = el.querySelector('.why'); if (w) w.remove(); });
+    wrongPicks.forEach(function (i) {
+      els[i].classList.add('wrong');
+      els[i].insertAdjacentHTML('beforeend', '<span class="why">' + esc(r.options[i].why) + '</span>');
+    });
+    msg.className = 'msg no';
+    msg.textContent = wrongPicks.length
+      ? 'Not quite. ' + wrongPicks.length + ' selection' + (wrongPicks.length > 1 ? 's don\'t' : ' doesn\'t') + ' fit' + (missed.length ? ', and you missed ' + missed.length + '.' : '.')
+      : 'Close. You missed ' + missed.length + ' that fit' + (missed.length > 1 ? '.' : 's.');
+  }
+
+  function codeMarkup(r) {
+    return '<div class="editor"><div class="editor-h"><span id="edLabel">○ JS · loading editor</span><span><kbd>⌘</kbd> <kbd>Enter</kbd> to run</span></div><div class="editor-host" id="edHost"></div></div>' +
+      '<div class="status"><span class="msg" id="msg">Checks run as you type.</span><div class="actions">' +
+      '<button type="button" class="ghost" id="resetCode">Reset code</button><button type="button" class="ghost" id="showSol">Show a solution</button><button type="button" class="primary" id="runBtn">Run checks</button></div></div>' +
+      '<div id="out"></div>';
+  }
+
+  function mountEditor(r) {
+    var k = key(state.term, r.id);
+    var doc = store.drafts[k] != null ? store.drafts[k] : r.starter;
+    var host = $('#edHost');
+    var onChange = function (text) {
+      store.drafts[k] = text; save();
+      clearTimeout(runTimer);
+      $('#msg').textContent = 'Checking…'; $('#msg').className = 'msg';
+      runTimer = setTimeout(function () { runChecks(r, text); }, 550);
+    };
+    if (window.CM) {
+      var CM = window.CM;
+      var view = new CM.EditorView({
+        doc: doc, parent: host,
+        extensions: [CM.basicSetup, CM.javascript(), CM.highlight,
+          CM.EditorView.updateListener.of(function (u) { if (u.docChanged) onChange(u.state.doc.toString()); }),
+          CM.EditorView.domEventHandlers({ keydown: function (e) { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); runChecks(r, view.state.doc.toString()); return true; } } })]
+      });
+      editor = { kind: 'cm', get: function () { return view.state.doc.toString(); }, set: function (s) { view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: s } }); }, destroy: function () { view.destroy(); } };
+      $('#edLabel').textContent = '○ JS · CodeMirror 6';
+    } else {
+      host.innerHTML = '<div class="fb-wrap"><div class="fb-gut" id="fbGut"></div><div class="fb-area"><pre id="fbPre" aria-hidden="true"></pre><textarea id="fbTa" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Code editor"></textarea></div></div>';
+      var ta = $('#fbTa'), pre = $('#fbPre'), gut = $('#fbGut');
+      var paint = function () {
+        pre.innerHTML = highlight(ta.value) + '\n';
+        var n = ta.value.split('\n').length, s = '';
+        for (var i = 1; i <= n; i++) s += i + '\n';
+        gut.textContent = s;
+      };
+      ta.value = doc; paint();
+      ta.addEventListener('input', function () { paint(); onChange(ta.value); });
+      ta.addEventListener('keydown', function (e) {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); runChecks(r, ta.value); return; }
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          var a = ta.selectionStart;
+          ta.value = ta.value.slice(0, a) + '  ' + ta.value.slice(ta.selectionEnd);
+          ta.selectionStart = ta.selectionEnd = a + 2; paint(); onChange(ta.value);
+        }
+      });
+      editor = { kind: 'fallback', get: function () { return ta.value; }, set: function (s) { ta.value = s; paint(); }, destroy: function () {} };
+      $('#edLabel').textContent = window.CM_FAILED ? '○ JS · fallback editor (CodeMirror unavailable)' : '○ JS · loading CodeMirror…';
+    }
+    $('#runBtn').onclick = function () { runChecks(r, editor.get()); };
+    $('#resetCode').onclick = function () { editor.set(r.starter); store.drafts[k] = r.starter; save(); runChecks(r, r.starter); };
+    $('#showSol').onclick = function () {
+      if ($('#solBlock')) { $('#solBlock').remove(); return; }
+      $('#out').insertAdjacentHTML('afterend', '<div id="solBlock" style="margin-top:14px"><div class="sect"><span>ONE WORKING SOLUTION</span></div>' + codeBlock(r.solution) + '</div>');
+    };
+    runChecks(r, doc, true);
+  }
+  function destroyEditor() { if (editor) { editor.destroy(); editor = null; } clearTimeout(runTimer); }
+
+  var worker = null, workerUrl = null, pending = null;
+  function makeWorker() {
+    try {
+      if (!workerUrl) {
+        var src = $('#engineSrc').textContent + '\nself.onmessage = function (e) { var d = e.data; var out; try { out = runSuite(d.code, d.tests, d.exports); } catch (err) { out = { fatal: String(err && err.message || err), results: [], logs: [] }; } out.seq = d.seq; self.postMessage(out); };';
+        workerUrl = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+      }
+      worker = new Worker(workerUrl);
+      worker.onmessage = function (e) { if (pending && e.data.seq === pending.seq) { clearTimeout(pending.timer); var p = pending; pending = null; p.resolve(e.data); } };
+    } catch (e) { worker = null; }
+  }
+  function evaluate(r, code) {
+    var seq = ++runSeq;
+    return new Promise(function (resolve) {
+      if (!worker) makeWorker();
+      if (!worker) {
+        if (!window.runSuite) (0, eval)($('#engineSrc').textContent);
+        try { resolve(Object.assign(window.runSuite(code, r.tests, r.exports), { seq: seq, inline: true })); }
+        catch (err) { resolve({ fatal: String(err.message || err), results: [], logs: [], seq: seq }); }
+        return;
+      }
+      if (pending) { clearTimeout(pending.timer); pending.resolve(null); }
+      pending = { seq: seq, resolve: resolve, timer: setTimeout(function () {
+        worker.terminate(); worker = null; pending = null;
+        resolve({ fatal: 'Stopped after 1.5 seconds. Look for an infinite loop or runaway recursion.', results: [], logs: [], seq: seq });
+      }, 1500) };
+      worker.postMessage({ code: code, tests: r.tests, exports: r.exports, seq: seq });
+    });
+  }
+
+  function runChecks(r, code, initial) {
+    clearTimeout(runTimer);
+    var k = key(state.term, r.id), term = state.term;
+    evaluate(r, code).then(function (res) {
+      if (!res || res.seq !== runSeq || state.term !== term || rungsFor(term)[state.rung] !== r) return;
+      var out = $('#out'), msg = $('#msg');
+      if (!out) return;
+      var h = '';
+      if (res.fatal) {
+        h = '<div class="fatal">' + esc(res.fatal) + '</div>';
+        msg.textContent = /SyntaxError/.test(res.fatal) ? 'Syntax error. Fix it and checks resume.' : 'Code didn\'t run.';
+        msg.className = 'msg no';
+      } else {
+        var passed = res.results.filter(function (x) { return x.ok; }).length, total = res.results.length;
+        h = '<div class="results">' + res.results.map(function (x) {
+          return '<div class="res ' + (x.ok ? 'ok' : 'no') + '"><span class="mk">' + (x.ok ? '✓' : '✗') + '</span><span>' + esc(x.name) + '</span>' + (x.detail && (!x.ok || /random/.test(x.detail)) ? '<span class="dt">' + esc(x.detail) + '</span>' : '') + '</div>';
+        }).join('') + '</div>';
+        if (res.logs && res.logs.length) h += '<div class="logs">console\n' + esc(res.logs.slice(0, 20).join('\n')) + '</div>';
+        var all = total > 0 && passed === total;
+        msg.textContent = all ? (r.inverted ? 'Caught it. The law checker found your broken law.' : 'All ' + total + ' checks pass.') : passed + ' of ' + total + ' checks pass.';
+        msg.className = 'msg ' + (all ? 'ok' : initial ? '' : 'no');
+        if (all && !store.done[k]) { markDone(k); showCleared(); }
+      }
+      out.innerHTML = h;
+    });
+  }
+
+  function markDone(k) {
+    store.done[k] = true; save();
+    renderGraph();
+    var ring = document.getElementById('ring-' + state.term);
+    if (ring) { ring.classList.add('pulse'); }
+    var tabCount = document.querySelector('.tab[data-tab="practice"] .count');
+    if (tabCount) tabCount.textContent = doneCount(state.term) + '/' + rungsFor(state.term).length;
+    document.querySelectorAll('.rung').forEach(function (el, i) { if (store.done[key(state.term, rungsFor(state.term)[i].id)]) el.classList.add('done'); });
+  }
+
+  function showCleared() {
+    var rs = rungsFor(state.term), r = rs[state.rung], box = $('#cleared');
+    if (!box || !store.done[key(state.term, r.id)]) return;
+    var next = state.rung + 1 < rs.length ? state.rung + 1 : -1;
+    var nextTerm = null;
+    if (next < 0) {
+      var ids = Object.keys(TERMS).filter(function (id) { return TERMS[id].practice && doneCount(id) < rungsFor(id).length; });
+      nextTerm = ids[0] || null;
+    }
+    box.innerHTML = '<div class="cleared"><span>' + (next >= 0 ? 'Rung cleared.' : doneCount(state.term) === rs.length ? 'Every rung for ' + esc(TERMS[state.term].title) + ' is done.' : 'Rung cleared.') + '</span>' +
+      (next >= 0 ? '<button type="button" class="primary" data-rung="' + next + '">Next: ' + esc(rs[next].title) + '</button>'
+        : nextTerm ? '<button type="button" class="primary" data-go="' + nextTerm + '">Practice ' + esc(TERMS[nextTerm].title) + '</button>' : '') + '</div>';
+  }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-id],[data-tab],[data-rung],[data-go],[data-opt],#checkChoice');
+    if (!t) return;
+    if (t.dataset.id) return go(t.dataset.id);
+    if (t.dataset.go) return go(t.dataset.go);
+    if (t.dataset.tab) {
+      if (t.dataset.tab === 'practice' && !TERMS[state.term].practice) { state.tab = 'practice'; setHash(); return renderDrawer(); }
+      state.tab = t.dataset.tab; setHash(); return renderDrawer();
+    }
+    if (t.dataset.rung !== undefined) { state.rung = +t.dataset.rung; setHash(); return renderDrawer(); }
+    var r = rungsFor(state.term)[state.rung];
+    if (t.dataset.opt !== undefined) {
+      var k = key(state.term, r.id), i = +t.dataset.opt;
+      if (store.done[k]) return;
+      var picked = (store.choices[k] || []).slice();
+      if (r.multi) { var at = picked.indexOf(i); if (at >= 0) picked.splice(at, 1); else picked.push(i); }
+      else picked = [i];
+      store.choices[k] = picked; save();
+      document.querySelectorAll('.opt').forEach(function (el, j) {
+        var on = picked.indexOf(j) >= 0;
+        el.setAttribute('aria-pressed', on);
+        el.querySelector('.box').textContent = r.multi ? (on ? '■' : '□') : (on ? '●' : '○');
+        el.classList.remove('wrong'); var w = el.querySelector('.why'); if (w) w.remove();
+      });
+      $('#msg').textContent = r.multi ? 'Select all that apply.' : 'Select one.'; $('#msg').className = 'msg';
+      return;
+    }
+    if (t.id === 'checkChoice') gradeChoice(r);
+  });
+  document.addEventListener('keydown', function (e) {
+    var n = e.target.closest && e.target.closest('.node');
+    if (n && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go(n.dataset.id); }
+  });
+
+  function setTheme(dark) {
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    $('#themeBtn').textContent = dark ? 'Light theme' : 'Dark theme';
+    try { localStorage.setItem('fpj-theme', dark ? 'dark' : 'light'); } catch (e) {}
+  }
+  var themePref = null;
+  try { themePref = localStorage.getItem('fpj-theme'); } catch (e) {}
+  setTheme(themePref ? themePref === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
+  $('#themeBtn').onclick = function () { setTheme(document.documentElement.dataset.theme !== 'dark'); };
+  $('#resetBtn').onclick = function () {
+    if (!confirm('Clear all progress and drafts in this POC?')) return;
+    store = { done: {}, drafts: {}, choices: {} }; save(); go(state.term, state.tab, 0);
+  };
+
+  window.addEventListener('hashchange', function () { parseHash(); renderGraph(); renderDrawer(); });
+  var upgrade = function () {
+    if (editor && editor.kind === 'fallback' && state.tab === 'practice') renderPractice();
+  };
+  window.addEventListener('cm-ready', upgrade);
+  window.addEventListener('cm-failed', function () { window.CM_FAILED = true; var l = $('#edLabel'); if (l && editor && editor.kind === 'fallback') l.textContent = '○ JS · fallback editor (CodeMirror unavailable)'; });
+
+  parseHash();
+  setHash();
+  renderGraph();
+  renderDrawer();
+})();
+
+</script>
+</body>
+</html>
