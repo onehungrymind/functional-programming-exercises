@@ -813,7 +813,7 @@ export const manifest: ManifestEntry[] = [
   {
     "termId": "lens",
     "notes": "A lens is a getter and a setter travelling together, so the pair can be passed around and\ncomposed as one value.\n\n```js\nconst lens = (getter, setter) => ({ getter, setter })\n\nconst view = (l, s) => l.getter(s)\nconst set  = (l, value, s) => l.setter(value, s)\nconst over = (l, f, s) => set(l, f(view(l, s)), s)   // read, apply, write back\n\nconst lensProp = (key) =>\n  lens((s) => s[key], (value, s) => ({ ...s, [key]: value }))\n```\n\nThe setter has to **build**, not edit, or the caller's record changes underneath them:\n\n```js\n(value, s) => { s[key] = value; return s }    // mutates what you were given\n(value, s) => ({ ...s, [key]: value })        // a new record, siblings intact\n```\n\nComposing is where they earn their keep. A composed lens views through both and sets by setting\nthe inner one inside the outer one:\n\n```js\nconst composeLens = (outer, inner) =>\n  lens(\n    (s) => view(inner, view(outer, s)),\n    (value, s) => set(outer, set(inner, value, view(outer, s)), s)\n  )\n\nconst cityLens = composeLens(lensProp('address'), lensProp('city'))\n\nconst user = { name: 'ada', address: { city: 'London', postcode: 'N1' }, tags: ['a'] }\nset(cityLens, 'Paris', user)\n// { name: 'ada', address: { city: 'Paris', postcode: 'N1' }, tags: ['a'] }\n```\n\nNote what survived: `postcode` beside the field you changed, and `name` and `tags` around\nit. Replacing the whole nested object instead is the usual bug:\n\n```js\n(value, s) => set(outer, value, s)    // address becomes the string 'Paris'\n```\n\nThe three laws are worth knowing because they are what make a lens trustworthy: setting what\nyou just got changes nothing, getting what you just set gives it back, and the last set wins.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. The pair you built is easier to get right once the types are written\ndown, because the setter's return type is the thing people get wrong.\n\n```ts\ninterface Lens<S, A> {\n  getter: (s: S) => A\n  setter: (value: A, s: S) => S\n}\n```\n\nTwo type variables, and they are doing all the work. `S` is the whole structure, `A` is the\npart in focus. Read the setter: it takes an `A` and an `S` and gives back an **`S`**, not an\n`A` and not a fragment. That single letter is the whole \"rebuild the record, do not return the\nfield\" rule.\n\n```ts\nconst lensProp = <S, K extends keyof S>(key: K): Lens<S, S[K]> => ({\n  getter: (s) => s[key],\n  setter: (value, s) => ({ ...s, [key]: value })\n})\n\nconst view = <S, A>(l: Lens<S, A>, s: S): A => l.getter(s)\nconst set = <S, A>(l: Lens<S, A>, value: A, s: S): S => l.setter(value, s)\nconst over = <S, A>(l: Lens<S, A>, f: (a: A) => A, s: S): S => set(l, f(view(l, s)), s)\n```\n\n`over` is worth reading as a type: `(a: A) => A`, in and out the same, which is why it can\nwrite the result back where it came from.\n\nComposition shows up in the types too. Given a `Lens<S, A>` and a `Lens<A, B>`, the only thing\nyou could produce is a `Lens<S, B>`, and the middle `A` cancels exactly the way it does in\nfunction composition.\n\n```ts\nconst composeLens = <S, A, B>(outer: Lens<S, A>, inner: Lens<A, B>): Lens<S, B> => ({\n  getter: (s) => inner.getter(outer.getter(s)),\n  setter: (value, s) => outer.setter(inner.setter(value, outer.getter(s)), s)\n})\n```",
     "rungs": [
       {
         "id": "implement",
@@ -828,13 +828,20 @@ export const manifest: ManifestEntry[] = [
         "title": "Update something nested",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "A lens with its types written down",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
   {
     "termId": "prism",
     "notes": "Where a lens always finds its focus, a prism focuses on a case that **might not be there**. It\nis the optic for a sum type: pick out the Right, the Some, the integer inside a string.\n\n```js\nconst preview = (s) => {          // String -> Option Number\n  const n = Number(s)\n  return Number.isInteger(n) && String(n) === s ? Some(n) : None()\n}\nconst review = (n) => String(n)   // Number -> String, always succeeds\n```\n\nThe test `String(n) === s` is doing the real work. A prism may only match a value it can\n**rebuild exactly**, which rules out a surprising number of near misses:\n\n```js\npreview('42')      // Some(42)\npreview('007')     // None. review(7) is '7', not '007', so the round trip would lose it.\npreview(' 7 ')     // None. Same reason.\npreview('1.5')     // None. Not an integer.\npreview('12abc')   // None, though parseInt would happily say 12.\npreview('')        // None, though Number('') is 0.\n```\n\nThose last two are the traps. `parseInt` stops at the first bad character and `Number('')`\nis zero, so both accept things nothing can rebuild:\n\n```js\nconst preview = (s) => {\n  const n = parseInt(s, 10)\n  return Number.isNaN(n) ? None() : Some(n)\n}\npreview('12abc')   // Some(12), and review(12) is '12'. The original is gone.\n```\n\nThe two laws say exactly that: rebuilding what you previewed gives the original back, and\npreviewing something you built always matches. Prisms compose with lenses, which is how you\nreach into a field that may or may not be the case you want.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. A prism is the optic for a part that might not be there, and the\ntypes say so out loud.\n\n```ts\ntype Option<A> = { tag: 'some', value: A } | { tag: 'none' }\n\ninterface Prism<S, A> {\n  preview: (s: S) => Option<A>\n  review: (a: A) => S\n}\n```\n\nRead the asymmetry. `preview` goes from the whole to `Option<A>`, because the case you are\nlooking for may not be the case you have. `review` goes from `A` straight back to `S` with no\nOption anywhere, because building the whole out of the part always works. That lopsided pair\nis the entire difference between a prism and an [iso](#iso).\n\nPut a [lens](#lens) beside it and the point lands:\n\n```ts\ninterface Lens<S, A> { getter: (s: S) => A;        setter: (a: A, s: S) => S }\ninterface Prism<S, A> { preview: (s: S) => Option<A>; review: (a: A) => S }\n```\n\nA lens focuses a part that is always present, so the getter returns `A`. A prism focuses a\npart that is sometimes present, so `preview` returns `Option<A>`. Everything else about how\nyou use them is the same.\n\n```ts\nconst numeric: Prism<string, number> = {\n  preview: (s) => /^(0|[1-9]\\d*)$/.test(s)\n    ? { tag: 'some', value: Number(s) }\n    : { tag: 'none' },\n  review: (n) => String(n)\n}\n\nnumeric.preview('42')    // { tag: 'some', value: 42 }\nnumeric.preview('abc')   // { tag: 'none' }\nnumeric.review(42)       // '42'\n```\n\nThe round trip is where the types stop helping and you have to think. `preview(review(a))` is\n`some a` for every `a`, and the compiler will not check that for you. Notice that `'007'` has\nto be rejected, or the trip back gives `'7'` and the law is gone.",
     "rungs": [
       {
         "id": "implement",
@@ -849,13 +856,20 @@ export const manifest: ManifestEntry[] = [
         "title": "Lens or prism?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Prism<string, number>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
   {
     "termId": "iso",
     "notes": "An isomorphism is a pair of conversions that lose nothing, in **both** directions.\n\n```js\nconst toPair = (coords) => [coords.x, coords.y]\nconst toCoords = (pair) => ({ x: pair[0], y: pair[1] })\n\ntoCoords(toPair({ x: 1, y: 2 }))   // { x: 1, y: 2 }\ntoPair(toCoords([1, 2]))           // [1, 2]\n```\n\nBoth directions matter. One of them holding is not enough:\n\n```js\nconst to = (n) => String(n)\nconst from = (s) => Number(s)\n\nfrom(to(7))       // 7. This direction is fine.\nto(from('007'))   // '7'. This one is not. Number and String are not isomorphic.\n```\n\nAnything that discards information cannot be one, however innocent it looks:\n\n```js\nconst to = (n) => Math.round(n)\nconst from = (n) => n\nfrom(to(1.5))     // 2. The fraction is gone and nothing can put it back.\n```\n\nFloats need a tolerance, because the arithmetic does not round-trip exactly:\n\n```js\nconst toF = (c) => (c * 9) / 5 + 32\nconst toC = (f) => ((f - 32) * 5) / 9\n\ntoC(toF(0.1)) === 0.1              // false\nMath.abs(toC(toF(0.1)) - 0.1) < 1e-9   // true\n```\n\nAnd test with fractions, not whole numbers. A rounded conversion round-trips whole degrees\ncorrectly often enough to look lossless:\n\n```js\nconst toF = (c) => Math.round((c * 9) / 5 + 32)\nconst toC = (f) => Math.round(((f - 32) * 5) / 9)\n\ntoC(toF(10))    // 10. Passes.\ntoC(toF(0.5))   // 1.  Caught.\n```",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. An iso is the optic where nothing can go wrong, and the type is how\nyou tell.\n\n```ts\ninterface Iso<S, A> {\n  to: (s: S) => A\n  from: (a: A) => S\n}\n```\n\nTwo plain arrows. No Option, no Result, no null on either side. Line the three optics up and\nthe family sorts itself by what the return types admit:\n\n```ts\ninterface Lens<S, A>  { getter: (s: S) => A;           setter: (a: A, s: S) => S }\ninterface Prism<S, A> { preview: (s: S) => Option<A>;  review: (a: A) => S }\ninterface Iso<S, A>   { to: (s: S) => A;               from: (a: A) => S }\n```\n\nA [prism](#prism) can fail one way. A [lens](#lens) reads a part and has to rebuild the whole\nto write. An iso goes both ways, total, and the whole IS the part in a different shape.\n\n```ts\nconst coords: Iso<[number, number], { x: number, y: number }> = {\n  to: ([x, y]) => ({ x, y }),\n  from: ({ x, y }) => [x, y]\n}\n\ncoords.to([1, 2])          // { x: 1, y: 2 }\ncoords.from({ x: 1, y: 2 }) // [1, 2]\n```\n\nWhat the types cannot tell you is that the two directions undo each other. `to` and `from`\ncould both be total and still lose information, and the compiler would be satisfied.\n\n```ts\nconst lossy: Iso<string, string> = {\n  to: (s) => s.toUpperCase(),\n  from: (s) => s.toLowerCase()   // typechecks, and 'Ada' comes back 'ada'\n}\n```\n\nBoth round trips are your job, not the type system's. That is the whole reason this concept\nhas laws attached to it.",
     "rungs": [
       {
         "id": "implement",
@@ -870,13 +884,20 @@ export const manifest: ManifestEntry[] = [
         "title": "Which pairs are isomorphisms?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Iso<[number, number], Point>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
   {
     "termId": "traversal",
     "notes": "The optics hierarchy is about **how many** things you can be looking at:\n\n```js\n// lens       exactly one       user.name\n// prism      zero or one       the Right of an Either\n// traversal  zero or more      every even number in a list\n```\n\nA traversal reads them all and modifies them in place, structurally speaking:\n\n```js\nconst isEven = (n) => n % 2 === 0\n\nconst getAll = (xs) => xs.filter(isEven)\nconst modify = (f, xs) => xs.map((x) => (isEven(x) ? f(x) : x))\n\ngetAll([1, 2, 3, 4])            // [2, 4]\nmodify((n) => n * 10, [1, 2, 3, 4])   // [1, 20, 3, 40]\n```\n\nThe non-matching elements are the point. A traversal **narrows what you act on**, it does not\nremove anything:\n\n```js\nconst modify = (f, xs) => xs.filter(isEven).map(f)   // [20, 40]. The odds are gone.\nconst modify = (f, xs) => xs.map(f)                  // [10, 20, 30, 40]. Everything changed.\n```\n\nAnd it must not disturb what it was given:\n\n```js\nconst modify = (f, xs) => {\n  xs.forEach((x, i) => { if (isEven(x)) xs[i] = f(x) })\n  return xs                    // the caller's array just changed\n}\n```\n\nTwo consistency properties are worth checking. Modifying with identity changes nothing, and\nreading after a modify agrees with modifying what you read:\n\n```js\nmodify((x) => x, xs)              // the same list\ngetAll(modify(f, xs))             // agrees with getAll(xs).map(f)\n                                  // as long as f keeps elements inside the focus\n```\n\nThat caveat matters: if `f` turns an even number odd, the focus set itself moves, and the two\nsides stop agreeing for a good reason.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. A traversal focuses many places at once, and the type has exactly one\nplural in it.\n\n```ts\ninterface Traversal<S, A> {\n  getAll: (s: S) => A[]\n  modify: (f: (a: A) => A, s: S) => S\n}\n```\n\n`getAll` returns `A[]`, because there may be none, one, or fifty. `modify` returns `S`. Not\n`A[]`, not the focuses you touched, but the whole structure with everything else still on it.\nThat single `S` is the \"leave the rest alone\" rule, written as a return type.\n\nNext to a [lens](#lens), the only thing that changed is the plural:\n\n```ts\ninterface Lens<S, A>      { getter: (s: S) => A;   setter: (a: A, s: S) => S }\ninterface Traversal<S, A> { getAll: (s: S) => A[]; modify: (f: (a: A) => A, s: S) => S }\n```\n\nA lens is the special case where `getAll` always returns exactly one thing. Here is one over\nevery score on a record:\n\n```ts\ninterface Player { name: string, scores: number[] }\n\nconst scores: Traversal<Player, number> = {\n  getAll: (p) => p.scores,\n  modify: (f, p) => ({ ...p, scores: p.scores.map(f) })\n}\n\nconst ada: Player = { name: 'Ada', scores: [3, 5] }\nscores.getAll(ada)               // [3, 5]\nscores.modify((n) => n * 2, ada) // { name: 'Ada', scores: [6, 10] }\n```\n\nRead `(a: A) => A` in `modify`. In and out are the same type, which is why the result can be\nwritten back where it came from. Change it to `(a: A) => B` and you no longer have a\ntraversal, you have a [map](#functor) that produces a different structure.\n\nThe count is the part the type does guarantee for you nowhere: `getAll(modify(f, s))` should\nbe `getAll(s).map(f)`, same length, same order. Drop a focus or reorder them and it still\ncompiles.",
     "rungs": [
       {
         "id": "implement",
@@ -891,6 +912,13 @@ export const manifest: ManifestEntry[] = [
         "title": "How many does each optic focus on?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Traversal<Player, number>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },

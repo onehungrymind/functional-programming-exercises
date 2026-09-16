@@ -18,6 +18,11 @@ export const traversal: ExerciseSet = {
       statement:
         "Knows reading after modifying should agree with modifying what was read, and that identity must change nothing.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can read a traversal's type and see that reading gives many values while writing still gives back one whole structure.",
+    },
   ],
   notes: `The optics hierarchy is about **how many** things you can be looking at:
 
@@ -67,6 +72,50 @@ getAll(modify(f, xs))             // agrees with getAll(xs).map(f)
 
 That caveat matters: if \`f\` turns an even number odd, the focus set itself moves, and the two
 sides stop agreeing for a good reason.`,
+  typedNotes: `Same track, second lap. A traversal focuses many places at once, and the type has exactly one
+plural in it.
+
+\`\`\`ts
+interface Traversal<S, A> {
+  getAll: (s: S) => A[]
+  modify: (f: (a: A) => A, s: S) => S
+}
+\`\`\`
+
+\`getAll\` returns \`A[]\`, because there may be none, one, or fifty. \`modify\` returns \`S\`. Not
+\`A[]\`, not the focuses you touched, but the whole structure with everything else still on it.
+That single \`S\` is the "leave the rest alone" rule, written as a return type.
+
+Next to a [lens](#lens), the only thing that changed is the plural:
+
+\`\`\`ts
+interface Lens<S, A>      { getter: (s: S) => A;   setter: (a: A, s: S) => S }
+interface Traversal<S, A> { getAll: (s: S) => A[]; modify: (f: (a: A) => A, s: S) => S }
+\`\`\`
+
+A lens is the special case where \`getAll\` always returns exactly one thing. Here is one over
+every score on a record:
+
+\`\`\`ts
+interface Player { name: string, scores: number[] }
+
+const scores: Traversal<Player, number> = {
+  getAll: (p) => p.scores,
+  modify: (f, p) => ({ ...p, scores: p.scores.map(f) })
+}
+
+const ada: Player = { name: 'Ada', scores: [3, 5] }
+scores.getAll(ada)               // [3, 5]
+scores.modify((n) => n * 2, ada) // { name: 'Ada', scores: [6, 10] }
+\`\`\`
+
+Read \`(a: A) => A\` in \`modify\`. In and out are the same type, which is why the result can be
+written back where it came from. Change it to \`(a: A) => B\` and you no longer have a
+traversal, you have a [map](#functor) that produces a different structure.
+
+The count is the part the type does guarantee for you nowhere: \`getAll(modify(f, s))\` should
+be \`getAll(s).map(f)\`, same length, same order. Drop a focus or reorder them and it still
+compiles.`,
   rungs: [
     {
       id: 'implement',
@@ -204,6 +253,146 @@ const modify = (f, xs) => {
           why: 'All three are shuffled.',
         },
       ],
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['many-focuses', 'leave-the-rest', 'typed-signature'],
+      title: "Satisfy Traversal<Player, number>",
+      prompt:
+        "The interface is given. Fill in `scores` so it reads every score off a player and can map over all of them at once, leaving the name where it was.",
+      hints: [
+        "`getAll` is plural. Hand back the array itself, not the first element and not the player.",
+        "`modify` returns the whole player. Spread the old one and replace just the scores.",
+        "Nothing here is allowed to write into the player you were handed.",
+      ],
+      exports: ['scores'],
+      starter: `interface Player { name: string; scores: number[] }
+
+interface Traversal<S, A> {
+  getAll: (s: S) => A[]
+  modify: (f: (a: A) => A, s: S) => S
+}
+
+const scores: Traversal<Player, number> = {
+  getAll: (p) => [],
+  modify: (f, p) => p
+}
+`,
+      solution: `interface Player { name: string; scores: number[] }
+
+interface Traversal<S, A> {
+  getAll: (s: S) => A[]
+  modify: (f: (a: A) => A, s: S) => S
+}
+
+const scores: Traversal<Player, number> = {
+  getAll: (p) => p.scores,
+  modify: (f, p) => ({ ...p, scores: p.scores.map(f) })
+}
+`,
+      broken: [
+        `interface Player { name: string; scores: number[] }
+
+interface Traversal<S, A> {
+  getAll: (s: S) => A[]
+  modify: (f: (a: A) => A, s: S) => S
+}
+
+const scores: Traversal<Player, number> = {
+  getAll: (p) => p.scores,
+  modify: (f, p) => p.scores.map(f) as unknown as Player
+}
+`,
+        `interface Player { name: string; scores: number[] }
+
+interface Traversal<S, A> {
+  getAll: (s: S) => A[]
+  modify: (f: (a: A) => A, s: S) => S
+}
+
+const scores: Traversal<Player, number> = {
+  getAll: (p) => p.scores,
+  modify: (f, p) => {
+    p.scores = p.scores.map(f)
+    return p
+  }
+}
+`,
+        `interface Player { name: string; scores: number[] }
+
+interface Traversal<S, A> {
+  getAll: (s: S) => A[]
+  modify: (f: (a: A) => A, s: S) => S
+}
+
+const scores: Traversal<Player, number> = {
+  getAll: (p) => p.scores.slice(0, 1),
+  modify: (f, p) => ({ ...p, scores: p.scores.map(f) })
+}
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        T.check('The Traversal interface is still there to satisfy', () => {
+          return /interface\s+Traversal/.test(T.src) || 'The Traversal interface has gone. It is the thing being satisfied.';
+        });
+        const t = exp.scores;
+        const ada = () => ({ name: 'Ada', scores: [3, 5, 7] });
+
+        T.check('getAll hands back every focus, not just the first', () => {
+          const r = t.getAll(ada());
+          return T.eq(r, [3, 5, 7]) || `getAll gave ${T.fmt(r)}, expected all three scores.`;
+        });
+
+        T.check('modify gives back a whole player, not the scores', () => {
+          const r = t.modify((n: number) => n, ada());
+          return (
+            (r && typeof r === 'object' && !Array.isArray(r) && r.name === 'Ada') ||
+            `modify gave ${T.fmt(r)}. The return type is the whole structure, so the name has to still be on it.`
+          );
+        });
+
+        T.check('Every focus is changed', () => {
+          const r = t.modify((n: number) => n * 2, ada());
+          return T.eq(r.scores, [6, 10, 14]) || `Doubling gave ${T.fmt(r.scores)}.`;
+        });
+
+        T.check('The player handed in is left alone', () => {
+          const p = T.freeze({ name: 'Ada', scores: T.freeze([3, 5, 7]) });
+          const r = t.modify((n: number) => n + 1, p);
+          return (
+            T.eq(t.getAll(p), [3, 5, 7]) && T.eq(r.scores, [4, 6, 8]) ||
+            `The original came back as ${T.fmt(t.getAll(p))} after modifying.`
+          );
+        });
+
+        T.law('Reading after modifying is the same as reading then mapping', 60, (G) => {
+          const xs = G.ints();
+          const f = G.fn();
+          const p = { name: 'x', scores: xs };
+          const after = t.getAll(t.modify(f.f, p));
+          const want = xs.map(f.f);
+          return (
+            T.eq(after, want) ||
+            `With scores ${T.fmt(xs)} and ${f.name}, modifying then reading gave ${T.fmt(after)} but mapping directly gives ${T.fmt(want)}.`
+          );
+        });
+
+        T.check('An empty structure is still fine', () => {
+          const r = t.modify((n: number) => n * 2, { name: 'x', scores: [] });
+          return T.eq(r.scores, []) || `With no scores, modify gave ${T.fmt(r)}.`;
+        });
+      },
     },
   ],
 };

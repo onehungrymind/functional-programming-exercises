@@ -19,6 +19,11 @@ export const prism: ExerciseSet = {
       statement:
         "Can reject the inputs that nearly parse, such as trailing characters, padding, decimals, and the empty string.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can read a prism's type and see that the match may fail, because `preview` hands back an Option and `review` does not.",
+    },
   ],
   notes: `Where a lens always finds its focus, a prism focuses on a case that **might not be there**. It
 is the optic for a sum type: pick out the Right, the Some, the integer inside a string.
@@ -57,6 +62,50 @@ preview('12abc')   // Some(12), and review(12) is '12'. The original is gone.
 The two laws say exactly that: rebuilding what you previewed gives the original back, and
 previewing something you built always matches. Prisms compose with lenses, which is how you
 reach into a field that may or may not be the case you want.`,
+  typedNotes: `Same track, second lap. A prism is the optic for a part that might not be there, and the
+types say so out loud.
+
+\`\`\`ts
+type Option<A> = { tag: 'some', value: A } | { tag: 'none' }
+
+interface Prism<S, A> {
+  preview: (s: S) => Option<A>
+  review: (a: A) => S
+}
+\`\`\`
+
+Read the asymmetry. \`preview\` goes from the whole to \`Option<A>\`, because the case you are
+looking for may not be the case you have. \`review\` goes from \`A\` straight back to \`S\` with no
+Option anywhere, because building the whole out of the part always works. That lopsided pair
+is the entire difference between a prism and an [iso](#iso).
+
+Put a [lens](#lens) beside it and the point lands:
+
+\`\`\`ts
+interface Lens<S, A> { getter: (s: S) => A;        setter: (a: A, s: S) => S }
+interface Prism<S, A> { preview: (s: S) => Option<A>; review: (a: A) => S }
+\`\`\`
+
+A lens focuses a part that is always present, so the getter returns \`A\`. A prism focuses a
+part that is sometimes present, so \`preview\` returns \`Option<A>\`. Everything else about how
+you use them is the same.
+
+\`\`\`ts
+const numeric: Prism<string, number> = {
+  preview: (s) => /^(0|[1-9]\\d*)$/.test(s)
+    ? { tag: 'some', value: Number(s) }
+    : { tag: 'none' },
+  review: (n) => String(n)
+}
+
+numeric.preview('42')    // { tag: 'some', value: 42 }
+numeric.preview('abc')   // { tag: 'none' }
+numeric.review(42)       // '42'
+\`\`\`
+
+The round trip is where the types stop helping and you have to think. \`preview(review(a))\` is
+\`some a\` for every \`a\`, and the compiler will not check that for you. Notice that \`'007'\` has
+to be rejected, or the trip back gives \`'7'\` and the law is gone.`,
   rungs: [
     {
       id: 'implement',
@@ -213,6 +262,147 @@ const review = (n) => \`#\${n}\`
           why: 'Both compose, with each other too. That is most of why optics are interesting.',
         },
       ],
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['may-not-match', 'round-trip', 'typed-signature'],
+      title: "Satisfy Prism<string, number>",
+      prompt:
+        "The interface is given. Fill in `numeric` so that `preview` finds a whole number inside a string when there is one, and `review` puts it back. Only a well-formed number counts: `'007'` is not one.",
+      hints: [
+        "`preview` returns an Option, never a bare number. That is the whole reason a prism is not a lens.",
+        "`/^(0|[1-9]\\d*)$/` accepts `'0'` and `'42'` and rejects `'007'` and `'abc'`.",
+        "`review` never fails, so it needs no Option on the way out.",
+      ],
+      exports: ['numeric'],
+      starter: `type Option<A> = { tag: 'some', value: A } | { tag: 'none' }
+
+interface Prism<S, A> {
+  preview: (s: S) => Option<A>
+  review: (a: A) => S
+}
+
+const numeric: Prism<string, number> = {
+  preview: (s) => ({ tag: 'none' }),
+  review: (n) => ''
+}
+`,
+      solution: `type Option<A> = { tag: 'some', value: A } | { tag: 'none' }
+
+interface Prism<S, A> {
+  preview: (s: S) => Option<A>
+  review: (a: A) => S
+}
+
+const numeric: Prism<string, number> = {
+  preview: (s) =>
+    /^(0|[1-9]\\d*)$/.test(s) ? { tag: 'some', value: Number(s) } : { tag: 'none' },
+  review: (n) => String(n)
+}
+`,
+      broken: [
+        `type Option<A> = { tag: 'some', value: A } | { tag: 'none' }
+
+interface Prism<S, A> {
+  preview: (s: S) => Option<A>
+  review: (a: A) => S
+}
+
+const numeric: Prism<string, number> = {
+  preview: (s) => ({ tag: 'some', value: Number(s) }),
+  review: (n) => String(n)
+}
+`,
+        `type Option<A> = { tag: 'some', value: A } | { tag: 'none' }
+
+interface Prism<S, A> {
+  preview: (s: S) => Option<A>
+  review: (a: A) => S
+}
+
+const numeric: Prism<string, number> = {
+  preview: (s) =>
+    /^\\d+$/.test(s) ? { tag: 'some', value: Number(s) } : { tag: 'none' },
+  review: (n) => String(n)
+}
+`,
+        `type Option<A> = { tag: 'some', value: A } | { tag: 'none' }
+
+interface Prism<S, A> {
+  preview: (s: S) => Option<A>
+  review: (a: A) => S
+}
+
+const numeric: Prism<string, number> = {
+  preview: (s) =>
+    /^(0|[1-9]\\d*)$/.test(s) ? { tag: 'some', value: Number(s) } : { tag: 'none' },
+  review: (n) => n
+}
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        T.check('The Prism interface is still there to satisfy', () => {
+          return /interface\s+Prism/.test(T.src) || 'The Prism interface has gone. It is the thing being satisfied.';
+        });
+        const p = exp.numeric;
+
+        T.check('preview finds a number that is there', () => {
+          const r = p.preview('42');
+          return (
+            T.eq(r, { tag: 'some', value: 42 }) ||
+            `preview('42') gave ${T.fmt(r)}. It should be an Option carrying 42.`
+          );
+        });
+
+        T.check('preview comes back empty when there is no match', () => {
+          const r = p.preview('abc');
+          return (
+            r && r.tag === 'none' ||
+            `preview('abc') gave ${T.fmt(r)}. Nothing matched, so there is no value to carry.`
+          );
+        });
+
+        T.check('review never fails, so it hands back the whole directly', () => {
+          const r = p.review(42);
+          return r === '42' || `review(42) gave ${T.fmt(r)}, expected the string '42'.`;
+        });
+
+        T.check('A string that is not well formed does not match', () => {
+          const r = p.preview('007');
+          return (
+            r && r.tag === 'none' ||
+            `preview('007') gave ${T.fmt(r)}. If it matched, review would give back '7' and the round trip would be broken.`
+          );
+        });
+
+        T.law('preview after review always matches', 60, (G) => {
+          const n = G.nat();
+          const r = p.preview(p.review(n));
+          return (
+            T.eq(r, { tag: 'some', value: n }) ||
+            `review(${n}) then preview gave ${T.fmt(r)}, expected the same number back.`
+          );
+        });
+
+        T.law('review after a successful preview gives the string back unchanged', 60, (G) => {
+          const s = String(G.nat());
+          const r = p.preview(s);
+          if (!r || r.tag !== 'some') return `preview(${T.fmt(s)}) found nothing, and it should have.`;
+          const back = p.review(r.value);
+          return back === s || `preview then review turned ${T.fmt(s)} into ${T.fmt(back)}.`;
+        });
+      },
     },
   ],
 };

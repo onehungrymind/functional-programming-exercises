@@ -19,6 +19,11 @@ export const lens: ExerciseSet = {
       statement:
         "Can compose two lenses to reach a nested field, updating it without disturbing anything around it.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can read a lens's type and see that the setter has to return a whole new structure, not a fragment of one.",
+    },
   ],
   notes: `A lens is a getter and a setter travelling together, so the pair can be passed around and
 composed as one value.
@@ -67,6 +72,45 @@ it. Replacing the whole nested object instead is the usual bug:
 
 The three laws are worth knowing because they are what make a lens trustworthy: setting what
 you just got changes nothing, getting what you just set gives it back, and the last set wins.`,
+  typedNotes: `Same track, second lap. The pair you built is easier to get right once the types are written
+down, because the setter's return type is the thing people get wrong.
+
+\`\`\`ts
+interface Lens<S, A> {
+  getter: (s: S) => A
+  setter: (value: A, s: S) => S
+}
+\`\`\`
+
+Two type variables, and they are doing all the work. \`S\` is the whole structure, \`A\` is the
+part in focus. Read the setter: it takes an \`A\` and an \`S\` and gives back an **\`S\`**, not an
+\`A\` and not a fragment. That single letter is the whole "rebuild the record, do not return the
+field" rule.
+
+\`\`\`ts
+const lensProp = <S, K extends keyof S>(key: K): Lens<S, S[K]> => ({
+  getter: (s) => s[key],
+  setter: (value, s) => ({ ...s, [key]: value })
+})
+
+const view = <S, A>(l: Lens<S, A>, s: S): A => l.getter(s)
+const set = <S, A>(l: Lens<S, A>, value: A, s: S): S => l.setter(value, s)
+const over = <S, A>(l: Lens<S, A>, f: (a: A) => A, s: S): S => set(l, f(view(l, s)), s)
+\`\`\`
+
+\`over\` is worth reading as a type: \`(a: A) => A\`, in and out the same, which is why it can
+write the result back where it came from.
+
+Composition shows up in the types too. Given a \`Lens<S, A>\` and a \`Lens<A, B>\`, the only thing
+you could produce is a \`Lens<S, B>\`, and the middle \`A\` cancels exactly the way it does in
+function composition.
+
+\`\`\`ts
+const composeLens = <S, A, B>(outer: Lens<S, A>, inner: Lens<A, B>): Lens<S, B> => ({
+  getter: (s) => inner.getter(outer.getter(s)),
+  setter: (value, s) => outer.setter(inner.setter(value, outer.getter(s)), s)
+})
+\`\`\``,
   rungs: [
     {
       id: 'implement',
@@ -312,6 +356,126 @@ const renameCity = (city, user) => set(cityLens, city, user)
           const once = renameCity('Paris', user());
           const twice = renameCity('Paris', renameCity('Paris', user()));
           return T.eq(once, twice) || `Once gave ${T.fmt(once)}, twice gave ${T.fmt(twice)}.`;
+        });
+      },
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['typed-signature', 'getter-and-setter'],
+      title: "A lens with its types written down",
+      prompt:
+        "Build `lensProp` against this interface. The setter's return type is the part to read carefully.",
+      hints: [
+        "`Lens<S, A>` means: the whole is `S`, the part is `A`. The setter gives back an `S`.",
+        "`K extends keyof S` is how you say \"a key this object actually has\", and `S[K]` is the type of what lives there.",
+      ],
+      exports: ['lensProp', 'view', 'set'],
+      starter: `interface Lens<S, A> {
+  getter: (s: S) => A
+  setter: (value: A, s: S) => S
+}
+
+const lensProp = <S, K extends keyof S>(key: K): Lens<S, S[K]> => ({
+  getter: (s) => s[key],
+  setter: (value, s) => {
+    // the return type says S. Not S[K], not a fragment.
+  }
+})
+
+const view = <S, A>(l: Lens<S, A>, s: S): A => l.getter(s)
+const set = <S, A>(l: Lens<S, A>, value: A, s: S): S => l.setter(value, s)
+`,
+      solution: `interface Lens<S, A> {
+  getter: (s: S) => A
+  setter: (value: A, s: S) => S
+}
+
+const lensProp = <S, K extends keyof S>(key: K): Lens<S, S[K]> => ({
+  getter: (s) => s[key],
+  setter: (value, s) => ({ ...s, [key]: value })
+})
+
+const view = <S, A>(l: Lens<S, A>, s: S): A => l.getter(s)
+const set = <S, A>(l: Lens<S, A>, value: A, s: S): S => l.setter(value, s)
+`,
+      broken: [
+        `interface Lens<S, A> {
+  getter: (s: S) => A
+  setter: (value: A, s: S) => S
+}
+
+const lensProp = <S, K extends keyof S>(key: K): Lens<S, S[K]> => ({
+  getter: (s) => s[key],
+  setter: (value, s) => ({ [key]: value } as unknown as S)
+})
+
+const view = <S, A>(l: Lens<S, A>, s: S): A => l.getter(s)
+const set = <S, A>(l: Lens<S, A>, value: A, s: S): S => l.setter(value, s)
+`,
+        `interface Lens<S, A> {
+  getter: (s: S) => A
+  setter: (value: A, s: S) => S
+}
+
+const lensProp = <S, K extends keyof S>(key: K): Lens<S, S[K]> => ({
+  getter: (s) => s[key],
+  setter: (value, s) => {
+    s[key] = value
+    return s
+  }
+})
+
+const view = <S, A>(l: Lens<S, A>, s: S): A => l.getter(s)
+const set = <S, A>(l: Lens<S, A>, value: A, s: S): S => l.setter(value, s)
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+
+        const lensProp = exp.lensProp as (k: string) => any;
+        const view = exp.view as (l: any, s: any) => any;
+        const set = exp.set as (l: any, v: any, s: any) => any;
+        const name = lensProp('name');
+        const user = () => ({ name: 'ada', age: 36 });
+
+        T.check('view reads the focus', () => {
+          const r = view(name, user());
+          return r === 'ada' || `Got ${T.fmt(r)}`;
+        });
+
+        T.check('set gives back the whole structure, not the part', () => {
+          const r = set(name, 'grace', user());
+          if (typeof r !== 'object' || r === null) return `Got ${T.fmt(r)}. The setter returns an S.`;
+          return (
+            'age' in r ||
+            `Got ${T.fmt(r)}. The signature says the setter returns an S, and an S has every field, not just the one you set.`
+          );
+        });
+
+        T.check('set replaces the focus', () => {
+          const r = set(name, 'grace', user());
+          return r.name === 'grace' || `Got ${T.fmt(r)}`;
+        });
+
+        T.check('set builds rather than writes into what it was given', () => {
+          const original = T.freeze(user());
+          const r = set(name, 'grace', original);
+          if (r === original) return 'You returned the same object. The setter builds a new S.';
+          return T.eq(original, { name: 'ada', age: 36 }) || 'The original record changed.';
+        });
+
+        T.check('The interface is still there to implement against', () => {
+          return /interface\s+Lens/.test(T.src) || 'The Lens interface has gone. It is the thing you are satisfying.';
         });
       },
     },
