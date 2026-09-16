@@ -19,6 +19,11 @@ export const foldable: ExerciseSet = {
       statement:
         "Can say what one reduce provides: sum, length, contains, maximum, and anything else expressible as a fold.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can read `reduce`'s type and say that the seed is what fixes `B`, which is why one fold can produce a number, a list, or a string.",
+    },
   ],
   notes: `Foldable means the structure can be collapsed to a single value. One method, and a family of
 operations comes with it.
@@ -67,6 +72,50 @@ const maximum  = (t) => t.reduce((a, b) => (b > a ? b : a), -Infinity)
 What Foldable does **not** give you is \`map\`: a fold cannot rebuild the structure it walked.
 That needs [Functor](#functor), and doing both at once needs
 [Traversable](#traversable).`,
+  typedNotes: `Same track, second lap. The signature explains why a fold can produce anything at all.
+
+\`\`\`ts
+interface Tree<A> {
+  reduce: <B>(f: (acc: B, a: A) => B, seed: B) => B
+}
+\`\`\`
+
+Two variables doing different jobs. \`A\` is what the structure holds and is fixed when you
+build the tree. \`B\` is introduced by \`reduce\` itself, so it is chosen fresh at every call
+site, by whoever is folding.
+
+Follow where \`B\` comes from: the seed. Hand \`reduce\` a \`0\` and \`B\` is \`number\`. Hand it \`[]\`
+and \`B\` is an array. The accumulator, the return type of \`f\`, and the return type of \`reduce\`
+all become that, and there is nothing to say about it in the interface.
+
+\`\`\`ts
+const sum   = tree.reduce((acc, n) => acc + n, 0)        // number
+const list  = tree.reduce<number[]>((acc, n) => [...acc, n], [])  // number[]
+const label = tree.reduce((acc, n) => acc + n + ' ', '') // string
+\`\`\`
+
+Same structure, same method, three different \`B\`s. That is what "collapse to a summary value"
+means precisely: not a number, any type you like.
+
+\`\`\`ts
+const leaf = <A>(value: A): Tree<A> => ({
+  reduce: (f, seed) => f(seed, value)
+})
+
+const node = <A>(left: Tree<A>, right: Tree<A>): Tree<A> => ({
+  reduce: (f, seed) => right.reduce(f, left.reduce(f, seed))
+})
+\`\`\`
+
+\`node\` is the whole implementation and it is worth reading closely. \`left.reduce(f, seed)\`
+produces a \`B\`, which is then the seed for the right side. Left finishes before right starts,
+and the types make it hard to write any other way: the only \`B\` available to feed the right
+subtree is the one the left just produced.
+
+That threading is also why order is not negotiable. Swap the two and it still typechecks, so
+\`toArray\` would come back in the wrong order and the compiler would have nothing to say.
+\`toArray\` is just the fold where you picked \`B = A[]\`, and if the order is wrong there, it is
+wrong everywhere.`,
   rungs: [
     {
       id: 'implement',
@@ -237,6 +286,153 @@ const Node = (left, value, right) => ({
           why: 'A fold visits everything. Stopping early needs something else.',
         },
       ],
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['collapse', 'what-it-buys', 'typed-signature'],
+      title: "Satisfy Tree<A>",
+      prompt:
+        "The interface is given. Write `leaf` and `node` so the fold visits left before right and threads the accumulator through both.",
+      hints: [
+        "A leaf has one value. Apply `f` to the seed and that value, and that is the answer.",
+        "`node` folds the left side first. What comes back is a `B`, which is exactly what the right side needs as its seed.",
+        "You never build an array on the way. The seed is the only accumulator there is.",
+      ],
+      exports: ['leaf', 'node'],
+      starter: `interface Tree<A> {
+  reduce: <B>(f: (acc: B, a: A) => B, seed: B) => B
+}
+
+const leaf = <A>(value: A): Tree<A> => ({
+  reduce: (f, seed) => seed
+})
+
+const node = <A>(left: Tree<A>, right: Tree<A>): Tree<A> => ({
+  reduce: (f, seed) => seed
+})
+`,
+      solution: `interface Tree<A> {
+  reduce: <B>(f: (acc: B, a: A) => B, seed: B) => B
+}
+
+const leaf = <A>(value: A): Tree<A> => ({
+  reduce: (f, seed) => f(seed, value)
+})
+
+const node = <A>(left: Tree<A>, right: Tree<A>): Tree<A> => ({
+  reduce: (f, seed) => right.reduce(f, left.reduce(f, seed))
+})
+`,
+      broken: [
+        `interface Tree<A> {
+  reduce: <B>(f: (acc: B, a: A) => B, seed: B) => B
+}
+
+const leaf = <A>(value: A): Tree<A> => ({
+  reduce: (f, seed) => f(seed, value)
+})
+
+const node = <A>(left: Tree<A>, right: Tree<A>): Tree<A> => ({
+  reduce: (f, seed) => left.reduce(f, right.reduce(f, seed))
+})
+`,
+        `interface Tree<A> {
+  reduce: <B>(f: (acc: B, a: A) => B, seed: B) => B
+}
+
+const leaf = <A>(value: A): Tree<A> => ({
+  reduce: (f, seed) => f(seed, value)
+})
+
+const node = <A>(left: Tree<A>, right: Tree<A>): Tree<A> => ({
+  reduce: (f, seed) => right.reduce(f, seed)
+})
+`,
+        `interface Tree<A> {
+  reduce: <B>(f: (acc: B, a: A) => B, seed: B) => B
+}
+
+const leaf = <A>(value: A): Tree<A> => ({
+  reduce: (f, seed) => f(value as never, seed as never) as never
+})
+
+const node = <A>(left: Tree<A>, right: Tree<A>): Tree<A> => ({
+  reduce: (f, seed) => right.reduce(f, left.reduce(f, seed))
+})
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        T.check('The Tree declaration is still there to satisfy', () => {
+          return /interface\s+Tree/.test(T.src) || 'The Tree declaration has gone. It is the thing being satisfied.';
+        });
+        const { leaf, node } = exp;
+        // ((1 2) (3 4))
+        const t = node(node(leaf(1), leaf(2)), node(leaf(3), leaf(4)));
+
+        T.check('A lone leaf folds to its value', () => {
+          const r = leaf(5).reduce((acc: number, n: number) => acc + n, 0);
+          return r === 5 || `Folding a single leaf of 5 with addition gave ${T.fmt(r)}.`;
+        });
+
+        T.check('Every value is visited exactly once', () => {
+          const r = t.reduce((acc: number, n: number) => acc + n, 0);
+          return r === 10 || `Summing 1, 2, 3 and 4 gave ${T.fmt(r)}. Either something was skipped or something was counted twice.`;
+        });
+
+        T.check('The seed is where B comes from, so a list is a fold too', () => {
+          const r = t.reduce((acc: number[], n: number) => [...acc, n], [] as number[]);
+          return (
+            T.eq(r, [1, 2, 3, 4]) ||
+            `Folding into an array gave ${T.fmt(r)}, expected [1, 2, 3, 4]. Left has to finish before right starts.`
+          );
+        });
+
+        T.check('B can be a string just as easily', () => {
+          const r = t.reduce((acc: string, n: number) => acc + n, '');
+          return r === '1234' || `Folding into a string gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The accumulator goes first, the value second', () => {
+          const r = t.reduce((acc: string, n: number) => acc + '-' + n, 'seed');
+          return (
+            r === 'seed-1-2-3-4' ||
+            `Threading a seed through gave ${T.fmt(r)}, expected 'seed-1-2-3-4'. \`f\` is typed (acc, a), in that order.`
+          );
+        });
+
+        T.check('The seed is used, not ignored', () => {
+          const r = t.reduce((acc: number, n: number) => acc + n, 100);
+          return r === 110 || `With a seed of 100 the sum came to ${T.fmt(r)}, expected 110.`;
+        });
+
+        T.check('A lopsided tree folds in the same order', () => {
+          const s = node(leaf(1), node(leaf(2), node(leaf(3), leaf(4))));
+          const r = s.reduce((acc: number[], n: number) => [...acc, n], [] as number[]);
+          return T.eq(r, [1, 2, 3, 4]) || `A right-leaning tree folded to ${T.fmt(r)}.`;
+        });
+
+        T.law('Folding into an array agrees with folding into a sum', 60, (G) => {
+          const a = G.int(), b = G.int(), c = G.int();
+          const s = node(leaf(a), node(leaf(b), leaf(c)));
+          const xs = s.reduce((acc: number[], n: number) => [...acc, n], [] as number[]);
+          const total = s.reduce((acc: number, n: number) => acc + n, 0);
+          return (
+            xs.reduce((x: number, y: number) => x + y, 0) === total ||
+            `On ${T.fmt([a, b, c])} the list fold gave ${T.fmt(xs)} and the sum fold gave ${T.fmt(total)}.`
+          );
+        });
+      },
     },
   ],
 };

@@ -19,6 +19,11 @@ export const semigroup: ExerciseSet = {
       statement:
         "Knows one type can be a semigroup in several ways, and that the wrapper is what picks which.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can read `concat` and say that the three `A`s are what closure means: whatever goes in, the same type comes out.",
+    },
   ],
   notes: `A Semigroup is a type with an associative \`concat\`. That is the whole definition: no identity,
 no inverse, nothing else.
@@ -61,6 +66,50 @@ Sum(3).concat(Sum(7)).value    // 10
 
 That is why they are wrapped at all. \`Number\` on its own does not say which combination you
 meant.`,
+  typedNotes: `Same track, second lap. One line, three mentions of the same variable.
+
+\`\`\`ts
+interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+\`\`\`
+
+In, in, out, all \`A\`. That is closure, and it is the property the whole concept rests on. A
+function of type \`(a: A, b: A) => B\` is a perfectly reasonable thing to write and it is not a
+semigroup, because you cannot apply it to its own result. Combining has to keep you where you
+started or you cannot keep combining.
+
+That is also why the same type can have several of them. The type variable is the set, and the
+function is the operation, so pick a different operation and you get a different instance:
+
+\`\`\`ts
+const maxSemigroup: Semigroup<number> = { concat: (a, b) => Math.max(a, b) }
+const minSemigroup: Semigroup<number> = { concat: (a, b) => Math.min(a, b) }
+const sumSemigroup: Semigroup<number> = { concat: (a, b) => a + b }
+const firstSemigroup: Semigroup<number> = { concat: (a) => a }
+\`\`\`
+
+All four are \`Semigroup<number>\` and all four are different. \`first\` is worth a second look:
+it ignores \`b\` entirely, which the signature permits, and it is still associative. Being
+lawful does not mean being interesting.
+
+Because the type is closed, folding needs no special case except the empty list:
+
+\`\`\`ts
+const fold = <A>(S: Semigroup<A>, xs: A[]): A =>
+  xs.reduce(S.concat)   // throws on []
+\`\`\`
+
+\`reduce\` with no seed is exactly the shape a semigroup gives you, and exactly where it runs
+out. There is no value of type \`A\` to start from, because \`A\` is a variable and the interface
+does not carry one. Adding that value is the entire difference between this and a
+[monoid](#monoid), and in the types it is a single extra field.
+
+\`\`\`ts
+interface Monoid<A> extends Semigroup<A> {
+  empty: A
+}
+\`\`\``,
   rungs: [
     {
       id: 'implement',
@@ -194,6 +243,142 @@ const First = (value) => ({ value, concat: (other) => First(value - other.value)
         { code: '(a, b) => a.concat(b)  // string concat', correct: true, why: 'Joining text groups either way.' },
         { code: '(a, b) => a', correct: true, why: 'Always keeping the left one is associative, if not very useful.' },
       ],
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['concat-stays-inside', 'several-instances', 'typed-signature'],
+      title: "Satisfy Semigroup<number> three times",
+      prompt:
+        "The interface is given. Write three different instances over the same type: `maxSemigroup`, `minSemigroup` and `firstSemigroup`.",
+      hints: [
+        "All three have the identical signature. Only the body differs, which is the point of the rung.",
+        "`firstSemigroup` ignores its second argument. That is allowed, and it is still associative.",
+        "Nothing here may return anything but a number, or the result could not be combined again.",
+      ],
+      exports: ['maxSemigroup', 'minSemigroup', 'firstSemigroup'],
+      starter: `interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+
+const maxSemigroup: Semigroup<number> = { concat: (a, b) => 0 }
+
+const minSemigroup: Semigroup<number> = { concat: (a, b) => 0 }
+
+const firstSemigroup: Semigroup<number> = { concat: (a, b) => 0 }
+`,
+      solution: `interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+
+const maxSemigroup: Semigroup<number> = { concat: (a, b) => Math.max(a, b) }
+
+const minSemigroup: Semigroup<number> = { concat: (a, b) => Math.min(a, b) }
+
+const firstSemigroup: Semigroup<number> = { concat: (a, b) => a }
+`,
+      broken: [
+        `interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+
+const maxSemigroup: Semigroup<number> = { concat: (a, b) => Math.max(a, b) }
+
+const minSemigroup: Semigroup<number> = { concat: (a, b) => Math.max(a, b) }
+
+const firstSemigroup: Semigroup<number> = { concat: (a, b) => a }
+`,
+        `interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+
+const maxSemigroup: Semigroup<number> = { concat: (a, b) => [a, b].sort() as never }
+
+const minSemigroup: Semigroup<number> = { concat: (a, b) => Math.min(a, b) }
+
+const firstSemigroup: Semigroup<number> = { concat: (a, b) => a }
+`,
+        `interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+
+const maxSemigroup: Semigroup<number> = { concat: (a, b) => Math.max(a, b) }
+
+const minSemigroup: Semigroup<number> = { concat: (a, b) => Math.min(a, b) }
+
+const firstSemigroup: Semigroup<number> = { concat: (a, b) => b }
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        T.check('The Semigroup declaration is still there to satisfy', () => {
+          return /interface\s+Semigroup/.test(T.src) || 'The Semigroup declaration has gone. It is the thing being satisfied.';
+        });
+        const { maxSemigroup, minSemigroup, firstSemigroup } = exp;
+
+        T.check('max keeps the larger', () => {
+          const r = maxSemigroup.concat(3, 7);
+          return r === 7 || `concat(3, 7) on max gave ${T.fmt(r)}.`;
+        });
+
+        T.check('min keeps the smaller', () => {
+          const r = minSemigroup.concat(3, 7);
+          return r === 3 || `concat(3, 7) on min gave ${T.fmt(r)}.`;
+        });
+
+        T.check('first keeps the left one and ignores the right', () => {
+          const r = firstSemigroup.concat(3, 7);
+          return r === 3 || `concat(3, 7) on first gave ${T.fmt(r)}. It keeps the one on the left.`;
+        });
+
+        T.check('The three are actually different', () => {
+          const a = maxSemigroup.concat(3, 7);
+          const b = minSemigroup.concat(3, 7);
+          const c = firstSemigroup.concat(3, 7);
+          return (
+            !(a === b && b === c) ||
+            `All three gave ${T.fmt(a)} on the same input. One type can carry several instances, and these are meant to be three.`
+          );
+        });
+
+        T.check('Combining stays inside the type', () => {
+          for (const [name, S] of [['max', maxSemigroup], ['min', minSemigroup], ['first', firstSemigroup]] as [string, { concat: (a: number, b: number) => number }][]) {
+            const r = S.concat(3, 7);
+            if (typeof r !== 'number') {
+              return `${name} gave ${T.fmt(r)}, a ${typeof r}. All three \`A\`s in the signature are the same, so what comes out has to go back in.`;
+            }
+          }
+          return true;
+        });
+
+        T.check('The result can be combined again', () => {
+          const r = maxSemigroup.concat(maxSemigroup.concat(1, 5), 3);
+          return r === 5 || `Combining twice gave ${T.fmt(r)}.`;
+        });
+
+        T.law('All three are associative', 80, (G) => {
+          const a = G.int();
+          const b = G.int();
+          const c = G.int();
+          for (const [name, S] of [['max', maxSemigroup], ['min', minSemigroup], ['first', firstSemigroup]] as [string, { concat: (x: number, y: number) => number }][]) {
+            const left = S.concat(S.concat(a, b), c);
+            const right = S.concat(a, S.concat(b, c));
+            if (left !== right) {
+              return `${name} on ${T.fmt([a, b, c])}: bracketing left gave ${T.fmt(left)} and right gave ${T.fmt(right)}.`;
+            }
+          }
+          return true;
+        });
+      },
     },
   ],
 };

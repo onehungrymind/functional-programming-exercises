@@ -750,7 +750,7 @@ export const manifest: ManifestEntry[] = [
   {
     "termId": "sum-type",
     "notes": "A sum type is a value that is **exactly one** of several shapes. Each case carries a tag and\nwhatever that case needs.\n\n```js\nconst Loading = () => ({ type: 'loading' })\nconst Ok = (data) => ({ type: 'ok', data })\nconst Failed = (error) => ({ type: 'failed', error })\n```\n\nThat replaces a record where most combinations are meaningless. `{ loading, data, error }`\nhas eight states and three make sense; this has three.\n\nThe value of the tag is that a single function can dispatch on it, and **refuse** to run when a\ncase is unhandled:\n\n```js\nconst CASES = ['loading', 'ok', 'failed']\n\nconst match = (state, handlers) => {\n  const missing = CASES.filter((c) => typeof handlers[c] !== 'function')\n  if (missing.length) throw new TypeError(`match is missing a handler for: ${missing.join(', ')}`)\n  return handlers[state.type](state)\n}\n```\n\nWithout that check a forgotten case is silent, which is the exact failure exhaustiveness exists\nto prevent:\n\n```js\nconst match = (state, handlers) => handlers[state.type](state)\n\nmatch(Failed('boom'), { loading: () => '...', ok: (s) => s.data })\n// TypeError: handlers[state.type] is not a function, somewhere far from the cause\n```\n\nMore things are sum types than you would think. A list is one, and a recursive one:\n\n```js\n// [a] is either empty, or a head followed by a tail\nBoolean          // true | false, the smallest interesting sum\nOption a         // Some a | None\nEither e a       // Left e | Right a\n```",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. This is the concept TypeScript is best at, and the payoff is not\nsubtle.\n\n```ts\ntype Status =\n  | { tag: 'loading' }\n  | { tag: 'ok', data: string }\n  | { tag: 'failed', reason: string }\n```\n\nOne of several, spelled out. `ok` carries data, `failed` carries a reason, `loading` carries\nnothing, and no value is ever more than one of them. Compare what you would otherwise write:\n\n```ts\ninterface Status {\n  loading: boolean\n  data?: string\n  reason?: string\n}\n```\n\nThat type permits `{ loading: true, data: 'x', reason: 'y' }`, which is nonsense you now have\nto defend against at every call site. The union permits exactly three shapes.\n\nTesting the tag narrows the union, so the compiler knows which fields exist in each branch:\n\n```ts\nconst render = (s: Status): string => {\n  switch (s.tag) {\n    case 'loading': return 'spinner'\n    case 'ok':      return s.data      // `reason` is not in scope here\n    case 'failed':  return s.reason    // and `data` is not in scope here\n  }\n}\n```\n\nNow the part worth learning properly. Exhaustiveness:\n\n```ts\nconst assertNever = (x: never): never => {\n  throw new Error('unhandled case: ' + JSON.stringify(x))\n}\n\nconst render = (s: Status): string => {\n  switch (s.tag) {\n    case 'loading': return 'spinner'\n    case 'ok':      return s.data\n    case 'failed':  return s.reason\n    default:        return assertNever(s)\n  }\n}\n```\n\nBy the `default` branch every case has been handled, so `s` has been narrowed to `never`, and\n`assertNever` accepts it. Add a fourth member to `Status` and that narrowing no longer reaches\n`never`, so the call stops compiling and it points at every `switch` that has not been\nupdated.\n\nThat is the thing to take away. A sum type does not just describe your states, it makes the\ncompiler find the places you forgot when the states change. Without `assertNever` the\n`switch` just falls through and returns `undefined`, and you find out in production.",
     "rungs": [
       {
         "id": "implement",
@@ -765,6 +765,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Which of these are sum types?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Match on Status exhaustively",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
@@ -960,7 +967,7 @@ export const manifest: ManifestEntry[] = [
   {
     "termId": "setoid",
     "notes": "A Setoid is a type that knows how to compare itself. The interesting part is not `equals`, it\nis the three laws it has to satisfy.\n\n```js\nconst Point = (x, y) => ({\n  x, y,\n  equals: (other) => other.x === x && other.y === y\n})\n\nPoint(1, 2).equals(Point(1, 2))   // true\n{ x: 1 } === { x: 1 }              // false. === asks whether it is the same object.\n```\n\n**Reflexive**: everything equals itself. **Symmetric**: the order does not matter.\n**Transitive**: equality chains.\n\nThe one people break is symmetry, usually by writing an ordering and calling it an equality:\n\n```js\nconst Score = (n) => ({ n, equals: (other) => other.n >= n })\n\nScore(1).equals(Score(2))   // true\nScore(2).equals(Score(1))   // false   not symmetric\n```\n\nReflexivity and transitivity both survive that, which is why checking one law is not enough.\n\nAlso worth guarding: comparing only part of the value passes the laws and is still wrong, and\nit is the kind of thing a quick test misses:\n\n```js\nconst Point = (x, y) => ({ x, y, equals: (other) => other.x === x })\nPoint(1, 2).equals(Point(1, 99))   // true, and reflexive, symmetric and transitive\n```\n\nThe laws tell you the relation is well-behaved, not that it means what you intended.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. The signature is one line, and every part of it is load-bearing.\n\n```ts\ninterface Setoid<A> {\n  equals: (a: A, b: A) => boolean\n}\n```\n\nBoth arguments are `A`. The same `A`, not two variables. That is the first thing the types buy\nyou, and it is something `===` will never do:\n\n```ts\n'3' === 3            // false, and the compiler let you ask\n\nconst num: Setoid<number> = { equals: (a, b) => a === b }\nnum.equals(3, '3')   // error, string is not a number\n```\n\nA comparison that can only ever be false is a bug, and with a Setoid it does not compile. You\nfind out while typing instead of while debugging.\n\nThe return type is `boolean`, singular. Not `-1 | 0 | 1`, not a number, not the object. Equality\nanswers one question and does not rank anything.\n\n```ts\ninterface Point { x: number, y: number }\n\nconst pointSetoid: Setoid<Point> = {\n  equals: (a, b) => a.x === b.x && a.y === b.y\n}\n\npointSetoid.equals({ x: 1, y: 2 }, { x: 1, y: 2 })   // true\n{ x: 1, y: 2 } === { x: 1, y: 2 }                     // false, different objects\n```\n\nThat is the whole reason the concept exists. The built-in compares identity, the Setoid\ncompares contents, and `A` being a variable means each type gets to say what its own contents\nare.\n\nWhat the types cannot do is check the three laws. Reflexivity, symmetry and transitivity are\nstatements about every possible pair of values, and TypeScript has no way to say that. This\ntypechecks:\n\n```ts\nconst broken: Setoid<number> = { equals: (a, b) => a < b }\n```\n\nIt is a perfectly good function of the right type and a terrible equality. The compiler stops\nyou comparing a string to a number; it will not stop you calling `<` equality. That half is\nstill yours, which is why the laws get their own rung.",
     "rungs": [
       {
         "id": "implement",
@@ -975,13 +982,20 @@ export const manifest: ManifestEntry[] = [
         "title": "Which law does this break?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Setoid<Point>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
   {
     "termId": "semigroup",
     "notes": "A Semigroup is a type with an associative `concat`. That is the whole definition: no identity,\nno inverse, nothing else.\n\n```js\nconst Max = (value) => ({\n  value,\n  concat: (other) => Max(value > other.value ? value : other.value)\n})\n\nMax(3).concat(Max(7))            // Max(7)\nMax(1).concat(Max(9)).concat(Max(5))   // Max(9)\n```\n\n`concat` has to stay **inside** the type, or the second link in the chain has nothing to call:\n\n```js\nconcat: (other) => Math.max(value, other.value)   // gives a number\nMax(1).concat(Max(2)).concat(Max(3))              // TypeError\n```\n\nAssociativity means the grouping cannot change the answer:\n\n```js\n(1 + 2) + 3 === 1 + (2 + 3)      // addition: yes\n(1 - 2) - 3 === 1 - (2 - 3)      // subtraction: -4 vs 2. No.\n(8 / 4) / 2 === 8 / (4 / 2)      // division: 1 vs 4. No.\n```\n\nEven \"always keep the left one\" is associative, which is why `First` is a legitimate semigroup\nif not a very exciting one.\n\nA type is usually a semigroup in **more than one way**, and the wrapper is how you choose:\n\n```js\nMax(3).concat(Max(7)).value    // 7\nMin(3).concat(Min(7)).value    // 3\nSum(3).concat(Sum(7)).value    // 10\n```\n\nThat is why they are wrapped at all. `Number` on its own does not say which combination you\nmeant.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. One line, three mentions of the same variable.\n\n```ts\ninterface Semigroup<A> {\n  concat: (a: A, b: A) => A\n}\n```\n\nIn, in, out, all `A`. That is closure, and it is the property the whole concept rests on. A\nfunction of type `(a: A, b: A) => B` is a perfectly reasonable thing to write and it is not a\nsemigroup, because you cannot apply it to its own result. Combining has to keep you where you\nstarted or you cannot keep combining.\n\nThat is also why the same type can have several of them. The type variable is the set, and the\nfunction is the operation, so pick a different operation and you get a different instance:\n\n```ts\nconst maxSemigroup: Semigroup<number> = { concat: (a, b) => Math.max(a, b) }\nconst minSemigroup: Semigroup<number> = { concat: (a, b) => Math.min(a, b) }\nconst sumSemigroup: Semigroup<number> = { concat: (a, b) => a + b }\nconst firstSemigroup: Semigroup<number> = { concat: (a) => a }\n```\n\nAll four are `Semigroup<number>` and all four are different. `first` is worth a second look:\nit ignores `b` entirely, which the signature permits, and it is still associative. Being\nlawful does not mean being interesting.\n\nBecause the type is closed, folding needs no special case except the empty list:\n\n```ts\nconst fold = <A>(S: Semigroup<A>, xs: A[]): A =>\n  xs.reduce(S.concat)   // throws on []\n```\n\n`reduce` with no seed is exactly the shape a semigroup gives you, and exactly where it runs\nout. There is no value of type `A` to start from, because `A` is a variable and the interface\ndoes not carry one. Adding that value is the entire difference between this and a\n[monoid](#monoid), and in the types it is a single extra field.\n\n```ts\ninterface Monoid<A> extends Semigroup<A> {\n  empty: A\n}\n```",
     "rungs": [
       {
         "id": "implement",
@@ -996,13 +1010,20 @@ export const manifest: ManifestEntry[] = [
         "title": "Which operations are associative?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Semigroup<number> three times",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
   {
     "termId": "monoid",
     "notes": "A Monoid is a [semigroup](#semigroup) with an `empty` that changes nothing on **either** side.\n\n```js\nSum.empty()     // Sum(0)     adding nothing changes nothing\nProduct.empty() // Product(1) multiplying by nothing changes nothing\nAll.empty()     // All(true)  \"and true\" changes nothing\nAny.empty()     // Any(false) \"or false\" changes nothing\n```\n\nThe wrong identity annihilates rather than steps aside, which is the mistake to watch for:\n\n```js\nProduct.empty = () => Product(0)\nProduct.empty().concat(Product(5))   // Product(0). Everything it touches becomes 0.\n```\n\nThe reason to care is folds. `empty` is exactly what gives an empty list an answer instead of\nan error:\n\n```js\nconst fold = (M, xs) => xs.reduce((a, b) => a.concat(b), M.empty())\n\nfold(Sum, [Sum(1), Sum(2)])   // Sum(3)\nfold(Sum, [])                 // Sum(0), not a crash\n\n[].reduce((a, b) => a + b)    // TypeError: Reduce of empty array with no initial value\n```\n\nNot every semigroup has one. Subtraction has a **one-sided** identity, which is not enough:\n\n```js\n5 - 0    // 5   right identity holds\n0 - 5    // -5  left identity does not\n```\n\nAnd no other value works either, so subtraction is a monoid under nothing. It is not even a\nsemigroup, since it is not associative:\n\n```js\n(1 - 2) - 3   // -4\n1 - (2 - 3)   // 2\n```",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. The relationship between the two concepts is one word and one field.\n\n```ts\ninterface Semigroup<A> {\n  concat: (a: A, b: A) => A\n}\n\ninterface Monoid<A> extends Semigroup<A> {\n  empty: A\n}\n```\n\n`extends` says it out loud: every monoid is a semigroup, and not the other way round. And look\nat what got added. `empty: A` is a **value**, not `empty: () => A`. There is nothing to\ncompute, no argument to inspect. It is a constant that the type says belongs to the set.\n\nThat single field is what makes folding total:\n\n```ts\nconst fold = <A>(M: Monoid<A>, xs: A[]): A =>\n  xs.reduce(M.concat, M.empty)\n```\n\n`reduce` with a seed. Hand it `[]` and you get `M.empty` back, typed `A`, and nothing threw.\nWith only a semigroup there is no value of type `A` to hand `reduce`, because `A` is a\nvariable and the interface carries no inhabitant of it. The empty case is not an edge case you\nforgot, it is a thing the type could not supply.\n\n```ts\nconst sumMonoid: Monoid<number>  = { empty: 0,     concat: (a, b) => a + b }\nconst prodMonoid: Monoid<number> = { empty: 1,     concat: (a, b) => a * b }\nconst allMonoid: Monoid<boolean> = { empty: true,  concat: (a, b) => a && b }\nconst anyMonoid: Monoid<boolean> = { empty: false, concat: (a, b) => a || b }\n\nfold(sumMonoid, [])    // 0\nfold(allMonoid, [])    // true\n```\n\nEvery `empty` is different and none of them is guessable from the type. `Monoid<number>` does\nnot say which number, and it could not: sum wants 0 and product wants 1, and the compiler has\nno opinion about which. What it does insist on is that you supply one.\n\nThe law is the part still left to you. `concat(empty, a)` and `concat(a, empty)` must both be\n`a`, for every `a`, and this typechecks perfectly well:\n\n```ts\nconst wrong: Monoid<number> = { empty: 1, concat: (a, b) => a + b }\n```\n\nRight shape, wrong constant. The type system got you the field; whether the field is the\nidentity is a property of values, and that is what the law rung is for.",
     "rungs": [
       {
         "id": "implement",
@@ -1017,6 +1038,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Subtraction is not even a semigroup",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Monoid<A> four times",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
@@ -1205,7 +1233,7 @@ export const manifest: ManifestEntry[] = [
   {
     "termId": "kleisli-composition",
     "notes": "Ordinary composition needs the output of one function to be the input of the next. Two functions\nthat each return a container do not line up:\n\n```js\nconst half = (n) => (n % 2 === 0 ? Just(n / 2) : Nothing())   // Number -> Maybe Number\n\ncompose(half, half)(8)   // half receives Just(4), and it expects a Number\n```\n\n`chain` is what bridges the gap, and `composeK` packages that up:\n\n```js\nconst composeK = (g, f) => (a) => f(a).chain(g)\n\nconst positive = (n) => (n > 0 ? Just(n) : Nothing())\nconst halfThenPositive = composeK(positive, half)\n\nhalfThenPositive(8)    // Just(4)\n```\n\nIt reads right to left, the same as `compose`, so the rightmost function runs first. Using\n`map` instead leaves you doubly wrapped:\n\n```js\nconst composeK = (g, f) => (a) => f(a).map(g)   // Just(Just(4))\n```\n\nA failure anywhere ends it, and the later steps never run:\n\n```js\nhalfThenPositive(7)     // Nothing. half failed, positive was never called.\nhalfThenPositive(-4)    // Nothing. half gave Just(-2), positive rejected it.\n```\n\nAnd it is associative, which is what makes it a [category](#category) rather than just a handy\nfunction: you can group a long chain into named stages freely.\n\n```js\ncomposeK(composeK(h, g), f)   // the same function as\ncomposeK(h, composeK(g, f))\n```",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. The reason ordinary composition fails here is not a runtime surprise,\nit is a type error you can read off the page.\n\n```ts\nconst compose = <A, B, C>(g: (b: B) => C, f: (a: A) => B) =>\n  (a: A): C => g(f(a))\n```\n\nThat works because `f` produces a `B` and `g` consumes a `B`. Same letter, so they meet. Now\nmake both of them able to fail:\n\n```ts\ntype Kleisli<A, B> = (a: A) => Maybe<B>\n\nconst safeDiv = (n: number): Maybe<number> => ...   // Kleisli<number, number>\nconst safeSqrt = (n: number): Maybe<number> => ...  // Kleisli<number, number>\n\ncompose(safeSqrt, safeDiv)   // error\n```\n\nRead where it breaks. `safeDiv` returns `Maybe<number>`, so `compose` infers `B = Maybe<number>`.\n`safeSqrt` takes a plain `number`. `Maybe<number>` is not `number`, and there is no assignment\nof variables that makes those the same. The mismatch is one layer of wrapper, in one place.\n\nKleisli composition is the version whose types do line up:\n\n```ts\nconst composeK = <A, B, C>(g: Kleisli<B, C>, f: Kleisli<A, B>): Kleisli<A, C> =>\n  (a) => f(a).chain(g)\n```\n\nCheck the ends. It takes an `A` and returns `Maybe<C>`. Not `Maybe<Maybe<C>>`: `f(a)` gives a\n`Maybe<B>`, and `chain` is the operation that takes `(b: B) => Maybe<C>` and returns\n`Maybe<C>`, which is exactly `g`'s type. `chain` is the only thing that fits in that hole, and\nthe signature is what tells you so.\n\n```ts\nconst pipeline = composeK(safeSqrt, safeDiv)   // Kleisli<number, number>\npipeline(16)   // a Maybe holding 2\npipeline(0)    // empty, and safeSqrt never ran\n```\n\nThe result is a `Kleisli<A, C>`, the same shape as the two things that went in, which is why\nyou can keep going:\n\n```ts\ncomposeK(safeLog, composeK(safeSqrt, safeDiv))\n```\n\nShort-circuiting is not extra machinery either. It is whatever `chain` does on an empty value,\nand that is already settled by [monad](#monad).",
     "rungs": [
       {
         "id": "implement",
@@ -1220,6 +1248,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Why not ordinary composition?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Write composeK",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
@@ -1380,7 +1415,7 @@ export const manifest: ManifestEntry[] = [
   {
     "termId": "alternative",
     "notes": "`alt` picks the first of two that actually has something. `zero` is the one that never does.\n\n```js\nconst Just = (v) => ({ isNothing: false, v, alt: () => Just(v) })       // keeps itself\nconst Nothing = () => ({ isNothing: true, alt: (other) => other })     // takes the offer\n\nJust(1).alt(Just(2))          // Just(1)\nNothing().alt(Just(2))        // Just(2)\nNothing().alt(Nothing())      // Nothing\n```\n\nChained, it reads as a list of fallbacks:\n\n```js\nNothing().alt(Nothing()).alt(Just('third')).alt(Just('fourth'))   // Just('third')\n```\n\n`zero` has to step aside on **both** sides, and mapping over it has to do nothing, since there\nis nothing inside to map:\n\n```js\nzero().alt(Just(1))    // Just(1)\nJust(1).alt(zero())    // Just(1)\nzero().map(f)          // zero()\n```\n\nThe practical use is trying sources in order of precedence:\n\n```js\nconst lookup = (key) => (source) => (key in source ? Just(source[key]) : Nothing())\n\nconst firstAvailable = (key, sources) =>\n  sources.map(lookup(key)).reduce((acc, m) => acc.alt(m), Nothing())\n\nfirstAvailable('port', [{}, { port: 8080 }, { port: 9090 }])   // Just(8080)\n```\n\nNote that the lookup tests the **key**, not the value. Present-but-falsy is still present, and\ntesting truthiness quietly skips a legitimate `false` or `0`:\n\n```js\nfirstAvailable('debug', [{ debug: false }, { debug: true }])   // Just(false), correctly\n```\n\nThis is the same shape as `??` in JavaScript, generalized to any container.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. Two ways out of an empty container, and their return types are the\nwhole difference.\n\n```ts\ninterface Maybe<A> {\n  alt: (other: Maybe<A>) => Maybe<A>\n  getOrElse: (fallback: A) => A\n}\n```\n\n`alt` takes a `Maybe<A>` and gives back a `Maybe<A>`. `getOrElse` takes a bare `A` and gives\nback a bare `A`. Both are \"use this if I am empty\", and only one of them lets you keep going.\n\nThat is why fallbacks chain and exits do not:\n\n```ts\nlookup('primary')\n  .alt(lookup('secondary'))\n  .alt(lookup('cache'))\n  .getOrElse('none found')\n```\n\nEvery `alt` returns a `Maybe<A>`, so another `alt` fits on the end, as many as you like. The\n`getOrElse` returns a `string` and the chain is over. The type tells you where the road ends.\n\n```ts\nconst just = <A>(value: A): Maybe<A> => ({\n  alt: () => just(value),          // already have one, ignore the other\n  getOrElse: () => value\n})\n\nconst nothing = <A>(): Maybe<A> => ({\n  alt: (other) => other,           // nothing of my own, take theirs\n  getOrElse: (fallback) => fallback\n})\n```\n\nLook at `just`'s `alt`: the parameter is unused. It does not evaluate `other`, it does not\ncompare, it keeps what it has. First success wins is not a tie-break rule, it is one branch\nignoring its argument.\n\nBoth sides being the same `A` is doing quiet work too. You cannot fall back from a\n`Maybe<User>` to a `Maybe<string>`, because the fallback has to be usable in the same place as\nthe thing it replaces. `getOrElse` has the same constraint for the same reason.\n\n```ts\nnothing<number>().alt(just(1)).alt(just(2)).getOrElse(0)   // 1, not 2\njust(9).alt(just(1)).getOrElse(0)                          // 9\nnothing<number>().alt(nothing<number>()).getOrElse(0)      // 0\n```",
     "rungs": [
       {
         "id": "implement",
@@ -1395,13 +1430,20 @@ export const manifest: ManifestEntry[] = [
         "title": "Try several sources in order",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Maybe<A> with alt",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
   {
     "termId": "foldable",
     "notes": "Foldable means the structure can be collapsed to a single value. One method, and a family of\noperations comes with it.\n\n```js\nconst Leaf = (value) => ({\n  reduce: (f, seed) => f(seed, value),\n  toArray: () => [value]\n})\n\nconst Node = (left, value, right) => ({\n  reduce: (f, seed) => right.reduce(f, f(left.reduce(f, seed), value)),\n  //                   ^ right      ^ node     ^ left     in that order\n  toArray: () => [...left.toArray(), value, ...right.toArray()]\n})\n```\n\nOrder is part of the contract, not an implementation detail. Visiting the node before its left\nsubtree gives different answers for anything non-commutative:\n\n```js\nconst tree = Node(Leaf(1), 2, Node(Leaf(3), 4, Leaf(5)))\n\ntree.reduce((acc, x) => [...acc, x], [])   // [1, 2, 3, 4, 5]\ntree.reduce((a, b) => a + b, 0)            // 15, same either way\ntree.reduce((a, b) => a - b, 0)            // order-dependent, and now it matters\n```\n\nWhich is why the useful self-check is that `reduce` agrees with the structure's own idea of\nits elements:\n\n```js\ntree.reduce((acc, x) => [...acc, x], [])   // has to equal tree.toArray()\n```\n\nAnd once `reduce` exists, a whole family follows without knowing anything about the shape:\n\n```js\nconst sum      = (t) => t.reduce((a, b) => a + b, 0)\nconst length   = (t) => t.reduce((a) => a + 1, 0)\nconst toArray  = (t) => t.reduce((a, b) => [...a, b], [])\nconst contains = (t, x) => t.reduce((a, b) => a || b === x, false)\nconst maximum  = (t) => t.reduce((a, b) => (b > a ? b : a), -Infinity)\n```\n\nWhat Foldable does **not** give you is `map`: a fold cannot rebuild the structure it walked.\nThat needs [Functor](#functor), and doing both at once needs\n[Traversable](#traversable).",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. The signature explains why a fold can produce anything at all.\n\n```ts\ninterface Tree<A> {\n  reduce: <B>(f: (acc: B, a: A) => B, seed: B) => B\n}\n```\n\nTwo variables doing different jobs. `A` is what the structure holds and is fixed when you\nbuild the tree. `B` is introduced by `reduce` itself, so it is chosen fresh at every call\nsite, by whoever is folding.\n\nFollow where `B` comes from: the seed. Hand `reduce` a `0` and `B` is `number`. Hand it `[]`\nand `B` is an array. The accumulator, the return type of `f`, and the return type of `reduce`\nall become that, and there is nothing to say about it in the interface.\n\n```ts\nconst sum   = tree.reduce((acc, n) => acc + n, 0)        // number\nconst list  = tree.reduce<number[]>((acc, n) => [...acc, n], [])  // number[]\nconst label = tree.reduce((acc, n) => acc + n + ' ', '') // string\n```\n\nSame structure, same method, three different `B`s. That is what \"collapse to a summary value\"\nmeans precisely: not a number, any type you like.\n\n```ts\nconst leaf = <A>(value: A): Tree<A> => ({\n  reduce: (f, seed) => f(seed, value)\n})\n\nconst node = <A>(left: Tree<A>, right: Tree<A>): Tree<A> => ({\n  reduce: (f, seed) => right.reduce(f, left.reduce(f, seed))\n})\n```\n\n`node` is the whole implementation and it is worth reading closely. `left.reduce(f, seed)`\nproduces a `B`, which is then the seed for the right side. Left finishes before right starts,\nand the types make it hard to write any other way: the only `B` available to feed the right\nsubtree is the one the left just produced.\n\nThat threading is also why order is not negotiable. Swap the two and it still typechecks, so\n`toArray` would come back in the wrong order and the compiler would have nothing to say.\n`toArray` is just the fold where you picked `B = A[]`, and if the order is wrong there, it is\nwrong everywhere.",
     "rungs": [
       {
         "id": "implement",
@@ -1416,6 +1458,13 @@ export const manifest: ManifestEntry[] = [
         "title": "What does Foldable let you write once?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Tree<A>",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },

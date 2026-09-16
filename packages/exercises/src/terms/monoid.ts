@@ -19,6 +19,11 @@ export const monoid: ExerciseSet = {
       statement:
         "Can show that an operation may have a one-sided identity and no two-sided one.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can read `Monoid<A> extends Semigroup<A>` and say that the added `empty` is a value of type `A`, not a function, and that is the whole difference.",
+    },
   ],
   notes: `A Monoid is a [semigroup](#semigroup) with an \`empty\` that changes nothing on **either** side.
 
@@ -62,6 +67,57 @@ semigroup, since it is not associative:
 (1 - 2) - 3   // -4
 1 - (2 - 3)   // 2
 \`\`\``,
+  typedNotes: `Same track, second lap. The relationship between the two concepts is one word and one field.
+
+\`\`\`ts
+interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+
+interface Monoid<A> extends Semigroup<A> {
+  empty: A
+}
+\`\`\`
+
+\`extends\` says it out loud: every monoid is a semigroup, and not the other way round. And look
+at what got added. \`empty: A\` is a **value**, not \`empty: () => A\`. There is nothing to
+compute, no argument to inspect. It is a constant that the type says belongs to the set.
+
+That single field is what makes folding total:
+
+\`\`\`ts
+const fold = <A>(M: Monoid<A>, xs: A[]): A =>
+  xs.reduce(M.concat, M.empty)
+\`\`\`
+
+\`reduce\` with a seed. Hand it \`[]\` and you get \`M.empty\` back, typed \`A\`, and nothing threw.
+With only a semigroup there is no value of type \`A\` to hand \`reduce\`, because \`A\` is a
+variable and the interface carries no inhabitant of it. The empty case is not an edge case you
+forgot, it is a thing the type could not supply.
+
+\`\`\`ts
+const sumMonoid: Monoid<number>  = { empty: 0,     concat: (a, b) => a + b }
+const prodMonoid: Monoid<number> = { empty: 1,     concat: (a, b) => a * b }
+const allMonoid: Monoid<boolean> = { empty: true,  concat: (a, b) => a && b }
+const anyMonoid: Monoid<boolean> = { empty: false, concat: (a, b) => a || b }
+
+fold(sumMonoid, [])    // 0
+fold(allMonoid, [])    // true
+\`\`\`
+
+Every \`empty\` is different and none of them is guessable from the type. \`Monoid<number>\` does
+not say which number, and it could not: sum wants 0 and product wants 1, and the compiler has
+no opinion about which. What it does insist on is that you supply one.
+
+The law is the part still left to you. \`concat(empty, a)\` and \`concat(a, empty)\` must both be
+\`a\`, for every \`a\`, and this typechecks perfectly well:
+
+\`\`\`ts
+const wrong: Monoid<number> = { empty: 1, concat: (a, b) => a + b }
+\`\`\`
+
+Right shape, wrong constant. The type system got you the field; whether the field is the
+identity is a property of values, and that is what the law rung is for.`,
   rungs: [
     {
       id: 'implement',
@@ -273,6 +329,182 @@ const notFixedByZero = 5
             const rightOk = Diff(a).concat(Diff(e)).value === a;
             const leftOk = Diff(e).concat(Diff(a)).value === a;
             if (rightOk && leftOk) return `${e} worked on both sides, which would make Diff a monoid after all.`;
+          }
+          return true;
+        });
+      },
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['identity', 'empty-fold', 'typed-signature'],
+      title: "Satisfy Monoid<A> four times",
+      prompt:
+        "The interface is given. Write `sumMonoid`, `prodMonoid`, `allMonoid` and `anyMonoid`, each with the `empty` that leaves its `concat` alone.",
+      hints: [
+        "`empty` is a value, not a function. Write the constant.",
+        "The right `empty` is the one where `concat(empty, a)` gives `a` back for every `a`. Try it on a couple of numbers before you commit.",
+        "0 and 1 are both numbers and only one of them works for each of the two number monoids.",
+      ],
+      exports: ['sumMonoid', 'prodMonoid', 'allMonoid', 'anyMonoid'],
+      starter: `interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+
+interface Monoid<A> extends Semigroup<A> {
+  empty: A
+}
+
+const sumMonoid: Monoid<number> = { empty: 0, concat: (a, b) => a + b }
+
+const prodMonoid: Monoid<number> = { empty: 0, concat: (a, b) => a * b }
+
+const allMonoid: Monoid<boolean> = { empty: false, concat: (a, b) => a && b }
+
+const anyMonoid: Monoid<boolean> = { empty: false, concat: (a, b) => a && b }
+`,
+      solution: `interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+
+interface Monoid<A> extends Semigroup<A> {
+  empty: A
+}
+
+const sumMonoid: Monoid<number> = { empty: 0, concat: (a, b) => a + b }
+
+const prodMonoid: Monoid<number> = { empty: 1, concat: (a, b) => a * b }
+
+const allMonoid: Monoid<boolean> = { empty: true, concat: (a, b) => a && b }
+
+const anyMonoid: Monoid<boolean> = { empty: false, concat: (a, b) => a || b }
+`,
+      broken: [
+        `interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+
+interface Monoid<A> extends Semigroup<A> {
+  empty: A
+}
+
+const sumMonoid: Monoid<number> = { empty: 1, concat: (a, b) => a + b }
+
+const prodMonoid: Monoid<number> = { empty: 1, concat: (a, b) => a * b }
+
+const allMonoid: Monoid<boolean> = { empty: true, concat: (a, b) => a && b }
+
+const anyMonoid: Monoid<boolean> = { empty: false, concat: (a, b) => a || b }
+`,
+        `interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+
+interface Monoid<A> extends Semigroup<A> {
+  empty: A
+}
+
+const sumMonoid: Monoid<number> = { empty: 0, concat: (a, b) => a + b }
+
+const prodMonoid: Monoid<number> = { empty: 0, concat: (a, b) => a * b }
+
+const allMonoid: Monoid<boolean> = { empty: true, concat: (a, b) => a && b }
+
+const anyMonoid: Monoid<boolean> = { empty: false, concat: (a, b) => a || b }
+`,
+        `interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+
+interface Monoid<A> extends Semigroup<A> {
+  empty: A
+}
+
+const sumMonoid: Monoid<number> = { empty: 0, concat: (a, b) => a + b }
+
+const prodMonoid: Monoid<number> = { empty: 1, concat: (a, b) => a * b }
+
+const allMonoid: Monoid<boolean> = { empty: true, concat: (a, b) => a || b }
+
+const anyMonoid: Monoid<boolean> = { empty: false, concat: (a, b) => a || b }
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        T.check('The Monoid declaration is still there to satisfy', () => {
+          return /interface\s+Monoid/.test(T.src) || 'The Monoid declaration has gone. It is the thing being satisfied.';
+        });
+        const { sumMonoid, prodMonoid, allMonoid, anyMonoid } = exp;
+        const all = [
+          ['sum', sumMonoid, [1, 2, 3], 6],
+          ['prod', prodMonoid, [2, 3, 4], 24],
+          ['all', allMonoid, [true, true], true],
+          ['any', anyMonoid, [false, true], true],
+        ] as [string, { empty: unknown, concat: (a: unknown, b: unknown) => unknown }, unknown[], unknown][];
+
+        T.check('empty is a value, not a function', () => {
+          for (const [name, M] of all) {
+            if (typeof M.empty === 'function') return `${name}'s empty is a function. The field is typed \`A\`, so it is the constant itself.`;
+          }
+          return true;
+        });
+
+        T.check('Each concat does what its name says', () => {
+          for (const [name, M, xs, want] of all) {
+            const got = xs.reduce(M.concat);
+            if (!T.eq(got, want)) return `${name} combined ${T.fmt(xs)} into ${T.fmt(got)}, expected ${T.fmt(want)}.`;
+          }
+          return true;
+        });
+
+        T.check('all and any are genuinely different', () => {
+          const a = allMonoid.concat(true, false);
+          const b = anyMonoid.concat(true, false);
+          return a !== b || `Both gave ${T.fmt(a)} on true and false. One is and, the other is or.`;
+        });
+
+        T.check('Folding the empty list gives empty back, and does not throw', () => {
+          for (const [name, M] of all) {
+            const r = [].reduce(M.concat as never, M.empty as never);
+            if (!T.eq(r, M.empty)) return `${name} folded [] into ${T.fmt(r)} rather than its empty.`;
+          }
+          return true;
+        });
+
+        T.law('Left identity: concat(empty, a) is a', 80, (G) => {
+          for (const [name, M] of all) {
+            const a = typeof M.empty === 'boolean' ? G.bool() : G.int();
+            const r = M.concat(M.empty, a);
+            if (!T.eq(r, a)) return `${name}: concat(${T.fmt(M.empty)}, ${T.fmt(a)}) gave ${T.fmt(r)}. That empty is not the identity for that concat.`;
+          }
+          return true;
+        });
+
+        T.law('Right identity: concat(a, empty) is a', 80, (G) => {
+          for (const [name, M] of all) {
+            const a = typeof M.empty === 'boolean' ? G.bool() : G.int();
+            const r = M.concat(a, M.empty);
+            if (!T.eq(r, a)) return `${name}: concat(${T.fmt(a)}, ${T.fmt(M.empty)}) gave ${T.fmt(r)}.`;
+          }
+          return true;
+        });
+
+        T.law('Associativity survives, since a monoid is still a semigroup', 60, (G) => {
+          for (const [name, M] of all) {
+            const mk = () => (typeof M.empty === 'boolean' ? G.bool() : G.int());
+            const a = mk(), b = mk(), c = mk();
+            if (!T.eq(M.concat(M.concat(a, b), c), M.concat(a, M.concat(b, c)))) {
+              return `${name} is not associative on ${T.fmt([a, b, c])}.`;
+            }
           }
           return true;
         });

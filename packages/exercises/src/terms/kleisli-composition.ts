@@ -18,6 +18,11 @@ export const kleisliComposition: ExerciseSet = {
       statement:
         "Knows a failure in the first step skips the second entirely, and that the composition is associative.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can write ordinary compose and Kleisli compose side by side and point at the exact place the types stop lining up.",
+    },
   ],
   notes: `Ordinary composition needs the output of one function to be the input of the next. Two functions
 that each return a container do not line up:
@@ -60,6 +65,57 @@ function: you can group a long chain into named stages freely.
 composeK(composeK(h, g), f)   // the same function as
 composeK(h, composeK(g, f))
 \`\`\``,
+  typedNotes: `Same track, second lap. The reason ordinary composition fails here is not a runtime surprise,
+it is a type error you can read off the page.
+
+\`\`\`ts
+const compose = <A, B, C>(g: (b: B) => C, f: (a: A) => B) =>
+  (a: A): C => g(f(a))
+\`\`\`
+
+That works because \`f\` produces a \`B\` and \`g\` consumes a \`B\`. Same letter, so they meet. Now
+make both of them able to fail:
+
+\`\`\`ts
+type Kleisli<A, B> = (a: A) => Maybe<B>
+
+const safeDiv = (n: number): Maybe<number> => ...   // Kleisli<number, number>
+const safeSqrt = (n: number): Maybe<number> => ...  // Kleisli<number, number>
+
+compose(safeSqrt, safeDiv)   // error
+\`\`\`
+
+Read where it breaks. \`safeDiv\` returns \`Maybe<number>\`, so \`compose\` infers \`B = Maybe<number>\`.
+\`safeSqrt\` takes a plain \`number\`. \`Maybe<number>\` is not \`number\`, and there is no assignment
+of variables that makes those the same. The mismatch is one layer of wrapper, in one place.
+
+Kleisli composition is the version whose types do line up:
+
+\`\`\`ts
+const composeK = <A, B, C>(g: Kleisli<B, C>, f: Kleisli<A, B>): Kleisli<A, C> =>
+  (a) => f(a).chain(g)
+\`\`\`
+
+Check the ends. It takes an \`A\` and returns \`Maybe<C>\`. Not \`Maybe<Maybe<C>>\`: \`f(a)\` gives a
+\`Maybe<B>\`, and \`chain\` is the operation that takes \`(b: B) => Maybe<C>\` and returns
+\`Maybe<C>\`, which is exactly \`g\`'s type. \`chain\` is the only thing that fits in that hole, and
+the signature is what tells you so.
+
+\`\`\`ts
+const pipeline = composeK(safeSqrt, safeDiv)   // Kleisli<number, number>
+pipeline(16)   // a Maybe holding 2
+pipeline(0)    // empty, and safeSqrt never ran
+\`\`\`
+
+The result is a \`Kleisli<A, C>\`, the same shape as the two things that went in, which is why
+you can keep going:
+
+\`\`\`ts
+composeK(safeLog, composeK(safeSqrt, safeDiv))
+\`\`\`
+
+Short-circuiting is not extra machinery either. It is whatever \`chain\` does on an empty value,
+and that is already settled by [monad](#monad).`,
   rungs: [
     {
       id: 'implement',
@@ -203,6 +259,229 @@ const composeK = (g, f) => (a) => f(a).chain(g)
           why: 'Variadic compose is easy to write. The mismatch would still be there.',
         },
       ],
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['why-compose-fails', 'compose-with-chain', 'typed-signature'],
+      title: "Write composeK",
+      prompt:
+        "The types are given. Write `composeK` so two functions that each return a `Maybe` join into one that returns a single `Maybe`.",
+      hints: [
+        "Run `f` first. What you get back is a `Maybe<B>`, not a `B`.",
+        "`g` is typed `(b: B) => Maybe<C>`. Look at `chain`'s signature and see which operation takes a function of that shape.",
+        "If your result is a Maybe inside a Maybe, you reached for `map` where `chain` was the only thing that fits.",
+      ],
+      exports: ['composeK'],
+      starter: `interface Maybe<A> {
+  map: <B>(f: (a: A) => B) => Maybe<B>
+  chain: <B>(f: (a: A) => Maybe<B>) => Maybe<B>
+  getOrElse: (fallback: A) => A
+}
+
+const just = <A>(value: A): Maybe<A> => ({
+  map: (f) => just(f(value)),
+  chain: (f) => f(value),
+  getOrElse: () => value
+})
+
+const nothing = <A>(): Maybe<A> => ({
+  map: () => nothing(),
+  chain: () => nothing(),
+  getOrElse: (fallback) => fallback
+})
+
+type Kleisli<A, B> = (a: A) => Maybe<B>
+
+const composeK = <A, B, C>(g: Kleisli<B, C>, f: Kleisli<A, B>): Kleisli<A, C> =>
+  (a) => f(a) as never
+`,
+      solution: `interface Maybe<A> {
+  map: <B>(f: (a: A) => B) => Maybe<B>
+  chain: <B>(f: (a: A) => Maybe<B>) => Maybe<B>
+  getOrElse: (fallback: A) => A
+}
+
+const just = <A>(value: A): Maybe<A> => ({
+  map: (f) => just(f(value)),
+  chain: (f) => f(value),
+  getOrElse: () => value
+})
+
+const nothing = <A>(): Maybe<A> => ({
+  map: () => nothing(),
+  chain: () => nothing(),
+  getOrElse: (fallback) => fallback
+})
+
+type Kleisli<A, B> = (a: A) => Maybe<B>
+
+const composeK = <A, B, C>(g: Kleisli<B, C>, f: Kleisli<A, B>): Kleisli<A, C> =>
+  (a) => f(a).chain(g)
+`,
+      broken: [
+        `interface Maybe<A> {
+  map: <B>(f: (a: A) => B) => Maybe<B>
+  chain: <B>(f: (a: A) => Maybe<B>) => Maybe<B>
+  getOrElse: (fallback: A) => A
+}
+
+const just = <A>(value: A): Maybe<A> => ({
+  map: (f) => just(f(value)),
+  chain: (f) => f(value),
+  getOrElse: () => value
+})
+
+const nothing = <A>(): Maybe<A> => ({
+  map: () => nothing(),
+  chain: () => nothing(),
+  getOrElse: (fallback) => fallback
+})
+
+type Kleisli<A, B> = (a: A) => Maybe<B>
+
+const composeK = <A, B, C>(g: Kleisli<B, C>, f: Kleisli<A, B>): Kleisli<A, C> =>
+  (a) => f(a).map(g) as never
+`,
+        `interface Maybe<A> {
+  map: <B>(f: (a: A) => B) => Maybe<B>
+  chain: <B>(f: (a: A) => Maybe<B>) => Maybe<B>
+  getOrElse: (fallback: A) => A
+}
+
+const just = <A>(value: A): Maybe<A> => ({
+  map: (f) => just(f(value)),
+  chain: (f) => f(value),
+  getOrElse: () => value
+})
+
+const nothing = <A>(): Maybe<A> => ({
+  map: () => nothing(),
+  chain: () => nothing(),
+  getOrElse: (fallback) => fallback
+})
+
+type Kleisli<A, B> = (a: A) => Maybe<B>
+
+const composeK = <A, B, C>(g: Kleisli<B, C>, f: Kleisli<A, B>): Kleisli<A, C> =>
+  (a) => (g as unknown as Kleisli<A, C>)(a)
+`,
+        `interface Maybe<A> {
+  map: <B>(f: (a: A) => B) => Maybe<B>
+  chain: <B>(f: (a: A) => Maybe<B>) => Maybe<B>
+  getOrElse: (fallback: A) => A
+}
+
+const just = <A>(value: A): Maybe<A> => ({
+  map: (f) => just(f(value)),
+  chain: (f) => f(value),
+  getOrElse: () => value
+})
+
+const nothing = <A>(): Maybe<A> => ({
+  map: () => nothing(),
+  chain: () => nothing(),
+  getOrElse: (fallback) => fallback
+})
+
+type Kleisli<A, B> = (a: A) => Maybe<B>
+
+const composeK = <A, B, C>(g: Kleisli<B, C>, f: Kleisli<A, B>): Kleisli<A, C> =>
+  (a) => (g as unknown as Kleisli<A, B>)(a).chain(f as never) as never
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        T.check('The Kleisli declaration is still there to satisfy', () => {
+          return /type\s+Kleisli/.test(T.src) || 'The Kleisli declaration has gone. It is the thing being satisfied.';
+        });
+        const composeK = exp.composeK;
+
+        // Rebuilt here so the checks do not depend on the learner's copies.
+        const just = (value: unknown): any => ({
+          map: (f: (a: unknown) => unknown) => just(f(value)),
+          chain: (f: (a: unknown) => unknown) => f(value),
+          getOrElse: () => value,
+        });
+        const nothing = (): any => ({
+          map: () => nothing(),
+          chain: () => nothing(),
+          getOrElse: (fallback: unknown) => fallback,
+        });
+
+        const safeDiv = (n: number) => (n === 0 ? nothing() : just(16 / n));
+        const safeSqrt = (n: number) => (n < 0 ? nothing() : just(Math.sqrt(n)));
+        const out = (m: any) => (m && typeof m.getOrElse === 'function' ? m.getOrElse('empty') : m);
+
+        T.check('composeK gives back a function', () => {
+          const p = composeK(safeSqrt, safeDiv);
+          return typeof p === 'function' || `composeK gave ${T.fmt(p)}. Its return type is Kleisli<A, C>, which is a function.`;
+        });
+
+        T.check('Both steps run, in the right order', () => {
+          const r = out(composeK(safeSqrt, safeDiv)(4));
+          return r === 2 || `16 / 4 is 4, and the square root of that is 2. The pipeline gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The result is one Maybe deep, not two', () => {
+          const r = composeK(safeSqrt, safeDiv)(4);
+          const inner = r.getOrElse('empty');
+          return (
+            typeof inner !== 'object' || inner === null
+              ? true
+              : `The result held ${T.fmt(inner)}, which is itself a Maybe. That is what \`map\` would have given you; \`chain\` is the operation whose types fit.`
+          );
+        });
+
+        T.check('A failure in the first step short-circuits', () => {
+          let ran = false;
+          const watched = (n: number) => { ran = true; return safeSqrt(n); };
+          const r = out(composeK(watched, safeDiv)(0));
+          if (ran) return 'The second function ran even though the first came back empty.';
+          return r === 'empty' || `Dividing by zero then taking a root gave ${T.fmt(r)}.`;
+        });
+
+        T.check('A failure in the second step comes through as a failure', () => {
+          const r = out(composeK(() => nothing(), safeDiv)(4));
+          return r === 'empty' || `A second step that fails gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The result composes again', () => {
+          const p = composeK(safeSqrt, composeK(safeSqrt, safeDiv));
+          const r = out(p(1));
+          return r === 2 || `Composing three deep on 1 gave ${T.fmt(r)}, expected 2.`;
+        });
+
+        T.law('The arguments are not swapped', 60, (G) => {
+          const n = G.nat() + 1;
+          const f = (x: number) => just(x + 1);
+          const g = (x: number) => just(x * 10);
+          const r = out(composeK(g, f)(n));
+          return (
+            r === (n + 1) * 10 ||
+            `With f adding one and g multiplying by ten at ${n}: got ${T.fmt(r)}, expected ${(n + 1) * 10}. \`f\` runs first.`
+          );
+        });
+
+        T.law('Associativity: where you bracket does not matter', 60, (G) => {
+          const n = G.nat() + 1;
+          const f = (x: number) => just(x + 1);
+          const g = (x: number) => just(x * 2);
+          const h = (x: number) => just(x - 3);
+          const a = out(composeK(h, composeK(g, f))(n));
+          const b = out(composeK(composeK(h, g), f)(n));
+          return a === b || `At ${n}: bracketing one way gave ${T.fmt(a)} and the other gave ${T.fmt(b)}.`;
+        });
+      },
     },
   ],
 };

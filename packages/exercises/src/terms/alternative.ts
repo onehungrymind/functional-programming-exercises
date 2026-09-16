@@ -19,6 +19,11 @@ export const alternative: ExerciseSet = {
       statement:
         "Can try several sources in order and take the first that has the value, with present-but-falsy still counting as present.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can read `alt` and say why it returns a wrapped value while `getOrElse` returns a bare one, and when each is the one you want.",
+    },
   ],
   notes: `\`alt\` picks the first of two that actually has something. \`zero\` is the one that never does.
 
@@ -65,6 +70,56 @@ firstAvailable('debug', [{ debug: false }, { debug: true }])   // Just(false), c
 \`\`\`
 
 This is the same shape as \`??\` in JavaScript, generalized to any container.`,
+  typedNotes: `Same track, second lap. Two ways out of an empty container, and their return types are the
+whole difference.
+
+\`\`\`ts
+interface Maybe<A> {
+  alt: (other: Maybe<A>) => Maybe<A>
+  getOrElse: (fallback: A) => A
+}
+\`\`\`
+
+\`alt\` takes a \`Maybe<A>\` and gives back a \`Maybe<A>\`. \`getOrElse\` takes a bare \`A\` and gives
+back a bare \`A\`. Both are "use this if I am empty", and only one of them lets you keep going.
+
+That is why fallbacks chain and exits do not:
+
+\`\`\`ts
+lookup('primary')
+  .alt(lookup('secondary'))
+  .alt(lookup('cache'))
+  .getOrElse('none found')
+\`\`\`
+
+Every \`alt\` returns a \`Maybe<A>\`, so another \`alt\` fits on the end, as many as you like. The
+\`getOrElse\` returns a \`string\` and the chain is over. The type tells you where the road ends.
+
+\`\`\`ts
+const just = <A>(value: A): Maybe<A> => ({
+  alt: () => just(value),          // already have one, ignore the other
+  getOrElse: () => value
+})
+
+const nothing = <A>(): Maybe<A> => ({
+  alt: (other) => other,           // nothing of my own, take theirs
+  getOrElse: (fallback) => fallback
+})
+\`\`\`
+
+Look at \`just\`'s \`alt\`: the parameter is unused. It does not evaluate \`other\`, it does not
+compare, it keeps what it has. First success wins is not a tie-break rule, it is one branch
+ignoring its argument.
+
+Both sides being the same \`A\` is doing quiet work too. You cannot fall back from a
+\`Maybe<User>\` to a \`Maybe<string>\`, because the fallback has to be usable in the same place as
+the thing it replaces. \`getOrElse\` has the same constraint for the same reason.
+
+\`\`\`ts
+nothing<number>().alt(just(1)).alt(just(2)).getOrElse(0)   // 1, not 2
+just(9).alt(just(1)).getOrElse(0)                          // 9
+nothing<number>().alt(nothing<number>()).getOrElse(0)      // 0
+\`\`\``,
   rungs: [
     {
       id: 'implement',
@@ -264,6 +319,168 @@ const firstAvailable = (key, sources) =>
             r?.value === false ||
             `Got ${T.fmt(r)}. Present-but-falsy is still present, which is why the check is on the key, not the value.`
           );
+        });
+      },
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['first-success', 'chain-fallbacks', 'typed-signature'],
+      title: "Satisfy Maybe<A> with alt",
+      prompt:
+        "The interface is given. Write `just` and `nothing` so `alt` keeps the first success and `getOrElse` is the way out.",
+      hints: [
+        "A `just` already has a value. Its `alt` has no reason to look at the argument.",
+        "A `nothing` has nothing of its own, so its `alt` hands back whatever it was given, as it is.",
+        "`alt` returns a `Maybe<A>`, so whatever you return has to be one, ready for the next `alt`.",
+      ],
+      exports: ['just', 'nothing'],
+      starter: `interface Maybe<A> {
+  alt: (other: Maybe<A>) => Maybe<A>
+  getOrElse: (fallback: A) => A
+}
+
+const just = <A>(value: A): Maybe<A> => ({
+  alt: (other) => other,
+  getOrElse: () => value
+})
+
+const nothing = <A>(): Maybe<A> => ({
+  alt: (other) => nothing(),
+  getOrElse: (fallback) => fallback
+})
+`,
+      solution: `interface Maybe<A> {
+  alt: (other: Maybe<A>) => Maybe<A>
+  getOrElse: (fallback: A) => A
+}
+
+const just = <A>(value: A): Maybe<A> => ({
+  alt: () => just(value),
+  getOrElse: () => value
+})
+
+const nothing = <A>(): Maybe<A> => ({
+  alt: (other) => other,
+  getOrElse: (fallback) => fallback
+})
+`,
+      broken: [
+        `interface Maybe<A> {
+  alt: (other: Maybe<A>) => Maybe<A>
+  getOrElse: (fallback: A) => A
+}
+
+const just = <A>(value: A): Maybe<A> => ({
+  alt: (other) => other,
+  getOrElse: () => value
+})
+
+const nothing = <A>(): Maybe<A> => ({
+  alt: (other) => other,
+  getOrElse: (fallback) => fallback
+})
+`,
+        `interface Maybe<A> {
+  alt: (other: Maybe<A>) => Maybe<A>
+  getOrElse: (fallback: A) => A
+}
+
+const just = <A>(value: A): Maybe<A> => ({
+  alt: () => just(value),
+  getOrElse: () => value
+})
+
+const nothing = <A>(): Maybe<A> => ({
+  alt: () => nothing(),
+  getOrElse: (fallback) => fallback
+})
+`,
+        `interface Maybe<A> {
+  alt: (other: Maybe<A>) => Maybe<A>
+  getOrElse: (fallback: A) => A
+}
+
+const just = <A>(value: A): Maybe<A> => ({
+  alt: () => value as never,
+  getOrElse: () => value
+})
+
+const nothing = <A>(): Maybe<A> => ({
+  alt: (other) => other,
+  getOrElse: (fallback) => fallback
+})
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        T.check('The Maybe declaration is still there to satisfy', () => {
+          return /interface\s+Maybe/.test(T.src) || 'The Maybe declaration has gone. It is the thing being satisfied.';
+        });
+        const { just, nothing } = exp;
+
+        T.check('A value beats a fallback', () => {
+          const r = just(9).alt(just(1)).getOrElse(0);
+          return r === 9 || `just(9).alt(just(1)) came out as ${T.fmt(r)}. The first success wins.`;
+        });
+
+        T.check('An empty one takes the fallback', () => {
+          const r = nothing().alt(just(1)).getOrElse(0);
+          return r === 1 || `nothing().alt(just(1)) came out as ${T.fmt(r)}.`;
+        });
+
+        T.check('Two empties stay empty', () => {
+          const r = nothing().alt(nothing()).getOrElse('still empty');
+          return r === 'still empty' || `Two empties gave ${T.fmt(r)}.`;
+        });
+
+        T.check('alt gives back something you can alt again', () => {
+          const r = nothing().alt(nothing());
+          return (
+            (r && typeof r.alt === 'function' && typeof r.getOrElse === 'function') ||
+            `alt gave ${T.fmt(r)}, which cannot be alted again. The return type is Maybe<A>, so the chain has to keep going.`
+          );
+        });
+
+        T.check('A chain of fallbacks stops at the first success', () => {
+          const r = nothing().alt(nothing()).alt(just(3)).alt(just(4)).getOrElse(0);
+          return r === 3 || `A chain reaching just(3) then just(4) came out as ${T.fmt(r)}.`;
+        });
+
+        T.check('getOrElse is the exit, and gives back a bare value', () => {
+          const r = just(42).getOrElse(0);
+          return r === 42 || `getOrElse on just(42) gave ${T.fmt(r)}.`;
+        });
+
+        T.law('alt is associative', 60, (G) => {
+          const mk = () => (G.bool() ? just(G.int()) : nothing());
+          const a = mk(), b = mk(), c = mk();
+          const left = a.alt(b).alt(c).getOrElse('empty');
+          const right = a.alt(b.alt(c)).getOrElse('empty');
+          return left === right || `Bracketing left gave ${T.fmt(left)} and right gave ${T.fmt(right)}.`;
+        });
+
+        T.law('An empty one on the left is the identity', 60, (G) => {
+          const m = G.bool() ? just(G.int()) : nothing();
+          const a = nothing().alt(m).getOrElse('empty');
+          const b = m.getOrElse('empty');
+          return a === b || `Prefixing an empty changed ${T.fmt(b)} into ${T.fmt(a)}.`;
+        });
+
+        T.law('An empty one on the right is the identity too', 60, (G) => {
+          const m = G.bool() ? just(G.int()) : nothing();
+          const a = m.alt(nothing()).getOrElse('empty');
+          const b = m.getOrElse('empty');
+          return a === b || `Appending an empty changed ${T.fmt(b)} into ${T.fmt(a)}.`;
         });
       },
     },

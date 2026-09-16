@@ -18,6 +18,11 @@ export const sumType: ExerciseSet = {
       statement:
         "Can identify a sum type in the wild, including recursive ones like a list.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can say how a discriminated union turns a forgotten case into a compile error, and what the `never` parameter has to do with it.",
+    },
   ],
   notes: `A sum type is a value that is **exactly one** of several shapes. Each case carries a tag and
 whatever that case needs.
@@ -62,6 +67,67 @@ Boolean          // true | false, the smallest interesting sum
 Option a         // Some a | None
 Either e a       // Left e | Right a
 \`\`\``,
+  typedNotes: `Same track, second lap. This is the concept TypeScript is best at, and the payoff is not
+subtle.
+
+\`\`\`ts
+type Status =
+  | { tag: 'loading' }
+  | { tag: 'ok', data: string }
+  | { tag: 'failed', reason: string }
+\`\`\`
+
+One of several, spelled out. \`ok\` carries data, \`failed\` carries a reason, \`loading\` carries
+nothing, and no value is ever more than one of them. Compare what you would otherwise write:
+
+\`\`\`ts
+interface Status {
+  loading: boolean
+  data?: string
+  reason?: string
+}
+\`\`\`
+
+That type permits \`{ loading: true, data: 'x', reason: 'y' }\`, which is nonsense you now have
+to defend against at every call site. The union permits exactly three shapes.
+
+Testing the tag narrows the union, so the compiler knows which fields exist in each branch:
+
+\`\`\`ts
+const render = (s: Status): string => {
+  switch (s.tag) {
+    case 'loading': return 'spinner'
+    case 'ok':      return s.data      // \`reason\` is not in scope here
+    case 'failed':  return s.reason    // and \`data\` is not in scope here
+  }
+}
+\`\`\`
+
+Now the part worth learning properly. Exhaustiveness:
+
+\`\`\`ts
+const assertNever = (x: never): never => {
+  throw new Error('unhandled case: ' + JSON.stringify(x))
+}
+
+const render = (s: Status): string => {
+  switch (s.tag) {
+    case 'loading': return 'spinner'
+    case 'ok':      return s.data
+    case 'failed':  return s.reason
+    default:        return assertNever(s)
+  }
+}
+\`\`\`
+
+By the \`default\` branch every case has been handled, so \`s\` has been narrowed to \`never\`, and
+\`assertNever\` accepts it. Add a fourth member to \`Status\` and that narrowing no longer reaches
+\`never\`, so the call stops compiling and it points at every \`switch\` that has not been
+updated.
+
+That is the thing to take away. A sum type does not just describe your states, it makes the
+compiler find the places you forgot when the states change. Without \`assertNever\` the
+\`switch\` just falls through and returns \`undefined\`, and you find out in production.`,
   rungs: [
     {
       id: 'implement',
@@ -232,6 +298,184 @@ const match = (state, handlers) => {
           why: 'Empty or a head followed by a tail. A list is a sum type that happens to be recursive.',
         },
       ],
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['one-of-several', 'exhaustive-match', 'typed-signature'],
+      title: "Match on Status exhaustively",
+      prompt:
+        "The union is given. Write `assertNever` and `render` so every case is handled and an unexpected tag is loud rather than silent.",
+      hints: [
+        "`assertNever` takes a `never` and throws. Its whole job is to be uncallable once every case is handled.",
+        "Handle all three tags, then call `assertNever` in the default branch with the value itself.",
+        "Reaching the default branch at runtime means something got past the type, so it should throw, not return.",
+      ],
+      exports: ['render', 'assertNever'],
+      starter: `type Status =
+  | { tag: 'loading' }
+  | { tag: 'ok', data: string }
+  | { tag: 'failed', reason: string }
+
+const assertNever = (x: never): never => {
+  return undefined as never
+}
+
+const render = (s: Status): string => {
+  switch (s.tag) {
+    case 'loading': return 'spinner'
+    default: return ''
+  }
+}
+`,
+      solution: `type Status =
+  | { tag: 'loading' }
+  | { tag: 'ok', data: string }
+  | { tag: 'failed', reason: string }
+
+const assertNever = (x: never): never => {
+  throw new Error('unhandled case: ' + JSON.stringify(x))
+}
+
+const render = (s: Status): string => {
+  switch (s.tag) {
+    case 'loading': return 'spinner'
+    case 'ok': return s.data
+    case 'failed': return s.reason
+    default: return assertNever(s)
+  }
+}
+`,
+      broken: [
+        `type Status =
+  | { tag: 'loading' }
+  | { tag: 'ok', data: string }
+  | { tag: 'failed', reason: string }
+
+const assertNever = (x: never): never => {
+  return undefined as never
+}
+
+const render = (s: Status): string => {
+  switch (s.tag) {
+    case 'loading': return 'spinner'
+    case 'ok': return s.data
+    case 'failed': return s.reason
+    default: return assertNever(s)
+  }
+}
+`,
+        `type Status =
+  | { tag: 'loading' }
+  | { tag: 'ok', data: string }
+  | { tag: 'failed', reason: string }
+
+const assertNever = (x: never): never => {
+  throw new Error('unhandled case: ' + JSON.stringify(x))
+}
+
+const render = (s: Status): string => {
+  switch (s.tag) {
+    case 'loading': return 'spinner'
+    case 'ok': return s.data
+    default: return ''
+  }
+}
+`,
+        `type Status =
+  | { tag: 'loading' }
+  | { tag: 'ok', data: string }
+  | { tag: 'failed', reason: string }
+
+const assertNever = (x: never): never => {
+  throw new Error('unhandled case: ' + JSON.stringify(x))
+}
+
+const render = (s: Status): string => {
+  const o = s as { tag: string, data?: string, reason?: string }
+  return o.data || o.reason || 'spinner'
+}
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        const { render, assertNever } = exp;
+
+        T.check('The loading case renders', () => {
+          const r = render({ tag: 'loading' });
+          return r === 'spinner' || `The loading case gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The ok case reads its own field', () => {
+          const r = render({ tag: 'ok', data: 'payload' });
+          return r === 'payload' || `The ok case gave ${T.fmt(r)}. Only that branch has a \`data\` field.`;
+        });
+
+        T.check('The failed case reads its own field', () => {
+          const r = render({ tag: 'failed', reason: 'timeout' });
+          return r === 'timeout' || `The failed case gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The three cases are told apart by the tag, not by which fields are set', () => {
+          const r = render({ tag: 'ok', data: '' });
+          return (
+            r === '' ||
+            `An ok carrying an empty string gave ${T.fmt(r)}. Falling through on a falsy field means the tag is not what decided.`
+          );
+        });
+
+        T.check('assertNever throws rather than returning', () => {
+          let threw = false;
+          try {
+            assertNever({ tag: 'surprise' } as never);
+          } catch {
+            threw = true;
+          }
+          return (
+            threw ||
+            'assertNever returned instead of throwing. Reaching it means a value got past the type, and silence is the outcome the whole pattern exists to avoid.'
+          );
+        });
+
+        T.check('A tag that should not exist is loud, not silent', () => {
+          let threw = false;
+          let got: unknown;
+          try {
+            got = render({ tag: 'cancelled' } as never);
+          } catch {
+            threw = true;
+          }
+          return (
+            threw ||
+            `An unknown tag rendered as ${T.fmt(got)} instead of throwing. The default branch is the one that catches a case nobody handled.`
+          );
+        });
+
+        T.check('The default branch goes through assertNever', () => {
+          return (
+            /default\s*:[\s\S]{0,60}assertNever/.test(T.src) ||
+            'The default branch does not call assertNever. That call is what makes the compiler point at this switch when a fourth case is added to Status.'
+          );
+        });
+
+        T.check('Every case is spelled out rather than lumped together', () => {
+          for (const tag of ['loading', 'ok', 'failed']) {
+            if (!new RegExp("case\\s*'" + tag + "'").test(T.src)) {
+              return `There is no \`case '${tag}'\` in the switch. Exhaustiveness only means something when each case is written down.`;
+            }
+          }
+          return true;
+        });
+      },
     },
   ],
 };
