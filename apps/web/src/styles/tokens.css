@@ -26,6 +26,10 @@
   --grid: rgba(240, 240, 238, 0.04);
 
   --accent: #93c5fd;
+  /* The primary action reads as accent-tinted rather than as an inverted slab. */
+  --accent-bg: rgba(147, 197, 253, 0.13);
+  --accent-bg-hover: rgba(147, 197, 253, 0.2);
+  --accent-line: rgba(147, 197, 253, 0.42);
   --ok: #34d399;
   --ok-bg: rgba(52, 211, 153, 0.14);
   --no: #f87171;
@@ -73,6 +77,9 @@ html.light {
   --grid: rgba(26, 26, 25, 0.05);
 
   --accent: #2563eb;
+  --accent-bg: rgba(37, 99, 235, 0.09);
+  --accent-bg-hover: rgba(37, 99, 235, 0.15);
+  --accent-line: rgba(37, 99, 235, 0.38);
   --ok: #059669;
   --ok-bg: rgba(5, 150, 105, 0.1);
   --no: #dc2626;
@@ -104,6 +111,9 @@ html.light {
     --sel: rgba(26, 26, 25, 0.12);
     --grid: rgba(26, 26, 25, 0.05);
     --accent: #2563eb;
+    --accent-bg: rgba(37, 99, 235, 0.09);
+    --accent-bg-hover: rgba(37, 99, 235, 0.15);
+    --accent-line: rgba(37, 99, 235, 0.38);
     --ok: #059669;
     --ok-bg: rgba(5, 150, 105, 0.1);
     --no: #dc2626;
