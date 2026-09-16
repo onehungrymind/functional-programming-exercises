@@ -81,7 +81,41 @@ const BadBox = (value) => ({
   value,
   map: (f) => BadBox(f(value) + calls++)   // depends on history, so it cannot compose
 })
-\`\`\``,
+\`\`\`
+
+The same thing written as a type says it more precisely than a paragraph can:
+
+\`\`\`ts
+interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+\`\`\`
+
+Read \`map\` slowly, because every part of it is one of the rules above. It takes an
+\`(a: A) => B\`, a function from the contents to something else. It gives back a
+\`Box<B>\`: still a Box, so you can keep mapping, and now holding a \`B\`.
+
+The container is fixed and the contents vary. That is the whole of what a functor is, and it
+is why the two laws are the only ones available: \`map\` cannot reach outside the box, cannot
+change what kind of box it is, and cannot see anything except the value and the function.
+
+\`\`\`ts
+const Box = <A,>(value: A): Box<A> => ({
+  value,
+  map: <B,>(f: (a: A) => B) => Box<B>(f(value))
+})
+
+Box(2).map((n) => n + 1)          // Box<number>
+Box(2).map((n) => \`n is \${n}\`)    // Box<string>, because B need not be A
+\`\`\`
+
+Note the \`<A,>\` with the trailing comma. In a file that might contain JSX, \`<A>\` alone reads
+as a tag, so the comma disambiguates it.
+
+The signature also rules out the mistakes without you having to try them. A \`map\` that returns
+the bare value cannot be \`Box<B>\`, and one that ignores \`f\` has no way to produce a \`B\` at
+all.`,
   rungs: [
     {
       id: 'implement',

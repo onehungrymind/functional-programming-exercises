@@ -198,6 +198,15 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
           `Show the concept, do not only describe it.`,
       );
     }
+    // A typed rung asks the learner to read a signature. If the notes never show one, the
+    // rung is asking about something the Learn tab has not covered. Prose cannot be checked
+    // mechanically; this one case can.
+    if (set.rungs.some((r) => r.lang === 'ts') && !/```ts/.test(set.notes)) {
+      note(
+        `${termId}: has a typed rung, but the notes never show a type. ` +
+          `A rung may only ask about something the Learn tab has covered.`,
+      );
+    }
     notedConcepts.push({ termId, blocks, code: [...set.notes.matchAll(/```[\s\S]*?```/g)].reduce((a, m) => a + m[0].length, 0), prose: set.notes.replace(/```[\s\S]*?```/g, '').length });
   }
 
