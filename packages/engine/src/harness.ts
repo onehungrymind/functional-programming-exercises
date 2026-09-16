@@ -148,6 +148,10 @@ export function createHarness(src: string, seed = 0x5eed): { api: Harness; state
         return f(...args);
       }) as typeof f & { calls: unknown[][] };
       wrapped.calls = calls;
+      // A rest-parameter wrapper reports length 0. Anything that reads fn.length, currying
+      // above all, would then see a different function under test than in the app.
+      Object.defineProperty(wrapped, 'length', { value: f.length, configurable: true });
+      Object.defineProperty(wrapped, 'name', { value: f.name, configurable: true });
       return wrapped;
     },
 

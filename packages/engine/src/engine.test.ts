@@ -115,6 +115,37 @@ describe('evaluateRung', () => {
   });
 });
 
+describe('spyFn', () => {
+  it('records the arguments of every call', () => {
+    const { api } = createHarness('');
+    const spy = api.spyFn((a: number, b: number) => a + b);
+    spy(1, 2);
+    spy(3, 4);
+    expect(spy.calls).toEqual([
+      [1, 2],
+      [3, 4],
+    ]);
+  });
+
+  it('passes the return value through', () => {
+    const { api } = createHarness('');
+    expect(api.spyFn((n: number) => n * 2)(21)).toBe(42);
+  });
+
+  it('keeps the wrapped function\'s arity', () => {
+    // A rest-parameter wrapper would report 0, and anything reading fn.length — currying
+    // above all — would then behave differently under test than in the app.
+    const { api } = createHarness('');
+    expect(api.spyFn((_a: number, _b: number, _c: number) => 0).length).toBe(3);
+    expect(api.spyFn(() => 0).length).toBe(0);
+  });
+
+  it('keeps the wrapped function\'s name, so failure messages still read', () => {
+    const { api } = createHarness('');
+    expect(api.spyFn(function double(n: number) { return n * 2; }).name).toBe('double');
+  });
+});
+
 describe('law counterexamples', () => {
   it('names the smallest failing case with readable function labels', () => {
     const { api, state } = createHarness('');

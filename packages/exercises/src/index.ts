@@ -14,7 +14,16 @@ import { totalFunction } from './terms/total-function.js';
 import { trampoline } from './terms/trampoline.js';
 
 // Composition & Flow
+import { algebraicEffects } from './terms/algebraic-effects.js';
+import { autoCurrying } from './terms/auto-currying.js';
+import { continuation } from './terms/continuation.js';
 import { currying } from './terms/currying.js';
+import { functionComposition } from './terms/function-composition.js';
+import { functionalCombinator } from './terms/functional-combinator.js';
+import { io } from './terms/io.js';
+import { lazyEvaluation } from './terms/lazy-evaluation.js';
+import { partialApplication } from './terms/partial-application.js';
+import { pointFreeStyle } from './terms/point-free-style.js';
 
 // Algebraic Structures
 import { functor } from './terms/functor.js';
@@ -34,7 +43,16 @@ const ALL: ExerciseSet[] = [
   totalFunction,
   trampoline,
   // Composition & Flow
+  partialApplication,
   currying,
+  autoCurrying,
+  functionComposition,
+  pointFreeStyle,
+  functionalCombinator,
+  continuation,
+  lazyEvaluation,
+  io,
+  algebraicEffects,
   // Algebraic Structures
   functor,
 ];

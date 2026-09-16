@@ -150,9 +150,36 @@ improved the engine rather than the exercises:
 - Two starters returned undefined and then failed later with `TypeError: f is not a
   function`, which blames the wrong line. Those rungs now check the shape first.
 
+### Composition & Flow — done (10 of 10)
+
+`algebraic-effects`, `auto-currying`, `continuation`, `currying`, `function-composition`,
+`functional-combinator`, `io`, `lazy-evaluation`, `partial-application`, `point-free-style`.
+
+`npm run verify`: 22 concepts, 33 code rungs, 144 variants.
+
+This category found four real bugs, three of them mine and one in the engine:
+
+- **`npm run verify` could take the whole process down.** A broken variant for
+  `lazy-evaluation` spread an endless generator into an array, and the out-of-memory abort
+  killed the run, not just the grading. Verify now grades inside a worker thread with a
+  10s timeout and a heap cap, replacing the worker after a hang. That mirrors the browser
+  runner, and it means content that is doing its job cannot hang CI.
+- **A check could have hung the learner's own tab.** `take(n, it) => [...it].slice(0, n)` is
+  a plausible first attempt, and the original checks handed it an endless source. Every
+  source the learner's `take` now receives is bounded, and the over-pull is reported as a
+  message instead of being hit. This is a content rule worth keeping: a check must be safe
+  against the mistake it is testing for.
+- **`spyFn` lost the wrapped function's arity.** The wrapper takes a rest parameter, so
+  `fn.length` came back 0, and `auto-currying` called straight through under test while
+  behaving correctly in the app. It now copies `length` and `name`.
+- **Two "broken" variants were not broken.** Upper-casing an exclamation mark is a no-op, so
+  a composition in the wrong order gave the right answer; and an IO variant meant to be
+  eager was in fact lazy. Build-time execution is not observable from outside the learner's
+  module, so that variant was replaced rather than papered over.
+
 ### Remaining
 
-Composition & Flow (9), Purity & Reasoning (9), Types & Data Modeling (11),
-Algebraic Structures (19), Category & Morphisms (12). 60 concepts.
+Purity & Reasoning (9), Types & Data Modeling (11), Algebraic Structures (19),
+Category & Morphisms (12). 51 concepts.
 
 ## Phase 8 (stretch): TypeScript rungs — not started
