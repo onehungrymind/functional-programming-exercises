@@ -204,8 +204,33 @@ Celsius/Fahrenheit pair round-trips whole degrees correctly often enough that a 
 integers accepted it. The samples are fractional now. Picking a generator that cannot
 distinguish the broken case from the right one is a quiet way for a law to be useless.
 
+### Algebraic Structures — done (20 of 20)
+
+`alternative`, `applicative-functor`, `bifunctor`, `comonad`, `constant-functor`,
+`constant-monad`, `contravariant-functor`, `foldable`, `free-monad`, `functor`,
+`kleisli-composition`, `lift`, `monad`, `monad-transformer`, `monoid`, `pointed-functor`,
+`profunctor`, `semigroup`, `setoid`, `traversable`.
+
+`npm run verify`: 61 concepts, 84 code rungs, 375 variants.
+
+Most of these lean on the law library rather than restating laws by hand, which is what
+Phase 6 was for.
+
+Two rungs had to be rewritten:
+
+- **`constant-monad` is not a lawful monad.** The README's own example (`chain` keeps the
+  contents) cannot satisfy left identity, because `chain` discards the function while the
+  right-hand side depends on it. Per the plan's rule for loose README wording, the exercise
+  now teaches the precise position: the implement rung verifies the two laws that do hold,
+  and the break rung has the learner produce the counterexample for the one that does not.
+  Recorded in `docs/upstream-notes.md`, which this phase created.
+- **`monoid`'s break rung asked for nothing.** Its starter already demonstrated the point, so
+  `npm run verify` caught it as a rung a learner would pass without doing anything. It now
+  asks for concrete counterexamples: a triple whose grouping changes the answer, and a value
+  that zero fails to fix on the left.
+
 ### Remaining
 
-Algebraic Structures (19), Category & Morphisms (12). 31 concepts.
+Category & Morphisms (12).
 
 ## Phase 8 (stretch): TypeScript rungs — not started

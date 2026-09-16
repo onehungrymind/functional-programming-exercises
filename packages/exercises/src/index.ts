@@ -50,7 +50,26 @@ import { traversal } from './terms/traversal.js';
 import { typeSignatures } from './terms/type-signatures.js';
 
 // Algebraic Structures
+import { alternative } from './terms/alternative.js';
+import { applicativeFunctor } from './terms/applicative-functor.js';
+import { bifunctor } from './terms/bifunctor.js';
+import { comonad } from './terms/comonad.js';
+import { constantFunctor } from './terms/constant-functor.js';
+import { constantMonad } from './terms/constant-monad.js';
+import { contravariantFunctor } from './terms/contravariant-functor.js';
+import { foldable } from './terms/foldable.js';
+import { freeMonad } from './terms/free-monad.js';
 import { functor } from './terms/functor.js';
+import { kleisliComposition } from './terms/kleisli-composition.js';
+import { lift } from './terms/lift.js';
+import { monad } from './terms/monad.js';
+import { monadTransformer } from './terms/monad-transformer.js';
+import { monoid } from './terms/monoid.js';
+import { pointedFunctor } from './terms/pointed-functor.js';
+import { profunctor } from './terms/profunctor.js';
+import { semigroup } from './terms/semigroup.js';
+import { setoid } from './terms/setoid.js';
+import { traversable } from './terms/traversable.js';
 
 /** Every set, in curriculum order. The order drives the "next concept" suggestion. */
 const ALL: ExerciseSet[] = [
@@ -100,7 +119,26 @@ const ALL: ExerciseSet[] = [
   traversal,
   lambdaCalculus,
   // Algebraic Structures
+  setoid,
+  semigroup,
+  monoid,
   functor,
+  pointedFunctor,
+  constantFunctor,
+  constantMonad,
+  lift,
+  applicativeFunctor,
+  monad,
+  kleisliComposition,
+  comonad,
+  freeMonad,
+  monadTransformer,
+  bifunctor,
+  contravariantFunctor,
+  profunctor,
+  alternative,
+  foldable,
+  traversable,
 ];
 
 /**
