@@ -49,8 +49,11 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
   hylomorphism.
 - A check must be safe against the mistake it is testing for. Never hand learner code an endless
   source when the likely wrong answer would drain it.
-- After changing an exercise set, run `npm run build:manifest`. The shell renders the Practice
-  tab from the manifest so the checks stay out of the initial bundle; verify fails on drift.
+- After changing an exercise set, run `npm run build:manifest`. It writes two files, and verify
+  fails if either drifts. `manifest.ts` is structure and ships in the entry bundle; `notes.ts`
+  is the prose and the drawer imports it on demand. Neither carries the checks or the variants.
+  Prose does not belong in the manifest: it is six times the size of the structure and nobody
+  reads it until a drawer is open.
 - One plan phase per session unless told otherwise. Stop at the phase exit criteria.
 
 ## Design rules
@@ -71,7 +74,7 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
 | `npm run typecheck` | `tsc --build` over all project references |
 | `npm run verify` | Every solution passes, every broken fails, every starter fails, every termId exists |
 | `npm run test:e2e` | Playwright against `apps/web`, starting the dev server itself |
-| `npm run build:manifest` | Regenerate `packages/exercises/src/manifest.ts` after changing an exercise |
+| `npm run build:manifest` | Regenerate `packages/exercises/src/{manifest,notes}.ts` after changing an exercise |
 | `npm run sync:jargons` | Re-read the sibling clone into `data/`. Never commits. |
 
 ## Layout
