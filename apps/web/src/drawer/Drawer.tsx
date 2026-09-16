@@ -25,8 +25,17 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
   const entry = manifestByTerm[term.id];
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  const parts = useMemo(() => parseBody(term.body), [term.body]);
-  const noteParts = useMemo(() => (entry?.notes ? parseNotes(entry.notes) : []), [entry?.notes]);
+  /**
+   * One continuous piece of reading. The upstream entry and the notes this repo wrote are
+   * not labelled as separate voices, because to a learner they are not: it is all just the
+   * explanation of the concept. Attribution lives in the footer link and NOTICE.md, which is
+   * where it belongs.
+   */
+  const parts = useMemo(
+    () => [...parseBody(term.body, undefined, term.summary), ...(entry?.notes ? parseNotes(entry.notes) : [])],
+    [term.body, term.summary, entry?.notes],
+  );
+  const codeBlockCount = useMemo(() => parts.filter((p) => p.type === 'code').length, [parts]);
   const related = useMemo(() => neighborsOf(term.id), [term.id]);
 
   const rungTotal = entry?.rungs.length ?? 0;
@@ -127,7 +136,7 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
             <p className="sect">
               <span>EXPLANATION &amp; EXAMPLES</span>
               <span>
-                {term.codeBlocks.length} CODE BLOCK{term.codeBlocks.length === 1 ? '' : 'S'}
+                {codeBlockCount} CODE BLOCK{codeBlockCount === 1 ? '' : 'S'}
               </span>
             </p>
             {parts.map((part, i) =>
@@ -136,24 +145,6 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
               ) : (
                 <div key={i} className="prose" dangerouslySetInnerHTML={{ __html: part.html }} />
               ),
-            )}
-
-            {noteParts.length > 0 && (
-              <>
-                <p className="sect">
-                  <span>NOTES FOR PRACTICE</span>
-                  <span>NOT FROM FP JARGON</span>
-                </p>
-                <div className="notes">
-                  {noteParts.map((part, i) =>
-                    part.type === 'code' ? (
-                      <CodeBlock key={i} code={part.code} lang={part.lang} />
-                    ) : (
-                      <div key={i} className="prose" dangerouslySetInnerHTML={{ __html: part.html }} />
-                    ),
-                  )}
-                </div>
-              </>
             )}
 
             {term.furtherReading.length > 0 && (

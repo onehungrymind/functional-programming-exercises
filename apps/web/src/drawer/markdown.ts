@@ -39,13 +39,24 @@ const markedNotes = new Marked({ gfm: true, breaks: false, renderer });
 
 export type BodyPart = { type: 'markdown'; html: string } | { type: 'code'; lang: string; code: string };
 
+const normalize = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+
 /**
  * Splits a term's body into prose and code, keeping their original order so the
  * explanation and the example it belongs to stay together.
+ *
+ * `skipOpening` drops a first paragraph that only repeats text already on screen. Upstream
+ * bodies open by restating their own summary in 44 of the 75 entries, which reads as an
+ * editing mistake once the page is one continuous piece rather than labelled sections.
  */
-export function parseBody(body: string, md: Marked = marked): BodyPart[] {
+export function parseBody(body: string, md: Marked = marked, skipOpening?: string): BodyPart[] {
   // Upstream repeats further reading at the end of the body. The drawer has its own section.
-  const clean = body.replace(/\n*__Further reading[\s\S]*$/i, '').trim();
+  let clean = body.replace(/\n*__Further reading[\s\S]*$/i, '').trim();
+
+  if (skipOpening) {
+    const [first, ...rest] = clean.split(/\n\s*\n/);
+    if (first && normalize(first) === normalize(skipOpening)) clean = rest.join('\n\n').trim();
+  }
 
   const parts: BodyPart[] = [];
   const fence = /```([a-z]*)\n([\s\S]*?)```/g;
