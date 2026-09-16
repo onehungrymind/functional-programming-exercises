@@ -58,11 +58,72 @@ Snapshot taken from upstream `62a3a2e` on 2026-09-16: 75 terms, 73 of them conce
 
 ## Phase 2: Engine — done
 
+`packages/engine`: worker sandbox, main-thread runner, harness, labelled generators, acorn
+shape rules, law library. `scripts/verify-exercises.mjs`. The POC's three concepts ported to
+`packages/exercises` as real modules.
+
+- `npm run verify`: 3 concepts, 6 code rungs, 24 variants graded through the real harness.
+- 32 engine tests cover timeout-and-restart, stale `seq` dropping, a syntax error, a missing
+  export, frozen-input mutation, effect spying, deterministic law counterexamples, and every
+  shape rule.
+
+Two deviations worth naming:
+
+- **`inverted` does not flip results.** The plan reads as though the engine should negate a
+  break rung's checks. The POC writes those checks already inverted ("the law checker finds a
+  counterexample" passes when a law fails), so flipping again would invert twice and turn
+  every readable failure message into a bare negation. The flag stays as UI framing.
+- **The law library and the acorn shape rules landed here rather than in Phase 6.** The
+  currying point-free rung and the functor rungs need them, and shipping a regex in the
+  meantime only to delete it later was wasted work. Phase 6 is now the remaining suites
+  (traversable, foldable, free monad, and the rest) plus their accept/reject tests.
+
 ## Phase 3: Editor — done
+
+`packages/editor`: explicit extension list rather than `basicSetup`, a theme built from the
+shared tokens, an acorn lint source at 200ms, a scope-aware completion source, and
+Cmd/Ctrl+Enter.
+
+- **Bundle: 142KB gzip, lazy-loaded.** Under the 150KB target. Getting there took three cuts.
+  `basicSetup` was never used. The Learn tab's code blocks originally imported
+  CodeMirror's `HighlightStyle` and `javascript()`, which drag `@codemirror/view`,
+  autocomplete, and lint into the initial bundle; they now use the bare `@lezer/javascript`
+  parser with a tag-to-CSS-class map that reads the same `--tok-*` tokens. And
+  `practice-react` imports `@fpx/engine/runner` rather than the barrel, which was pulling
+  acorn and the evaluator onto the main thread for nothing.
+- Initial bundle is 174KB gzip, the worker another 41KB, both separate from the editor.
 
 ## Phase 4: Shell with drawer and practice — done
 
+`apps/web` with tokens, hash routing, the drawer with Learn and Practice, the
+category-grouped list, and `packages/practice-react`.
+
 ## Phase 5: Graph and progress — done
+
+Canvas graph, progress store and arcs, the Practice filter, the next-concept suggestion,
+and the completion ring pulse.
+
+- **The layout takes 742 ticks to settle**, not the 220 first guessed. `settle()` now runs
+  to quiescence rather than a fixed count, because the camera fits to the bounding box and a
+  box measured mid-settle put a third of the graph off screen.
+- **The camera fits the graph on open** instead of using a fixed zoom, which either cropped
+  it on a laptop or stranded it on a large display.
+- **The simulation stops when it is still** and wakes on a drag. A graph that drifts under
+  the cursor is distracting, and an idle tab should not burn a core on physics.
+- **Confetti is a hand-drawn ring pulse**, not `canvas-confetti`. Upstream installs that
+  package and never uses it; it is not worth a dependency for two seconds of animation.
+
+### Verification
+
+- 28 Playwright tests: solving a rung, a wrong answer's message, the point-free shape rule,
+  a syntax error, a missing export, the timeout path and the worker restart after it, choice
+  grading and retry, all four deep-link shapes, search, Escape in and out of the editor,
+  the theme toggle across a reload, the list fallback, keyboard graph navigation, progress
+  export/import/reset, a 420px viewport, reduced motion, and **all 75 terms rendering in
+  Learn with no console error**.
+- With `../functional-programming-jargon` moved aside entirely, `npm test`, `npm run verify`,
+  and the production build all still pass. Nothing outside `scripts/sync-jargons.mjs`
+  mentions the sibling folder.
 
 ## Phase 6: Shape rules and the law library — not started
 

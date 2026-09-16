@@ -32,6 +32,7 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
 | `npm test` | Vitest across the repo |
 | `npm run typecheck` | `tsc --build` over all project references |
 | `npm run verify` | Every solution passes, every broken fails, every starter fails, every termId exists |
+| `npm run test:e2e` | Playwright against `apps/web`, starting the dev server itself |
 | `npm run sync:jargons` | Re-read the sibling clone into `data/`. Never commits. |
 
 ## Layout
