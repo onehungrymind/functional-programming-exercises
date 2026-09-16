@@ -9,6 +9,7 @@ import { navigate, type Route } from '../routing';
 import { CodeBlock } from './CodeBlock';
 import { parseBody, parseNotes, renderInline } from './markdown';
 import { createCheckWorker } from '../worker-factory';
+import { useConceptNotes } from './useConceptNotes';
 
 export interface DrawerProps {
   term: Term;
@@ -21,8 +22,9 @@ export interface DrawerProps {
 
 export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }: DrawerProps) {
   const cat = categoriesById.get(term.category);
-  // Metadata only. The exercises themselves arrive with PracticeTab below.
+  // Structure only. The prose arrives with useConceptNotes and the exercises with PracticeTab.
   const entry = manifestByTerm[term.id];
+  const conceptNotes = useConceptNotes(term.id);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   /**
@@ -32,13 +34,16 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
    * where it belongs.
    */
   const parts = useMemo(
-    () => [...parseBody(term.body, undefined, term.summary), ...(entry?.notes ? parseNotes(entry.notes) : [])],
-    [term.body, term.summary, entry?.notes],
+    () => [
+      ...parseBody(term.body, undefined, term.summary),
+      ...(conceptNotes?.notes ? parseNotes(conceptNotes.notes) : []),
+    ],
+    [term.body, term.summary, conceptNotes?.notes],
   );
   /** The second lap, kept separate so the page can mark where JavaScript ends. */
   const typedParts = useMemo(
-    () => (entry?.typedNotes ? parseNotes(entry.typedNotes) : []),
-    [entry?.typedNotes],
+    () => (conceptNotes?.typedNotes ? parseNotes(conceptNotes.typedNotes) : []),
+    [conceptNotes?.typedNotes],
   );
   const codeBlockCount = useMemo(
     () => [...parts, ...typedParts].filter((p) => p.type === 'code').length,

@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./worker": "./src/check.worker.ts",
-    "./manifest": "./src/manifest.ts"
+    "./manifest": "./src/manifest.ts",
+    "./notes": "./src/notes.ts"
   },
   "dependencies": {
     "@fpx/engine": "*"

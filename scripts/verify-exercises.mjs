@@ -34,6 +34,7 @@ const WORKER = join(ROOT, 'scripts/verify-worker.mjs');
 
 const { exerciseSets, exerciseTermIds } = await import(new URL(`file://${EXERCISES}`).href);
 const { manifest } = await import(new URL(`file://${join(ROOT, 'packages/exercises/src/manifest.ts')}`).href);
+const { conceptNotes } = await import(new URL(`file://${join(ROOT, 'packages/exercises/src/notes.ts')}`).href);
 
 const TIMEOUT_MS = 10_000;
 const MAX_HEAP_MB = 512;
@@ -102,14 +103,12 @@ function gradeInWorker(termId, rungId, code) {
 const problems = [];
 const note = (msg) => problems.push(msg);
 
-// The shell renders the Practice tab from the generated manifest rather than from the sets,
-// so that the checks and variants stay out of the initial bundle. If the two drift, the tab
-// shows a count that does not match what the learner gets.
+// The shell renders from the two generated files rather than from the sets, so that the
+// checks and variants stay out of the initial bundle and the prose stays out of the first
+// paint. If either drifts, a learner sees a stale count or stale teaching.
 {
   const fromSets = exerciseTermIds.map((termId) => ({
     termId,
-    notes: exerciseSets[termId].notes ?? null,
-    typedNotes: exerciseSets[termId].typedNotes ?? null,
     rungs: exerciseSets[termId].rungs.map((r) => ({
       id: r.id,
       role: r.role,
@@ -120,6 +119,21 @@ const note = (msg) => problems.push(msg);
   }));
   if (JSON.stringify(fromSets) !== JSON.stringify(manifest)) {
     note('packages/exercises/src/manifest.ts has drifted from the exercise sets. Run `npm run build:manifest`.');
+  }
+
+  const notesFromSets = Object.fromEntries(
+    exerciseTermIds
+      .filter((termId) => exerciseSets[termId].notes || exerciseSets[termId].typedNotes)
+      .map((termId) => [
+        termId,
+        {
+          notes: exerciseSets[termId].notes ?? null,
+          typedNotes: exerciseSets[termId].typedNotes ?? null,
+        },
+      ]),
+  );
+  if (JSON.stringify(notesFromSets) !== JSON.stringify(conceptNotes)) {
+    note('packages/exercises/src/notes.ts has drifted from the exercise sets. Run `npm run build:manifest`.');
   }
 }
 

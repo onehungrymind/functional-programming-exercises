@@ -20,6 +20,7 @@ export default defineConfig({
       '@fpx/editor/highlight': pkg('editor', 'src/highlight.ts'),
       '@fpx/editor': pkg('editor'),
       '@fpx/exercises/manifest': pkg('exercises', 'src/manifest.ts'),
+      '@fpx/exercises/notes': pkg('exercises', 'src/notes.ts'),
       '@fpx/exercises/worker': pkg('exercises', 'src/check.worker.ts'),
       '@fpx/exercises': pkg('exercises'),
       '@fpx/practice-react': pkg('practice-react'),
