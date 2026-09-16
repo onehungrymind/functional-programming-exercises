@@ -1,0 +1,120 @@
+/*
+ * Design tokens.
+ *
+ * Ported from the upstream site's index.css and tailwind.config.js so the two apps read as
+ * one product. Everything downstream, including the CodeMirror theme and the canvas graph,
+ * reads from here. Nothing hardcodes a color.
+ *
+ * Dark is the default, matching upstream. `html.light` flips it.
+ */
+
+:root {
+  /* Surfaces. Upstream calls this the obsidian blueprint. */
+  --bg: #121212;
+  --panel: #1a1a19;
+  --card: #1f1f1f;
+  --card2: #262624;
+  --line: rgba(240, 240, 238, 0.12);
+  --line2: rgba(240, 240, 238, 0.28);
+
+  --text: #f0f0ee;
+  --muted: rgba(240, 240, 238, 0.6);
+  --faint: rgba(240, 240, 238, 0.38);
+  --sel: rgba(240, 240, 238, 0.14);
+
+  /* The 32px blueprint grid behind the graph. */
+  --grid: rgba(240, 240, 238, 0.04);
+
+  --accent: #93c5fd;
+  --ok: #34d399;
+  --ok-bg: rgba(52, 211, 153, 0.14);
+  --no: #f87171;
+  --no-bg: rgba(248, 113, 113, 0.12);
+
+  /* Syntax, matching upstream's Prism dark palette. */
+  --tok-kw: #f43f5e;
+  --tok-fn: #60a5fa;
+  --tok-str: #34d399;
+  --tok-num: #fb923c;
+  --tok-com: #64748b;
+  --tok-punc: #94a3b8;
+  --tok-op: #f472b6;
+
+  /* Category colors, straight from data/jargons.json. */
+  --cat-core-functions: #3b82f6;
+  --cat-composition: #10b981;
+  --cat-purity-state: #f59e0b;
+  --cat-category-morphisms: #a855f7;
+  --cat-algebraic-structures: #ec4899;
+  --cat-types-data: #06b6d4;
+
+  --mono: 'JetBrains Mono', 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --duration-fast: 0.18s;
+
+  color-scheme: dark;
+}
+
+html.light {
+  /* The warm architectural paper. */
+  --bg: #eaeae8;
+  --panel: #e2e2df;
+  --card: #e6e6e3;
+  --card2: #d8d8d5;
+  --line: rgba(26, 26, 25, 0.12);
+  --line2: rgba(26, 26, 25, 0.28);
+
+  --text: #1a1a19;
+  --muted: rgba(26, 26, 25, 0.62);
+  --faint: rgba(26, 26, 25, 0.4);
+  --sel: rgba(26, 26, 25, 0.12);
+
+  --grid: rgba(26, 26, 25, 0.05);
+
+  --accent: #2563eb;
+  --ok: #059669;
+  --ok-bg: rgba(5, 150, 105, 0.1);
+  --no: #dc2626;
+  --no-bg: rgba(220, 38, 38, 0.08);
+
+  --tok-kw: #be185d;
+  --tok-fn: #2563eb;
+  --tok-str: #059669;
+  --tok-num: #d97706;
+  --tok-com: #64748b;
+  --tok-punc: #475569;
+  --tok-op: #e11d48;
+
+  color-scheme: light;
+}
+
+/* Honour the OS on a first visit, before any choice has been stored. */
+@media (prefers-color-scheme: light) {
+  html:not(.dark):not(.light) {
+    --bg: #eaeae8;
+    --panel: #e2e2df;
+    --card: #e6e6e3;
+    --card2: #d8d8d5;
+    --line: rgba(26, 26, 25, 0.12);
+    --line2: rgba(26, 26, 25, 0.28);
+    --text: #1a1a19;
+    --muted: rgba(26, 26, 25, 0.62);
+    --faint: rgba(26, 26, 25, 0.4);
+    --sel: rgba(26, 26, 25, 0.12);
+    --grid: rgba(26, 26, 25, 0.05);
+    --accent: #2563eb;
+    --ok: #059669;
+    --ok-bg: rgba(5, 150, 105, 0.1);
+    --no: #dc2626;
+    --no-bg: rgba(220, 38, 38, 0.08);
+    --tok-kw: #be185d;
+    --tok-fn: #2563eb;
+    --tok-str: #059669;
+    --tok-num: #d97706;
+    --tok-com: #64748b;
+    --tok-punc: #475569;
+    --tok-op: #e11d48;
+    color-scheme: light;
+  }
+}
