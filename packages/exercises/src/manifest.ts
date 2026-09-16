@@ -16,12 +16,15 @@ export interface ManifestRung {
 
 export interface ManifestEntry {
   termId: string;
+  /** Teaching this repo owns, rendered in Learn after the upstream entry. */
+  notes: string | null;
   rungs: ManifestRung[];
 }
 
 export const manifest: ManifestEntry[] = [
   {
     "termId": "function",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -39,6 +42,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "arity",
+    "notes": "The glossary entry covers the names. The part that catches people out is that\nJavaScript has two different notions of arity, and `fn.length` reports the one you probably\ndid not mean.\n\n**Declared arity** is what `fn.length` gives you: the number of parameters written before\nthe first one that has a default or a rest. **Call arity** is how many arguments a particular\ncall actually passes, which `arguments.length` would tell you inside the function.\n\nThree rules decide what `fn.length` counts:\n\n- Counting **stops at the first parameter with a default**, and everything after it is\n  ignored, even parameters that have no default of their own. So `(a = 1, b) => 0` has a\n  length of 0, not 1.\n- A **rest parameter is never counted**. `(...xs) => 0` has a length of 0, which means a\n  variadic function and a nullary one look identical to `fn.length`.\n- A **destructured parameter is still one parameter**. `({ a, b }) => 0` has a length of 1.\n\nThis matters well beyond trivia, because [auto-currying](#auto-currying) decides how many\narguments to wait for by reading `fn.length`. Curry a variadic function and it will call\nthrough immediately, having been told the function takes nothing.",
     "rungs": [
       {
         "id": "recognize",
@@ -56,6 +60,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "lambda",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -73,6 +78,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "higher-order-functions-hof",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -90,6 +96,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "closure",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -107,6 +114,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "predicate",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -124,6 +132,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "pure-function",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -141,6 +150,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "thunk",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -158,6 +168,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "partial-function",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -175,6 +186,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "total-function",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -192,6 +204,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "trampoline",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -209,6 +222,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "partial-application",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -226,6 +240,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "currying",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -249,6 +264,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "auto-currying",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -266,6 +282,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "function-composition",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -283,6 +300,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "point-free-style",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -300,6 +318,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "functional-combinator",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -317,6 +336,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "continuation",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -334,6 +354,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "lazy-evaluation",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -351,6 +372,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "io",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -368,6 +390,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "algebraic-effects",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -385,6 +408,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "side-effects",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -402,6 +426,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "value",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -419,6 +444,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "constant",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -436,6 +462,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "constant-function",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -453,6 +480,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "referential-transparency",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -470,6 +498,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "equational-reasoning",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -487,6 +516,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "idempotence",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -504,6 +534,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "memoization",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -521,6 +552,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "contracts",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -538,6 +570,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "type-signatures",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -555,6 +588,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "algebraic-data-type",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -572,6 +606,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "product-type",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -589,6 +624,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "sum-type",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -606,6 +642,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "option",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -623,6 +660,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "either",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -640,6 +678,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "lens",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -657,6 +696,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "prism",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -674,6 +714,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "iso",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -691,6 +732,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "traversal",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -708,6 +750,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "lambda-calculus",
+    "notes": null,
     "rungs": [
       {
         "id": "guided",
@@ -725,6 +768,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "setoid",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -742,6 +786,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "semigroup",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -759,6 +804,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "monoid",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -776,6 +822,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "functor",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -799,6 +846,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "pointed-functor",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -816,6 +864,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "constant-functor",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -833,6 +882,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "constant-monad",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -850,6 +900,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "lift",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -867,6 +918,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "applicative-functor",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -884,6 +936,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "monad",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -901,6 +954,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "kleisli-composition",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -918,6 +972,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "comonad",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -935,6 +990,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "free-monad",
+    "notes": null,
     "rungs": [
       {
         "id": "apply",
@@ -952,6 +1008,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "monad-transformer",
+    "notes": null,
     "rungs": [
       {
         "id": "apply",
@@ -969,6 +1026,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "bifunctor",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -986,6 +1044,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "contravariant-functor",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -1003,6 +1062,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "profunctor",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -1020,6 +1080,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "alternative",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -1037,6 +1098,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "foldable",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -1054,6 +1116,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "traversable",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -1071,6 +1134,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "morphism",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -1088,6 +1152,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "semigroupoid",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -1105,6 +1170,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "category",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -1122,6 +1188,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "endomorphism",
+    "notes": null,
     "rungs": [
       {
         "id": "recognize",
@@ -1139,6 +1206,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "isomorphism",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -1156,6 +1224,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "homomorphism",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -1173,6 +1242,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "natural-transformation",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -1190,6 +1260,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "catamorphism",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -1207,6 +1278,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "anamorphism",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -1224,6 +1296,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "hylomorphism",
+    "notes": null,
     "rungs": [
       {
         "id": "apply",
@@ -1241,6 +1314,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "paramorphism",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",
@@ -1258,6 +1332,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "apomorphism",
+    "notes": null,
     "rungs": [
       {
         "id": "implement",

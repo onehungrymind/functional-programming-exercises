@@ -2,6 +2,8 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const continuation: ExerciseSet = {
   termId: 'continuation',
+  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
+  notesTodo: true,
   rungs: [
     {
       id: 'implement',

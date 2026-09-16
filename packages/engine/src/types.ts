@@ -65,6 +65,29 @@ export interface ExerciseSet {
   /** Must exist in data/jargons.json. Enforced by `npm run verify`. */
   termId: string;
   rungs: Rung[];
+  /**
+   * Teaching this repo owns, shown in Learn after the upstream entry.
+   *
+   * Upstream is a glossary: most entries are one sentence written for someone who already
+   * knows the word. A rung may only ask about something the upstream body or these notes
+   * have actually covered, so anything a rung assumes beyond the glossary goes here.
+   *
+   * Markdown. Internal `#term` links are routed in-app.
+   */
+  notes?: string;
+  /**
+   * Set when the upstream entry genuinely covers everything the rungs ask about, so no
+   * notes are needed.
+   */
+  upstreamIsEnough?: true;
+  /**
+   * Reviewed, needs notes, not written yet.
+   *
+   * Every set must declare exactly one of `notes`, `upstreamIsEnough`, or this, so a new
+   * set cannot land without someone deciding. `npm run verify` counts these and prints the
+   * outstanding total on every run, which keeps the backlog visible rather than implied.
+   */
+  notesTodo?: true;
 }
 
 // ---------------------------------------------------------------- results

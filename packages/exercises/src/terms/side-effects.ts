@@ -2,6 +2,8 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const sideEffects: ExerciseSet = {
   termId: 'side-effects',
+  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
+  notesTodo: true,
   rungs: [
     {
       id: 'recognize',

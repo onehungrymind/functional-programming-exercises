@@ -1042,3 +1042,13 @@ kbd {
 .tok-punc { color: var(--tok-punc); }
 .tok-op { color: var(--tok-op); }
 .tok-bad { color: var(--no); }
+
+/* Notes this repo wrote, distinct from the upstream entry above them. */
+.notes {
+  border-left: 2px solid var(--accent-line);
+  padding-left: 14px;
+  margin-bottom: 4px;
+}
+.notes .prose:last-child {
+  margin-bottom: 0;
+}

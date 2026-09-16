@@ -14,6 +14,10 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
 - Every code rung ships `starter`, `solution`, and `broken` variants. `npm run verify` must pass
   before committing exercise changes.
 - Every concept gets at least two rungs and at least one that is code-graded. Enforced by verify.
+- **A rung may only ask about something the Learn tab has covered.** Upstream is a glossary:
+  50 of 73 entries are under 400 characters of prose. Teaching the rungs depend on goes in the
+  set's `notes`, which Learn renders after the upstream entry. Every set declares exactly one
+  of `notes`, `upstreamIsEnough`, or `notesTodo`, and verify prints the outstanding count.
 - Learning order comes from `apps/web/src/curriculum.ts`, never from the graph. The graph's
   links say "related to", not "depends on", and their direction is whichever way the upstream
   README cross-referenced. Ask it for concepts with no prerequisites and it offers comonad and

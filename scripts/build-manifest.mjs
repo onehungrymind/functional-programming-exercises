@@ -26,6 +26,7 @@ export function buildManifest() {
     const set = exerciseSets[termId];
     return {
       termId,
+      notes: set.notes ?? null,
       rungs: set.rungs.map((r) => ({ id: r.id, role: r.role, title: r.title, kind: r.kind })),
     };
   });
@@ -51,6 +52,8 @@ export interface ManifestRung {
 
 export interface ManifestEntry {
   termId: string;
+  /** Teaching this repo owns, rendered in Learn after the upstream entry. */
+  notes: string | null;
   rungs: ManifestRung[];
 }
 

@@ -2,6 +2,8 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const typeSignatures: ExerciseSet = {
   termId: 'type-signatures',
+  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
+  notesTodo: true,
   rungs: [
     {
       id: 'recognize',

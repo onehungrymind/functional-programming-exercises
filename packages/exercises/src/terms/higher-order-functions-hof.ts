@@ -2,6 +2,8 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const higherOrderFunctions: ExerciseSet = {
   termId: 'higher-order-functions-hof',
+  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
+  notesTodo: true,
   rungs: [
     {
       id: 'implement',

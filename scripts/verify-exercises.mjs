@@ -108,6 +108,7 @@ const note = (msg) => problems.push(msg);
 {
   const fromSets = exerciseTermIds.map((termId) => ({
     termId,
+    notes: exerciseSets[termId].notes ?? null,
     rungs: exerciseSets[termId].rungs.map((r) => ({ id: r.id, role: r.role, title: r.title, kind: r.kind })),
   }));
   if (JSON.stringify(fromSets) !== JSON.stringify(manifest)) {
@@ -117,6 +118,7 @@ const note = (msg) => problems.push(msg);
 
 let codeRungs = 0;
 let variants = 0;
+const notesOutstanding = [];
 let timeouts = 0;
 
 const describe = (out) => {
@@ -142,6 +144,20 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
   if (!set.rungs.some((r) => r.kind === 'code')) {
     note(`${termId}: no code-graded rung. Recognizing is not the same as writing it.`);
   }
+
+  // A rung may only ask about something Learn has covered. Upstream is a glossary, so for
+  // most concepts that means this repo supplies the teaching itself. Every set has to declare
+  // which case it is, so a new one cannot land without someone deciding.
+  const declared = [set.notes, set.upstreamIsEnough, set.notesTodo].filter(Boolean).length;
+  if (declared === 0) {
+    note(
+      `${termId}: declares none of \`notes\`, \`upstreamIsEnough\`, or \`notesTodo\`. ` +
+        `A rung may only ask about something the Learn tab has covered, so say which applies.`,
+    );
+  } else if (declared > 1) {
+    note(`${termId}: declares more than one of \`notes\`, \`upstreamIsEnough\`, and \`notesTodo\`.`);
+  }
+  if (set.notesTodo) notesOutstanding.push(termId);
 
   const seen = new Set();
   for (const rung of set.rungs) {
@@ -215,5 +231,11 @@ if (problems.length) {
 await worker?.terminate();
 
 console.log(
-  `\n  verify passed\n  ${termCount} concepts, ${codeRungs} code rungs, ${variants} variants graded through the real harness\n`,
+  `\n  verify passed\n  ${termCount} concepts, ${codeRungs} code rungs, ${variants} variants graded through the real harness`,
 );
+if (notesOutstanding.length) {
+  console.log(
+    `  ${notesOutstanding.length} concepts still need Learn notes (marked \`notesTodo\`), so their rungs ask more than the page teaches`,
+  );
+}
+console.log('');

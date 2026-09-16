@@ -2,6 +2,26 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const arity: ExerciseSet = {
   termId: 'arity',
+  notes: `The glossary entry covers the names. The part that catches people out is that
+JavaScript has two different notions of arity, and \`fn.length\` reports the one you probably
+did not mean.
+
+**Declared arity** is what \`fn.length\` gives you: the number of parameters written before
+the first one that has a default or a rest. **Call arity** is how many arguments a particular
+call actually passes, which \`arguments.length\` would tell you inside the function.
+
+Three rules decide what \`fn.length\` counts:
+
+- Counting **stops at the first parameter with a default**, and everything after it is
+  ignored, even parameters that have no default of their own. So \`(a = 1, b) => 0\` has a
+  length of 0, not 1.
+- A **rest parameter is never counted**. \`(...xs) => 0\` has a length of 0, which means a
+  variadic function and a nullary one look identical to \`fn.length\`.
+- A **destructured parameter is still one parameter**. \`({ a, b }) => 0\` has a length of 1.
+
+This matters well beyond trivia, because [auto-currying](#auto-currying) decides how many
+arguments to wait for by reading \`fn.length\`. Curry a variadic function and it will call
+through immediately, having been told the function takes nothing.`,
   rungs: [
     {
       id: 'recognize',

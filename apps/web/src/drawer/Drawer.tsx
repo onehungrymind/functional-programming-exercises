@@ -7,7 +7,7 @@ import { nextConcept as nextInCurriculum } from '../curriculum';
 import { progress } from '../progress';
 import { navigate, type Route } from '../routing';
 import { CodeBlock } from './CodeBlock';
-import { parseBody, renderInline } from './markdown';
+import { parseBody, parseNotes, renderInline } from './markdown';
 import { createCheckWorker } from '../worker-factory';
 
 export interface DrawerProps {
@@ -26,6 +26,7 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const parts = useMemo(() => parseBody(term.body), [term.body]);
+  const noteParts = useMemo(() => (entry?.notes ? parseNotes(entry.notes) : []), [entry?.notes]);
   const related = useMemo(() => neighborsOf(term.id), [term.id]);
 
   const rungTotal = entry?.rungs.length ?? 0;
@@ -135,6 +136,24 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
               ) : (
                 <div key={i} className="prose" dangerouslySetInnerHTML={{ __html: part.html }} />
               ),
+            )}
+
+            {noteParts.length > 0 && (
+              <>
+                <p className="sect">
+                  <span>NOTES FOR PRACTICE</span>
+                  <span>NOT FROM FP JARGON</span>
+                </p>
+                <div className="notes">
+                  {noteParts.map((part, i) =>
+                    part.type === 'code' ? (
+                      <CodeBlock key={i} code={part.code} lang={part.lang} />
+                    ) : (
+                      <div key={i} className="prose" dangerouslySetInnerHTML={{ __html: part.html }} />
+                    ),
+                  )}
+                </div>
+              </>
             )}
 
             {term.furtherReading.length > 0 && (

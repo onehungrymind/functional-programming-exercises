@@ -3,6 +3,8 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const semigroup: ExerciseSet = {
   termId: 'semigroup',
+  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
+  notesTodo: true,
   rungs: [
     {
       id: 'implement',
