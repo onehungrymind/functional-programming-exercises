@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createShapeRules } from './shape.js';
-import { didPass, evaluateRung } from './evaluate.js';
+import { didPass, evaluateExpr, evaluateRung } from './evaluate.js';
 import { createHarness, eq, fmt } from './harness.js';
 import { CheckRunner } from './runner.js';
-import type { CodeRung, RunResult } from './types.js';
+import type { CodeRung, ExprRung, RunResult } from './types.js';
 
 /** A minimal code rung, so each test only spells out the part it is about. */
 const rung = (over: Partial<CodeRung>): CodeRung => ({
@@ -130,6 +130,69 @@ describe('evaluateRung', () => {
       'const f = 1',
     );
     expect(r.results[0]!.ok).toBe(true);
+  });
+});
+
+const expr = (over: Partial<ExprRung>): ExprRung => ({
+  id: 'e',
+  kind: 'expr',
+  role: 'recognize',
+  title: 't',
+  prompt: 'p',
+  expect: 42,
+  solution: '42',
+  broken: ['41'],
+  ...over,
+});
+
+describe('evaluateExpr', () => {
+  it('passes when the expression evaluates to the expected value', () => {
+    const r = evaluateExpr(expr({}), '40 + 2');
+    expect(didPass(r)).toBe(true);
+  });
+
+  it('compares structurally, so an equivalent array passes', () => {
+    const r = evaluateExpr(expr({ expect: [1, 2, 3] }), '[1, 2, 3]');
+    expect(didPass(r)).toBe(true);
+  });
+
+  it('can refer to the context it was given', () => {
+    const r = evaluateExpr(expr({ context: 'const add = (a, b) => a + b', expect: 7 }), 'add(3, 4)');
+    expect(didPass(r)).toBe(true);
+  });
+
+  it('never prints the expected value, so a miss is not a giveaway', () => {
+    const r = evaluateExpr(expr({ expect: [2, 2, 0, 1, 1] }), '[9, 9, 9, 9, 9]');
+    expect(r.results[0]!.ok).toBe(false);
+    expect(r.results[0]!.detail).toContain('[9, 9, 9, 9, 9]');
+    expect(r.results[0]!.detail).not.toContain('2, 2, 0');
+  });
+
+  it('says how long the answer is when the length is wrong', () => {
+    const r = evaluateExpr(expr({ expect: [1, 2, 3] }), '[1, 2]');
+    expect(r.results[0]!.detail).toMatch(/3 entries and you gave 2/);
+  });
+
+  it('says when the answer is a different kind of thing', () => {
+    const r = evaluateExpr(expr({ expect: [1] }), '1');
+    expect(r.results[0]!.detail).toMatch(/is an array/);
+  });
+
+  it('asks for something rather than grading an empty box', () => {
+    const r = evaluateExpr(expr({}), '   ');
+    expect(r.fatal).toMatch(/Type an expression/);
+    expect(r.results).toHaveLength(0);
+  });
+
+  it('reports a syntax error without pretending it was a wrong answer', () => {
+    const r = evaluateExpr(expr({}), '[1, 2');
+    expect(r.fatal).toMatch(/SyntaxError/);
+    expect(r.results).toHaveLength(0);
+  });
+
+  it('reports a throw as fatal', () => {
+    const r = evaluateExpr(expr({}), 'nope.nope');
+    expect(r.fatal).toMatch(/ReferenceError|TypeError/);
   });
 });
 

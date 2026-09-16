@@ -180,34 +180,32 @@ const times = (n, s) => (n > 0 ? s.repeat(n) : '')
 
     {
       id: 'recognize',
-      covers: ['definition'],
-      kind: 'choice',
+      kind: 'expr',
       role: 'recognize',
-      multi: false,
-      title: 'What makes a function total?',
-      prompt: 'Pick the statement that captures it.',
-      options: [
-        {
-          code: '// It returns a value for every input in its domain',
-          correct: true,
-          why: 'No input throws, hangs, or falls through. That is the whole definition.',
-        },
-        {
-          code: '// It never throws',
-          correct: false,
-          why: 'Close, but a function that hangs forever or returns undefined where a value was promised is still not total.',
-        },
-        {
-          code: '// It handles every input by returning null when it cannot answer',
-          correct: false,
-          why: 'Returning null makes it total only if null is genuinely part of the return type. Otherwise you have moved the problem to the caller.',
-        },
-        {
-          code: '// It is pure',
-          correct: false,
-          why: 'Unrelated. A pure function can be partial, and an impure one can be total.',
-        },
+      covers: ['identity-for-empty', 'definition'],
+      title: 'What should the empty case give?',
+      prompt:
+        'Each of these folds has a right answer for the empty list, and it is never an error. Write them as an array, in order.',
+      hints: [
+        'The answer is whatever leaves the other operand alone.',
+        'Adding it changes nothing, multiplying by it changes nothing, joining it changes nothing.',
+      ],
+      context: `// sum of no numbers
+// product of no numbers
+// concatenation of no strings
+// "all of these are true" over no booleans`,
+      placeholder: '[0, ...]',
+      expect: [0, 1, '', true],
+      solution: "[0, 1, '', true]",
+      broken: [
+        // Reaches for zero everywhere, which annihilates the product.
+        "[0, 0, '', true]",
+        // Treats "all of nothing" as false, which breaks the identity.
+        "[0, 1, '', false]",
+        // Assumes the empty cases have no answer.
+        '[null, null, null, null]',
       ],
     },
+
   ],
 };

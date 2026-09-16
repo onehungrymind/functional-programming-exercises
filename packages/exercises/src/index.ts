@@ -1,4 +1,4 @@
-import type { CodeRung, ExerciseSet } from '@fpx/engine/types';
+import type { CodeRung, ExerciseSet, ExprRung } from '@fpx/engine/types';
 
 // Core Functions
 import { arity } from './terms/arity.js';
@@ -184,7 +184,7 @@ export const hasExercises = (termId: string): boolean => termId in exerciseSets;
 export const exerciseTermIds: string[] = ALL.map((s) => s.termId);
 
 /** The lookup the worker uses, so no check function ever crosses a message boundary. */
-export const lookupCodeRung = (termId: string, rungId: string): CodeRung | undefined => {
+export const lookupCodeRung = (termId: string, rungId: string): CodeRung | ExprRung | undefined => {
   const rung = exerciseSets[termId]?.rungs.find((r) => r.id === rungId);
-  return rung?.kind === 'code' ? rung : undefined;
+  return rung?.kind === 'code' || rung?.kind === 'expr' ? rung : undefined;
 };

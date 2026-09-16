@@ -21,6 +21,9 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
   covering no item is asking about something we never said mattered.
 - **A rung may only ask about something the Learn tab has covered.** Upstream is a glossary,
   not a syllabus: 50 of 73 entries are under 400 characters of prose. Diverge from it freely.
+- **Prefer an `expr` rung to a `choice` rung when the answer is a value.** Producing beats
+  picking: a multiple-choice rung can be cleared by elimination. Keep `choice` for genuinely
+  conceptual questions where there is no value to type.
 - **Code carries more than prose.** Show the concept, do not only describe it. Prefer a
   contrast pair, wrong above right, with the output in a trailing comment. Prose is the
   connective tissue between examples, not the vehicle. Verify requires at least three code

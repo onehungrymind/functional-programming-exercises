@@ -674,6 +674,41 @@ kbd {
   padding: 7px 10px;
 }
 
+/* one-line fill-in */
+.expr-rung {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.expr-context {
+  margin: 0;
+  padding: 11px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  overflow-x: auto;
+  user-select: text;
+}
+.expr-input input {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  padding: 10px 13px;
+  background: var(--card);
+  border: 1px solid var(--line2);
+  border-radius: 3px;
+  color: var(--text);
+}
+.expr-input input::placeholder {
+  color: var(--faint);
+}
+.expr-input input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* choices */
 .options {
   list-style: none;

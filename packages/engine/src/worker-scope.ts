@@ -1,4 +1,4 @@
-import { evaluateRung } from './evaluate.js';
+import { evaluateExpr, evaluateRung } from './evaluate.js';
 import type { CheckLookup, RunRequest, RunResult } from './types.js';
 
 /**
@@ -41,7 +41,7 @@ export function installWorker(lookup: CheckLookup, scope: DedicatedWorkerGlobalS
     // interleave with the reply, and a hang is a hang the main thread can see.
     let result: RunResult;
     try {
-      result = evaluateRung(rung, code, seq);
+      result = rung.kind === 'expr' ? evaluateExpr(rung, code, seq) : evaluateRung(rung, code, seq);
     } catch (e) {
       const err = e as Error;
       result = { seq, results: [], logs: [], fatal: `${err.name || 'Error'}: ${err.message}` };

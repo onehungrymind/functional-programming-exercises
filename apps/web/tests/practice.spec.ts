@@ -397,3 +397,46 @@ test.describe('the curriculum path', () => {
     await expect(page.getByRole('button', { name: /^Next: / })).toHaveCount(0);
   });
 });
+
+test.describe('expression rungs', () => {
+  test('a wrong answer says what you produced without handing over the answer', async ({ page }) => {
+    await page.goto('/#/term/arity/practice/recognize');
+    await page.fill('.expr-input input', '[2, 3, 2, 2, 2]');
+    await expect(page.locator('.check-detail')).toBeVisible({ timeout: 10000 });
+
+    const detail = (await page.locator('.check-detail').textContent()) ?? '';
+    expect(detail).toContain('[2, 3, 2, 2, 2]');
+    // The answer is [2, 2, 0, 1, 1]. Seeing it here would make the rung pointless.
+    expect(detail).not.toContain('0, 1, 1');
+    await expect(page.locator('.cleared')).toHaveCount(0);
+  });
+
+  test('a right answer clears the rung', async ({ page }) => {
+    await page.goto('/#/term/arity/practice/recognize');
+    await page.fill('.expr-input input', '[a.length, b.length, c.length, d.length, e.length]');
+    await expect(page.locator('.tally')).toHaveText('1 / 1 passing', { timeout: 10000 });
+    await expect(page.locator('.cleared')).toBeVisible();
+  });
+
+  test('the answer is available once the hints run out', async ({ page }) => {
+    await page.goto('/#/term/arity/practice/recognize');
+    await page.getByRole('button', { name: 'Show a hint' }).click();
+    await page.getByRole('button', { name: 'Another hint' }).click();
+    await page.getByRole('button', { name: 'Show the answer' }).click();
+    await expect(page.locator('.solution')).toContainText('a.length');
+  });
+
+  test('an unfinished expression is reported as a syntax error', async ({ page }) => {
+    await page.goto('/#/term/arity/practice/recognize');
+    await page.fill('.expr-input input', '[1, 2');
+    await expect(page.locator('.fatal')).toContainText('SyntaxError', { timeout: 10000 });
+  });
+
+  test('the answer survives a reload', async ({ page }) => {
+    await page.goto('/#/term/total-function/practice/recognize');
+    await page.fill('.expr-input input', "[0, 1, '', true]");
+    await expect(page.locator('.cleared')).toBeVisible({ timeout: 10000 });
+    await page.reload();
+    await expect(page.locator('.expr-input input')).toHaveValue("[0, 1, '', true]");
+  });
+});

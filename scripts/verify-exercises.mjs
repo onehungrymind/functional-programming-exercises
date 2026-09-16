@@ -117,6 +117,7 @@ const note = (msg) => problems.push(msg);
 }
 
 let codeRungs = 0;
+let exprRungs = 0;
 let variants = 0;
 const migrationOutstanding = [];
 const notedConcepts = [];
@@ -223,6 +224,23 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
       continue;
     }
 
+    if (rung.kind === 'expr') {
+      exprRungs++;
+      if (!rung.solution?.trim()) note(`${termId}/${rung.id}: no solution expression.`);
+      if (!rung.broken?.length) note(`${termId}/${rung.id}: no broken variant.`);
+
+      variants++;
+      const solved = await gradeInWorker(termId, rung.id, rung.solution ?? '');
+      if (!solved.passed) note(`${termId}/${rung.id}: the SOLUTION does not pass.\n         ${describe(solved)}`);
+
+      for (const [i, src] of (rung.broken ?? []).entries()) {
+        variants++;
+        const out = await gradeInWorker(termId, rung.id, src);
+        if (out.passed) note(`${termId}/${rung.id}: broken expression ${i + 1} evaluates to the expected value.`);
+      }
+      continue;
+    }
+
     if (rung.kind !== 'code') continue;
     codeRungs++;
 
@@ -281,7 +299,7 @@ if (problems.length) {
 await worker?.terminate();
 
 console.log(
-  `\n  verify passed\n  ${termCount} concepts, ${codeRungs} code rungs, ${variants} variants graded through the real harness`,
+  `\n  verify passed\n  ${termCount} concepts, ${codeRungs} code rungs, ${exprRungs} expression rungs, ${variants} variants graded through the real harness`,
 );
 if (migrationOutstanding.length) {
   const done = termCount - migrationOutstanding.length;

@@ -162,10 +162,40 @@ const makeCounter = () => () => {
     },
 
     {
+      id: 'predict',
+      kind: 'expr',
+      role: 'recognize',
+      covers: ['captures-bindings', 'loop-bug'],
+      title: 'Predict what the reporters say',
+      prompt:
+        'Both loops build three functions the same way. Write the array of what `withVar` reports, then think about why `withLet` differs.',
+      hints: [
+        '`var` has one binding for the whole function, and the loop finishes before any reporter runs.',
+        'Ask what that single binding holds by the time the loop has exited.',
+      ],
+      context: `const withVar = []
+for (var i = 0; i < 3; i++) withVar.push(() => i)
+
+const withLet = []
+for (let i = 0; i < 3; i++) withLet.push(() => i)`,
+      placeholder: 'withVar.map(f => f())',
+      expect: [3, 3, 3],
+      solution: 'withVar.map((f) => f())',
+      broken: [
+        // The answer for withLet, which is the whole point of the contrast.
+        'withLet.map((f) => f())',
+        // Assumes each closure photographed the value at creation.
+        '[0, 1, 2]',
+        // Assumes the loop stopped before the failing condition.
+        '[2, 2, 2]',
+      ],
+    },
+
+    {
       id: 'break',
-      covers: ['loop-bug', 'captures-bindings'],
       kind: 'code',
       role: 'break',
+      covers: ['loop-bug', 'captures-bindings'],
       title: 'Fix the loop that captured the wrong thing',
       prompt:
         'Every function in this array reports the same number. Change one word so each one closes over its own `i`.',
@@ -232,5 +262,6 @@ const reporters = makeReporters()
         });
       },
     },
+
   ],
 };

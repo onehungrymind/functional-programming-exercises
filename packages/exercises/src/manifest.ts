@@ -53,8 +53,8 @@ export const manifest: ManifestEntry[] = [
       {
         "id": "recognize",
         "role": "recognize",
-        "title": "What does fn.length actually count?",
-        "kind": "choice"
+        "title": "What does fn.length report?",
+        "kind": "expr"
       },
       {
         "id": "implement",
@@ -115,6 +115,12 @@ export const manifest: ManifestEntry[] = [
         "role": "implement",
         "title": "A counter with private state",
         "kind": "code"
+      },
+      {
+        "id": "predict",
+        "role": "recognize",
+        "title": "Predict what the reporters say",
+        "kind": "expr"
       },
       {
         "id": "break",
@@ -209,8 +215,8 @@ export const manifest: ManifestEntry[] = [
       {
         "id": "recognize",
         "role": "recognize",
-        "title": "What makes a function total?",
-        "kind": "choice"
+        "title": "What should the empty case give?",
+        "kind": "expr"
       }
     ]
   },

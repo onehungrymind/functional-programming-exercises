@@ -16,7 +16,7 @@ import { pathToFileURL } from 'node:url';
 register();
 
 const { enginePath, exercisesPath } = workerData;
-const { evaluateRung, didPass } = await import(pathToFileURL(enginePath).href);
+const { evaluateRung, evaluateExpr, didPass } = await import(pathToFileURL(enginePath).href);
 const { exerciseSets } = await import(pathToFileURL(exercisesPath).href);
 
 parentPort.postMessage({ ready: true });
@@ -27,7 +27,7 @@ parentPort.on('message', ({ seq, termId, rungId, code }) => {
     parentPort.postMessage({ seq, passed: false, fatal: `No rung ${termId}/${rungId}`, failures: [] });
     return;
   }
-  const result = evaluateRung(rung, code);
+  const result = rung.kind === 'expr' ? evaluateExpr(rung, code) : evaluateRung(rung, code);
   parentPort.postMessage({
     seq,
     passed: didPass(result),

@@ -1,5 +1,6 @@
 import { createHarness } from './harness.js';
-import type { CodeRung, RunResult } from './types.js';
+import { eq, fmt } from './harness.js';
+import type { CodeRung, ExprRung, RunResult } from './types.js';
 
 const MAX_LOG_LINES = 20;
 
@@ -114,4 +115,67 @@ export function evaluateRung(rung: CodeRung, code: string, seq = 0): RunResult {
 /** True when every check passed and nothing was fatal. Used by the runner and by verify. */
 export function didPass(result: RunResult): boolean {
   return !result.fatal && result.results.length > 0 && result.results.every((r) => r.ok);
+}
+
+/**
+ * Evaluates a one-line expression and compares it to what the rung expects.
+ *
+ * Runs in the same sandbox as a code rung, because an expression can loop forever just as
+ * easily as a statement can.
+ */
+export function evaluateExpr(rung: ExprRung, source: string, seq = 0): RunResult {
+  const expression = source.trim();
+  if (!expression) {
+    return { seq, results: [], logs: [], fatal: 'Type an expression to have it checked.' };
+  }
+
+  const logs: string[] = [];
+  const fakeConsole = {
+    log: (...args: unknown[]) => {
+      if (logs.length < MAX_LOG_LINES) logs.push(args.map((a) => fmt(a)).join(' '));
+    },
+  } as unknown as Console;
+  fakeConsole.info = fakeConsole.warn = fakeConsole.error = fakeConsole.debug = fakeConsole.log;
+
+  let value: unknown;
+  try {
+    const body = `"use strict";\n${rung.context ?? ''}\n;return (${expression});`;
+    let factory: (console: Console) => unknown;
+    try {
+      factory = new Function('console', body) as typeof factory;
+    } catch (e) {
+      const err = e as Error;
+      return { seq, results: [], logs, fatal: `${err.name || 'SyntaxError'}: ${err.message}` };
+    }
+    value = factory(fakeConsole);
+  } catch (e) {
+    const err = e as Error;
+    return { seq, results: [], logs, fatal: `${err.name || 'Error'}: ${err.message}` };
+  }
+
+  const ok = eq(value, rung.expect);
+
+  // Deliberately not printing `expect` on a miss. Handing the answer over on the first wrong
+  // attempt turns a recall question into a giveaway: type anything, read the answer, type it
+  // back, clear the rung having learned nothing. The hints and the notes do the teaching.
+  // What is safe to say is the shape, which is usually where the mistake is.
+  let detail: string | undefined;
+  if (!ok) {
+    detail = `It came to ${fmt(value)}, which is not it.`;
+    const got = Array.isArray(value);
+    const want = Array.isArray(rung.expect);
+    if (want && got && (value as unknown[]).length !== (rung.expect as unknown[]).length) {
+      detail += ` The answer has ${(rung.expect as unknown[]).length} entries and you gave ${(value as unknown[]).length}.`;
+    } else if (want !== got) {
+      detail += want ? ' The answer is an array.' : ` The answer is not an array.`;
+    } else if (!want && typeof value !== typeof rung.expect) {
+      detail += ` The answer is a ${typeof rung.expect}.`;
+    }
+  }
+
+  return {
+    seq,
+    logs,
+    results: [{ name: 'The expression evaluates to the right value', ok, detail }],
+  };
 }

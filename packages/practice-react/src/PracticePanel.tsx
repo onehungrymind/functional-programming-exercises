@@ -3,7 +3,7 @@ import { Check, Circle, Lightbulb, Play, RotateCcw, Sparkles } from 'lucide-reac
 // Imported by path rather than from the barrel: the barrel re-exports the shape rules and
 // the evaluator, which would drag acorn into the main bundle for no reason.
 import { CheckRunner } from '@fpx/engine/runner';
-import type { CodeRung, ExerciseSet, RunResult, Rung } from '@fpx/engine/types';
+import type { CodeRung, ExerciseSet, ExprRung, RunResult, Rung } from '@fpx/engine/types';
 import type { EditorHandle } from '@fpx/editor';
 import { Results } from './Results.js';
 
@@ -108,6 +108,15 @@ export function PracticePanel({
       )}
       {rung.kind === 'code' && (
         <CodeRungView
+          key={`${termId}/${rung.id}`}
+          termId={termId}
+          rung={rung}
+          progress={progress}
+          createWorker={createWorker}
+        />
+      )}
+      {rung.kind === 'expr' && (
+        <ExprRungView
           key={`${termId}/${rung.id}`}
           termId={termId}
           rung={rung}
@@ -352,6 +361,151 @@ function CodeRungView({
         ) : (
           <button type="button" className="ghost-btn" onClick={() => setShowSolution((s) => !s)}>
             {showSolution ? 'Hide the solution' : 'Show a solution'}
+          </button>
+        )}
+      </div>
+
+      {hintsShown > 0 && rung.hints && (
+        <ul className="hints">
+          {rung.hints.slice(0, hintsShown).map((h, i) => (
+            <li key={i}>{h}</li>
+          ))}
+        </ul>
+      )}
+
+      <Results result={result} running={running} />
+
+      {showSolution && (
+        <div className="solution">
+          <p className="sect">ONE WAY TO WRITE IT</p>
+          <pre>{rung.solution}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- expr
+
+/**
+ * A one-line fill-in. Graded in the worker like a code rung, because an expression can hang
+ * just as easily, and because the learner should see the same failure vocabulary either way.
+ */
+function ExprRungView({
+  termId,
+  rung,
+  progress,
+  createWorker,
+}: {
+  termId: string;
+  rung: ExprRung;
+  progress: PracticeProgress;
+  createWorker: () => Worker;
+}) {
+  const runner = useRef<CheckRunner | null>(null);
+  const debounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const latestSeq = useRef(0);
+  const [value, setValue] = useState(() => progress.getDraft(termId, rung.id) ?? '');
+  const [result, setResult] = useState<RunResult | null>(null);
+  const [running, setRunning] = useState(false);
+  const [hintsShown, setHintsShown] = useState(0);
+  const [showSolution, setShowSolution] = useState(false);
+
+  const run = useCallback(
+    async (source: string) => {
+      if (!runner.current || !source.trim()) {
+        setResult(null);
+        return;
+      }
+      setRunning(true);
+      const mySeq = runner.current.currentSeq + 1;
+      latestSeq.current = mySeq;
+      const out = await runner.current.run({ termId, rungId: rung.id, code: source });
+      if (out.seq !== latestSeq.current) return;
+      setRunning(false);
+      setResult(out);
+      if (!out.fatal && out.results.length > 0 && out.results.every((r) => r.ok)) {
+        progress.markDone(termId, rung.id);
+      }
+    },
+    [termId, rung.id, progress],
+  );
+
+  useEffect(() => {
+    runner.current = new CheckRunner({ createWorker, prewarm: true });
+    runner.current.warmUp();
+    if (value.trim()) void run(value);
+    return () => {
+      clearTimeout(debounce.current);
+      runner.current?.dispose();
+      runner.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onChange = (next: string) => {
+    setValue(next);
+    progress.setDraft(termId, rung.id, next);
+    clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => void run(next), DEBOUNCE_MS);
+  };
+
+  return (
+    <div className="expr-rung">
+      {rung.context && <pre className="expr-context">{rung.context.trim()}</pre>}
+
+      <div className="expr-input">
+        <label htmlFor={`expr-${rung.id}`} className="sr-only">
+          {rung.title}
+        </label>
+        <input
+          id={`expr-${rung.id}`}
+          value={value}
+          spellCheck={false}
+          autoComplete="off"
+          autoCapitalize="off"
+          placeholder={rung.placeholder ?? 'your answer'}
+          aria-describedby="practice-results"
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              clearTimeout(debounce.current);
+              void run(value);
+            }
+          }}
+        />
+      </div>
+
+      <div className="status-row">
+        <button
+          type="button"
+          className="primary"
+          onClick={() => {
+            clearTimeout(debounce.current);
+            void run(value);
+          }}
+        >
+          <Play size={12} aria-hidden /> Check
+          <kbd>Enter</kbd>
+        </button>
+        <button
+          type="button"
+          className="ghost-btn"
+          onClick={() => {
+            setValue('');
+            progress.clearDraft(termId, rung.id);
+            setResult(null);
+          }}
+        >
+          <RotateCcw size={12} aria-hidden /> Clear
+        </button>
+        {rung.hints && hintsShown < rung.hints.length ? (
+          <button type="button" className="ghost-btn" onClick={() => setHintsShown((n) => n + 1)}>
+            <Lightbulb size={12} aria-hidden /> {hintsShown === 0 ? 'Show a hint' : 'Another hint'}
+          </button>
+        ) : (
+          <button type="button" className="ghost-btn" onClick={() => setShowSolution((v) => !v)}>
+            {showSolution ? 'Hide the answer' : 'Show the answer'}
           </button>
         )}
       </div>

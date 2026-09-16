@@ -54,12 +54,25 @@ export interface ChoiceRung extends BaseRung {
   options: ChoiceOption[];
 }
 
+/**
+ * A one-line fill-in, graded by evaluating what the learner typed.
+ *
+ * Use it where the skill is producing a value rather than recognizing one: predicting what
+ * `fn.length` reports, what folding the empty list gives, how many times something ran. A
+ * multiple-choice rung can be cleared by elimination; this one cannot.
+ */
 export interface ExprRung extends BaseRung {
   kind: 'expr';
-  /** Read-only code shown above the input. */
+  /** Read-only code shown above the input, so the expression has something to refer to. */
   context?: string;
+  /** Shown in the empty input. A shape, not the answer. */
+  placeholder?: string;
   /** Deep-compared against the evaluated expression. */
   expect: unknown;
+  /** An expression that evaluates to `expect`. Must pass. Enforced by `npm run verify`. */
+  solution: string;
+  /** Each must evaluate to something else. Cover the plausible wrong answers. */
+  broken: string[];
 }
 
 export interface CodeRung extends BaseRung {
@@ -226,5 +239,5 @@ export interface RunRequest {
 
 export type RunResponse = RunResult;
 
-/** How the worker finds a rung's checks without any function crossing the message boundary. */
-export type CheckLookup = (termId: string, rungId: string) => CodeRung | undefined;
+/** How the worker finds a rung without any check function crossing the message boundary. */
+export type CheckLookup = (termId: string, rungId: string) => CodeRung | ExprRung | undefined;

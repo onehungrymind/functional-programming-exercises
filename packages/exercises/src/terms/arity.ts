@@ -63,35 +63,31 @@ Any time declared arity is smaller than what the function really wants, machiner
   rungs: [
     {
       id: 'recognize',
-      kind: 'choice',
+      kind: 'expr',
       role: 'recognize',
-      multi: true,
       covers: ['declared-vs-call'],
-      title: 'What does fn.length actually count?',
+      title: 'What does fn.length report?',
       prompt:
-        '`fn.length` reports declared arity, which is not always the number of arguments a call takes. Select every definition whose `length` is 2.',
-      options: [
-        { code: 'const add = (a, b) => a + b', correct: true, why: 'Two plain parameters, so length is 2.' },
-        {
-          code: 'const add = (a, b, c = 0) => a + b + c',
-          correct: true,
-          why: 'Counting stops at the first parameter with a default, so length is 2.',
-        },
-        {
-          code: 'const add = (a, ...rest) => a + rest.length',
-          correct: false,
-          why: 'A rest parameter is not counted at all, so length is 1.',
-        },
-        {
-          code: 'const add = (a = 1, b) => a + b',
-          correct: false,
-          why: 'Counting stops at the first default even when later parameters have none, so length is 0.',
-        },
-        {
-          code: 'const add = ({ a, b }) => a + b',
-          correct: false,
-          why: 'One destructured parameter is still one parameter, so length is 1.',
-        },
+        'Every one of these declares its parameters differently. Write the array of what `fn.length` gives for each, in order.',
+      hints: [
+        'Counting stops at the first parameter with a default. A rest parameter is never counted.',
+        'A destructured parameter is still one parameter.',
+      ],
+      context: `const a = (x, y) => 0
+const b = (x, y, z = 0) => 0
+const c = (x = 1, y) => 0
+const d = (x, ...rest) => 0
+const e = ({ x, y }) => 0`,
+      placeholder: '[a.length, b.length, ...]',
+      expect: [2, 2, 0, 1, 1],
+      solution: '[a.length, b.length, c.length, d.length, e.length]',
+      broken: [
+        // Assumes every declared parameter counts.
+        '[2, 3, 2, 2, 2]',
+        // Gets the defaults right but expects rest to count.
+        '[2, 2, 0, 2, 1]',
+        // Expects destructuring to count each property.
+        '[2, 2, 0, 1, 2]',
       ],
     },
 
