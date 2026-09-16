@@ -83,8 +83,16 @@ export function createHarness(src: string, seed = 0x5eed): { api: Harness; state
     if (e instanceof RangeError && /call stack/i.test(e.message)) {
       return 'Ran out of stack. That usually means the recursion never reaches a base case.';
     }
+    // Checks freeze the inputs they hand out, so a write to one surfaces here as a
+    // strict-mode TypeError. Say what it means rather than passing the engine's wording on.
+    if (e instanceof TypeError && /read only|not extensible|object is not extensible|Cannot add property|Cannot delete/i.test(e.message)) {
+      return 'You changed a value you were handed. Inputs are frozen on purpose: build and return a new value instead of writing into the argument.';
+    }
     if (e instanceof TypeError && /read propert|of undefined|of null/i.test(e.message)) {
       return `${e.message}. Something in the chain handed back nothing where a value was expected.`;
+    }
+    if (e instanceof TypeError && /is not a function/i.test(e.message)) {
+      return `${e.message}. Check what the previous step actually returned.`;
     }
     if (e && typeof e === 'object' && 'message' in e) {
       const name = (e as Error).name ?? 'Error';

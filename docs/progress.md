@@ -127,6 +127,32 @@ and the completion ring pulse.
 
 ## Phase 6: Shape rules and the law library — not started
 
-## Phase 7: Content at scale — not started
+## Phase 7: Content at scale — in progress
+
+Order: Core Functions, Composition & Flow, Purity & Reasoning, Types & Data Modeling,
+Algebraic Structures, Category & Morphisms. One commit per category, `npm run verify` green.
+
+### Core Functions — done (11 of 11)
+
+`arity`, `closure`, `function`, `higher-order-functions-hof`, `lambda`, `partial-function`,
+`predicate`, `pure-function`, `thunk`, `total-function`, `trampoline`.
+
+Every concept has at least two rungs and at least one that is code-graded.
+`npm run verify`: 13 concepts, 20 code rungs, 84 variants.
+
+Reading the failure messages back turned up three that were not good enough, and fixing them
+improved the engine rather than the exercises:
+
+- A write to a frozen input surfaced as `TypeError: Cannot assign to read only property '1'
+  of object '[object Array]'`. That is the engine's wording, not the concept's. The harness
+  now says "You changed a value you were handed. Inputs are frozen on purpose: build and
+  return a new value instead of writing into the argument." Every mutation check benefits.
+- Two starters returned undefined and then failed later with `TypeError: f is not a
+  function`, which blames the wrong line. Those rungs now check the shape first.
+
+### Remaining
+
+Composition & Flow (9), Purity & Reasoning (9), Types & Data Modeling (11),
+Algebraic Structures (19), Category & Morphisms (12). 60 concepts.
 
 ## Phase 8 (stretch): TypeScript rungs — not started

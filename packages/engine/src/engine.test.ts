@@ -59,7 +59,9 @@ describe('evaluateRung', () => {
       'const mutate = (o) => { o.items = []; return o }',
     );
     expect(r.results[0]!.ok).toBe(false);
-    expect(r.results[0]!.detail).toMatch(/read only|not extensible|Cannot assign/i);
+    // Phrased for the learner, not passed through from the engine.
+    expect(r.results[0]!.detail).toMatch(/changed a value you were handed/);
+    expect(r.results[0]!.detail).not.toMatch(/TypeError/);
   });
 
   it('spies on the clock and the random number generator', () => {
