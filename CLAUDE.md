@@ -14,6 +14,10 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
 - Every code rung ships `starter`, `solution`, and `broken` variants. `npm run verify` must pass
   before committing exercise changes.
 - Every concept gets at least two rungs and at least one that is code-graded. Enforced by verify.
+- Learning order comes from `apps/web/src/curriculum.ts`, never from the graph. The graph's
+  links say "related to", not "depends on", and their direction is whichever way the upstream
+  README cross-referenced. Ask it for concepts with no prerequisites and it offers comonad and
+  hylomorphism.
 - A check must be safe against the mistake it is testing for. Never hand learner code an endless
   source when the likely wrong answer would drain it.
 - After changing an exercise set, run `npm run build:manifest`. The shell renders the Practice

@@ -3,6 +3,7 @@ import { ExternalLink, Link2, X } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 import { manifestByTerm } from '@fpx/exercises/manifest';
 import { categoriesById, neighborsOf, termsById, upstreamUrl, type Term } from '../data';
+import { nextConcept as nextInCurriculum } from '../curriculum';
 import { progress } from '../progress';
 import { navigate, type Route } from '../routing';
 import { CodeBlock } from './CodeBlock';
@@ -46,17 +47,18 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
     return () => el.removeEventListener('click', onClick);
   }, [onSelectTerm, term.id]);
 
-  /** Prefers a connected concept that still has rungs left, then any unfinished one. */
-  const nextConcept = useMemo(() => {
-    const unfinished = (id: string) => {
-      const e = manifestByTerm[id];
-      return !!e && e.rungs.some((r) => !progress.isDone(id, r.id));
-    };
-    const connected = related.find((n) => n.id !== term.id && unfinished(n.id));
-    const pick = connected?.id ?? [...termsById.keys()].find((id) => id !== term.id && unfinished(id));
-    if (!pick) return null;
-    return { id: pick, title: termsById.get(pick)!.title };
-  }, [related, term.id]);
+  /**
+   * The next concept to offer, taken from the curriculum rather than from the graph.
+   * Graph adjacency would happily send someone from Currying to Kleisli Composition.
+   */
+  const nextConcept = useMemo(
+    () =>
+      nextInCurriculum(term.id, (id) => {
+        const e = manifestByTerm[id];
+        return !!e && e.rungs.some((r) => !progress.isDone(id, r.id));
+      }),
+    [term.id],
+  );
 
   const copyLink = () => {
     const url = `${location.origin}${location.pathname}#/term/${term.id}`;

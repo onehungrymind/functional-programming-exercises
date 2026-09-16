@@ -1,11 +1,15 @@
 import { Check } from 'lucide-react';
-import { categories, terms } from './data';
+import { terms } from './data';
+import { curriculumCategories } from './curriculum';
 import { CATEGORY_GLYPH } from './graph/GraphCanvas';
 
 /**
  * The category-grouped list. It was the Phase 4 navigation before the graph existed and it
  * stays as a fallback, because a canvas graph is a poor way to find a concept by name on a
  * phone.
+ *
+ * Categories run in curriculum order, not the order the snapshot lists them in. Upstream puts
+ * Category & Morphisms fourth; it belongs last, because it generalizes what comes before.
  */
 export function TermList({
   selectedId,
@@ -20,7 +24,7 @@ export function TermList({
 }) {
   return (
     <div className="term-list">
-      {categories.map((cat) => {
+      {curriculumCategories.map((cat) => {
         const inCat = terms
           .filter((t) => t.category === cat.id)
           .filter((t) => !practiceFilter || progressByTerm.has(t.id));

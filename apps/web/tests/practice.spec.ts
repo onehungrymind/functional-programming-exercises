@@ -349,3 +349,45 @@ test.describe('progress import', () => {
     await expect(page.locator('.menu-msg')).toContainText('not a version 1 progress export');
   });
 });
+
+test.describe('the curriculum path', () => {
+  test('the list view runs the categories in learning order', async ({ page }) => {
+    await page.goto('/');
+    await page.getByTitle('Switch to the list').click();
+    // Each heading is "<glyph><name><count>", so strip both ends.
+    const headings = await page.locator('.term-list h2').allTextContents();
+    const names = headings.map((h) => h.replace(/^\D\s*/, '').replace(/\s*\d+\s*$/, '').trim());
+    expect(names).toEqual([
+      'Core Functions',
+      'Composition & Flow',
+      'Purity & Reasoning',
+      'Types & Data Modeling',
+      'Algebraic Structures',
+      'Category & Morphisms',
+    ]);
+  });
+
+  test('clearing a concept offers the next one in the curriculum', async ({ page }) => {
+    // `function` is first. Clearing it should point at `arity`, the second.
+    await page.goto('/#/term/function/practice/recognize');
+    await page.locator('.option').nth(2).click();
+    await page.getByRole('button', { name: 'Check answer' }).click();
+
+    await page.goto('/#/term/function/practice/implement');
+    await typeCode(
+      page,
+      "const toLabel = (n) => {\n  if (n < 0) return 'below'\n  if (n === 0) return 'zero'\n  return 'above'",
+    );
+    await expect(page.locator('.cleared.concept-done')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /^Next: / })).toContainText('Next: Arity');
+  });
+
+  test('the suggestion does not jump categories', async ({ page }) => {
+    // Currying links to Kleisli Composition in the graph, several categories deeper.
+    // The suggestion follows the curriculum instead.
+    await page.goto('/#/term/currying/practice/implement');
+    await typeCode(page, 'const curry2 = (f) => (a) => (b) => f(a, b)');
+    await expect(page.locator('.cleared')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /^Next: / })).toHaveCount(0);
+  });
+});
