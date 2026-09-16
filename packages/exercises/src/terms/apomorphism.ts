@@ -2,8 +2,9 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const apomorphism: ExerciseSet = {
   termId: 'apomorphism',
-  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
-  notesTodo: true,
+  // TODO: predates the rubric. Needs a competency rubric, notes that teach to it, and
+  // rungs mapped onto it.
+  rubricTodo: true,
   rungs: [
     {
       id: 'implement',

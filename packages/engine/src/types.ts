@@ -3,9 +3,35 @@
 export type RungKind = 'choice' | 'expr' | 'code' | 'reveal';
 export type RungRole = 'recognize' | 'guided' | 'implement' | 'break' | 'apply' | 'articulate';
 
+/**
+ * One thing a competent person can do with this concept.
+ *
+ * The rubric is the specification, the rungs are the tests, and the notes are the
+ * implementation. A rubric item nobody is asked to demonstrate is a claim the app does not
+ * check; a rung covering no rubric item is asking about something we never said mattered.
+ * `npm run verify` rejects both.
+ */
+export interface RubricItem {
+  /** Stable, referenced by the rungs that exercise it. */
+  id: string;
+  /**
+   * What the learner can do, in their words, not the implementation's.
+   * "Can predict what `fn.length` reports for any definition", not "knows about defaults".
+   */
+  statement: string;
+}
+
 export interface BaseRung {
   /** Stable, url-safe, unique within the set. It ends up in the hash route. */
   id: string;
+  /**
+   * The rubric items this rung demonstrates. At least one, and every id must exist in the
+   * set's rubric.
+   *
+   * Optional only while the existing content is migrated; `npm run verify` requires it.
+   * Tighten to required once every set has a rubric.
+   */
+  covers?: string[];
   role: RungRole;
   /** Sentence case, imperative or a question. */
   title: string;
@@ -64,6 +90,17 @@ export type Rung = ChoiceRung | ExprRung | CodeRung | RevealRung;
 export interface ExerciseSet {
   /** Must exist in data/jargons.json. Enforced by `npm run verify`. */
   termId: string;
+  /**
+   * What solid competency in this concept looks like, written before the rungs.
+   *
+   * This is the unit of success: a learner who clears every rung has demonstrated every
+   * item. Upstream's glossary entry is a reference, not a syllabus, so the rubric is free
+   * to go well past it.
+   *
+   * Optional only while the existing content is migrated; `npm run verify` requires it.
+   * Tighten to required once every set has one.
+   */
+  rubric?: RubricItem[];
   rungs: Rung[];
   /**
    * Teaching this repo owns, shown in Learn after the upstream entry.
@@ -81,13 +118,13 @@ export interface ExerciseSet {
    */
   upstreamIsEnough?: true;
   /**
-   * Reviewed, needs notes, not written yet.
+   * Predates the rubric model: no rubric, no notes, rungs unmapped.
    *
-   * Every set must declare exactly one of `notes`, `upstreamIsEnough`, or this, so a new
-   * set cannot land without someone deciding. `npm run verify` counts these and prints the
+   * Every set must declare a `rubric` or this, so a new one cannot land without someone
+   * writing down what competency means. `npm run verify` counts these and prints the
    * outstanding total on every run, which keeps the backlog visible rather than implied.
    */
-  notesTodo?: true;
+  rubricTodo?: true;
 }
 
 // ---------------------------------------------------------------- results

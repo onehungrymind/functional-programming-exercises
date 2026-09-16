@@ -24,12 +24,18 @@ export interface ManifestEntry {
 export const manifest: ManifestEntry[] = [
   {
     "termId": "function",
-    "notes": null,
+    "notes": "A glossary will tell you a function maps inputs to outputs. The useful version is\nthree separate promises, because code usually breaks exactly one of them and it is worth\nbeing able to say which.\n\n**Every input gets an output.** Not most inputs. A branch with no `return` hands back\n`undefined`, which is a gap wearing a value's clothing. This is the requirement\n[partial functions](#partial-function) fail.\n\n**Each input gets exactly one output.** The same argument, today and tomorrow, gives the same\nanswer. Reading a clock, a global, or a random number breaks this, because the input no longer\ndetermines the result.\n\n**Nothing else happens.** No writing to anything the caller can see, no logging, no mutating\nthe argument. This is the requirement [side effects](#side-effects) fail.\n\nOnly the first is about the function's shape; the other two are about what it touches. That is\nwhy `const half = (n) => n / 2` is a function and `const roll = (n) => Math.ceil(Math.random() * n)`\nis not, even though both are one line and neither throws.\n\nThe three are independent, which is the part worth internalizing. A definition can be perfectly\ntotal and still read a global. It can be deterministic and still push to an array. When\nsomething is not a function, the interesting question is which promise it broke, because that\ntells you how to repair it.",
     "rungs": [
       {
         "id": "recognize",
         "role": "recognize",
         "title": "Which one is a function in the strict sense?",
+        "kind": "choice"
+      },
+      {
+        "id": "diagnose",
+        "role": "recognize",
+        "title": "Which promise does each one break?",
         "kind": "choice"
       },
       {
@@ -42,7 +48,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "arity",
-    "notes": "The glossary entry covers the names. The part that catches people out is that\nJavaScript has two different notions of arity, and `fn.length` reports the one you probably\ndid not mean.\n\n**Declared arity** is what `fn.length` gives you: the number of parameters written before\nthe first one that has a default or a rest. **Call arity** is how many arguments a particular\ncall actually passes, which `arguments.length` would tell you inside the function.\n\nThree rules decide what `fn.length` counts:\n\n- Counting **stops at the first parameter with a default**, and everything after it is\n  ignored, even parameters that have no default of their own. So `(a = 1, b) => 0` has a\n  length of 0, not 1.\n- A **rest parameter is never counted**. `(...xs) => 0` has a length of 0, which means a\n  variadic function and a nullary one look identical to `fn.length`.\n- A **destructured parameter is still one parameter**. `({ a, b }) => 0` has a length of 1.\n\nThis matters well beyond trivia, because [auto-currying](#auto-currying) decides how many\narguments to wait for by reading `fn.length`. Curry a variadic function and it will call\nthrough immediately, having been told the function takes nothing.",
+    "notes": "The glossary entry covers the names. The part that catches people out is that\nJavaScript has two different notions of arity, and `fn.length` reports the one you probably\ndid not mean.\n\n**Declared arity** is what `fn.length` gives you: the number of parameters written before\nthe first one that has a default or a rest. **Call arity** is how many arguments a particular\ncall actually passes, which `arguments.length` would tell you inside the function.\n\nThree rules decide what `fn.length` counts:\n\n- Counting **stops at the first parameter with a default**, and everything after it is\n  ignored, even parameters that have no default of their own. So `(a = 1, b) => 0` has a\n  length of 0, not 1.\n- A **rest parameter is never counted**. `(...xs) => 0` has a length of 0, which means a\n  variadic function and a nullary one look identical to `fn.length`.\n- A **destructured parameter is still one parameter**. `({ a, b }) => 0` has a length of 1.\n\nThis matters well beyond trivia, because [auto-currying](#auto-currying) decides how many\narguments to wait for by reading `fn.length`. Curry a variadic function and it will call\nthrough immediately, having been told the function takes nothing. Curry one with a trailing\ndefault and it fires an argument early. Any time declared arity is smaller than what the\nfunction really wants, machinery built on `fn.length` acts too soon.",
     "rungs": [
       {
         "id": "recognize",
@@ -55,12 +61,18 @@ export const manifest: ManifestEntry[] = [
         "role": "implement",
         "title": "Name an arity",
         "kind": "code"
+      },
+      {
+        "id": "apply",
+        "role": "apply",
+        "title": "Predict where currying goes wrong",
+        "kind": "code"
       }
     ]
   },
   {
     "termId": "lambda",
-    "notes": null,
+    "notes": "A lambda is a function written as an expression rather than declared as a\nstatement. That is the entire difference. `function double(n) { return n * 2 }` and\n`(n) => n * 2` describe the same thing; one of them happens to have a name bound to it.\n\nWhat makes that worth a word of its own is what follows from a function being an ordinary\n**value**. Four things you can do with a number, you can do with a function:\n\n- **Pass it.** `xs.map(n => n * 2)` hands one to `map` without ever naming it.\n- **Return it.** `const adder = a => b => a + b` gives one back, which is what makes\n  [currying](#currying) possible at all.\n- **Store it.** Put one in an array, an object, a Map. That is all a lookup table of\n  operations is.\n- **Apply it immediately.** `(x => x * 2)(4)` is legal, because the thing before the\n  parentheses is just a value that happens to be callable.\n\nNone of that needs a name, which is why the anonymity is the headline. But the useful judgment\nis the reverse: a name is a **comment you cannot let go stale**. `xs.filter(u => u.age >= 18)`\nis clear inline. `xs.filter(isEligibleForDiscount)` earns its name, because the predicate\nencodes a rule the reader would otherwise have to reconstruct.\n\nThe rule of thumb: inline it when the body says what the name would have said. Name it when\nthe name says something the body does not.",
     "rungs": [
       {
         "id": "recognize",
@@ -78,7 +90,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "higher-order-functions-hof",
-    "notes": null,
+    "notes": "A higher-order function does one of two things, or both: it **takes** a function as\nan argument, or it **returns** one. Nothing else is required, and JavaScript's built-ins are\nfull of them.\n\nThe taking kind is the familiar half. `map`, `filter`, `reduce`, `sort`: each\ntakes the varying part as a function and keeps the walking part for itself. When you write one,\nthe discipline is to build a new structure rather than edit the one you were handed, because\nthe caller still holds it.\n\nThe returning kind is the one that unlocks the rest of this vocabulary. `is(Array)` does not\ntest anything; it hands back a function that will. That is only useful because of\n[closure](#closure): the returned function still has access to `type` after `is` has\nfinished. Every curried function, every partially applied one, every combinator in this glossary\nis this shape.\n\nThe third use is **wrapping**: take a function, return a function with the same signature but\ndifferent timing. `once`, `memoize`, `debounce`, `withContract` are all this.\n\nWrapping has a trap worth naming. When the wrapper remembers something, track *whether it has\nrun* separately from *what it returned*. Using the stored result as the flag looks tidier and\nbreaks the moment the function legitimately returns `0`, `''`, `false`, or\n`undefined`: the wrapper decides it has not run yet and runs again.",
     "rungs": [
       {
         "id": "implement",
@@ -96,7 +108,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "closure",
-    "notes": null,
+    "notes": "A closure is a function plus the bindings it was created alongside. The part that\ndecides whether your code works is one word in that sentence: **bindings**, not values.\n\nA closure does not photograph the variable. It keeps a reference to it. So this prints 2, not 1:\n\n```js\nlet n = 1\nconst report = () => n\nn = 2\nreport() // 2\n```\n\nThat is also the whole explanation of the loop bug. `var` creates **one** binding for the\nentire function, so every closure made inside the loop points at the same one, and by the time\nany of them runs, that binding holds the final value. `let` creates a **fresh binding each\niteration**, so each closure gets its own.\n\nThe same mechanism is what makes private state possible. Declare a variable inside a function\nand return something that uses it, and the only way to reach that variable is through what you\nreturned. It is not a convention or a naming scheme; there is genuinely no reference to it from\noutside.\n\nAnd because the body runs again on every call, each call produces a **separate** set of\nbindings. Two counters built from the same factory share nothing. That is worth checking for\ndeliberately, because moving one `let` outside the factory is an easy mistake that turns\nprivate state into global state and still passes a quick test with one instance.",
     "rungs": [
       {
         "id": "implement",
@@ -114,7 +126,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "predicate",
-    "notes": null,
+    "notes": "A predicate is a function from one value to a boolean: `a -> Boolean`. That is a\nsmall idea, and the reason it gets a name is that it is the shape `filter`, `find`,\n`every`, and `some` all expect.\n\nTwo things are worth being strict about.\n\n**It answers true or false, not truthy or falsy.** `&` and `|` are bitwise and hand back\nnumbers. `a & b` where both are booleans gives you `1` or `0`, which works in an\n`if` and then fails the moment anyone compares it to `true`. Use `&&`, `||`, and\n`!`.\n\n**A combinator returns a predicate, not an answer.** `both(f, g)` does not test anything;\nit builds a new predicate that will. That is what lets you keep going:\n`both(inStock, either(isCheap, isOnSale))` nests because every piece has the same shape as\nevery other piece.\n\nGetting the grouping right is the part that needs care, because English is ambiguous where\ncode is not. \"In stock, and either cheap or on sale\" is\n`both(inStock, either(isCheap, isOnSale))`. Written the other way round,\n`either(both(inStock, isCheap), isOnSale)`, it quietly lets through an item that is on sale\nbut out of stock. Both read fine in prose. Only one is what you meant.\n\nWorth knowing: the combinators obey De Morgan's laws, so\n`not(both(f, g))` is the same predicate as `either(not(f), not(g))`. If those two ever\ndisagree in your implementation, one of your and/or is the wrong way round.",
     "rungs": [
       {
         "id": "implement",
@@ -132,7 +144,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "pure-function",
-    "notes": null,
+    "notes": "Two requirements, and it pays to keep them apart because code usually breaks one and\nnot the other.\n\n**The output depends on the inputs alone.** No clock, no random, no globals, no reading a\n`let` from an enclosing scope that something else can write to. Same arguments, same answer,\nevery time and forever.\n\n**Nothing observable changes.** No writing to anything the caller can see. That includes\nmutating the arguments, which is the one people miss, because it does not look like an effect.\n\nThe practical move for the first requirement is to **take it as an argument**. A function that\nreads `Date.now()` becomes a function that takes `now`. The impurity does not vanish; it\nmoves to the caller, and keeps moving up until it reaches somewhere you are content for it to\nlive. That is the whole game: not eliminating effects, but pushing them to the edge.\n\nFor the second, the move is to **build and return** rather than edit in place. And the trap here\nis depth. This is not pure:\n\n```js\nconst addItem = (cart, item) => {\n  const next = { ...cart }\n  next.items.push(item)   // same array the caller is holding\n  return next\n}\n```\n\nSpreading copies the top level only. `next.items` is the very same array as `cart.items`,\nso pushing to it changes what the caller can see. You need `items: [...cart.items, item]`.\nTests that only check the return value will pass this happily; tests that freeze the input will\nnot, which is why the checks here freeze.",
     "rungs": [
       {
         "id": "recognize",
@@ -150,7 +162,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "thunk",
-    "notes": null,
+    "notes": "A thunk is a function of no arguments whose job is to stand in for a value you do not\nwant computed yet. `() => expensive()` is a thunk; `expensive()` is a value.\n\nThe zero arguments are the point. A thunk carries everything it needs already, so handing one\naround is handing around *the computation itself* rather than its result, and whoever ends up\nwith it decides when, or whether, it happens.\n\nTwo properties are worth separating.\n\n**Deferral.** Building a thunk must run nothing. The usual mistake is to compute up front and\nwrap the answer, which looks the same from outside and defers nothing:\n\n```js\nconst delay = (fn) => {\n  const value = fn()      // already too late\n  return () => value\n}\n```\n\n**Recomputation.** A plain thunk runs its body every single time it is called. That is often\nwhat you want, because it means the thunk re-reads whatever it depends on. When you want the\nopposite, you add caching, and that is where the falsy trap lives: if you decide \"have I run\nyet?\" by checking whether the stored value is set, then a thunk that legitimately produces\n`0`, `''`, `false`, or `undefined` recomputes forever. Keep a separate flag.\n\nThe same idea shows up as [lazy evaluation](#lazy-evaluation) over sequences, and as\n[IO](#io), which is a thunk with a name and a map.",
     "rungs": [
       {
         "id": "implement",
@@ -168,7 +180,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "partial-function",
-    "notes": null,
+    "notes": "A partial function is one whose signature promises more than it delivers. `first ::\n[a] -> a` claims that for any list it gives you an `a`. Hand it `[]` and it does not.\n\nThere are three distinct ways that happens, and they are worth separating because they fail\nvery differently in practice.\n\n**It throws.** `JSON.parse('nope')` is the honest one. Loud, immediate, easy to find, and it\ngives you a stack trace pointing at the problem.\n\n**It returns nothing useful.** `[][0]` gives you `undefined`, which is not an `a` but\nlooks enough like one to travel. This is the dangerous case, because the failure surfaces later,\nsomewhere else, as `Cannot read property 'x' of undefined`, and by then the list that was\nempty is nowhere near the stack trace.\n\n**It never returns.** A recursion that misses its base case, or a loop whose condition is never\nmet. `countDown(-1)` where the base case tests `n === 0` will recurse until the stack runs\nout. The signature says `Number -> [Number]` and for negative inputs there is simply no\nanswer coming.\n\nTwo habits follow. When you write a signature, ask which inputs will not honour it. And when you\nsurvey someone else's function for these, catch each throw and carry on, or your survey stops at\nthe first bad input and tells you about one problem instead of all of them.\n\nThe repair is a [total function](#total-function): either widen what comes out, so\n`[a] -> Option a` can honestly say \"nothing here\", or narrow what goes in.",
     "rungs": [
       {
         "id": "recognize",
@@ -186,7 +198,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "total-function",
-    "notes": null,
+    "notes": "Total means: an answer for every input the signature admits. No throwing, no\n`undefined` where a value was promised, no hanging.\n\nThere are exactly two ways to get there.\n\n**Widen the output.** `first :: [a] -> a` is a lie, but `first :: [a] -> Option a` is\ntrue, because `None` is a perfectly good answer for the empty list. The signature now admits\nwhat was always the case. This is the move that makes [Option](#option) and\n[Either](#either) worth having.\n\n**Narrow the input.** `head :: NonEmptyList a -> a` is total because the type will not let\nyou ask the question that had no answer.\n\nWhat does *not* work is inventing a value. Returning `null` from `first` makes the throw\ngo away without making the function total: the signature still says `a`, and the caller still\ngets something that is not one. You have moved the problem to a place with less context. The\ntest is whether the returned thing **says which case it is**: `{ found: false }` is honest,\na bare `undefined` is not.\n\nThe empty case deserves its own paragraph, because people reach for an error when there is a\nright answer sitting there. The sum of no numbers is `0`. The product of none is `1`.\nRepeating a string zero times is `''`. In each case it is the value that leaves the other\noperand alone, which is exactly the [monoid](#monoid) identity. `reduce` without a seed\nthrows on an empty array; `reduce` with the right seed never needs to.",
     "rungs": [
       {
         "id": "implement",
@@ -204,7 +216,7 @@ export const manifest: ManifestEntry[] = [
   },
   {
     "termId": "trampoline",
-    "notes": null,
+    "notes": "Every call JavaScript makes gets a stack frame, and a frame stays until the call\nreturns. `sumBelow(100000)` calling itself means a hundred thousand frames waiting on each\nother, and somewhere before that the engine gives up with\n`RangeError: Maximum call stack size exceeded`.\n\nThe usual next thought is tail calls: if the recursive call is the last thing the function does,\nits frame is not needed any more, so an engine could reuse it. The specification agrees. Engines\nlargely do not implement it. **Writing your recursion in tail position buys you nothing in\npractice**, and a trampoline exists precisely because of that gap.\n\nThe trick is to turn the recursion inside out. Instead of the function calling the next step, it\n**returns a description of the next step**, and a plain loop does the calling:\n\n```js\nconst sumBelow = (n, acc = 0) =>\n  n <= 0 ? acc : () => sumBelow(n - 1, acc + n)   // a thunk, not a call\n```\n\nEach step now returns to the loop before the next one begins, so only one frame is ever live.\nDepth becomes iterations, which are free.\n\nTwo things to get right. The function must return `() => sumBelow(...)`, not\n`sumBelow(...)`; the arrow is the entire difference. And the driver must loop **while** the\nresult is still a function, not unwrap once:\n\n```js\nconst trampoline = (result) => {\n  while (typeof result === 'function') result = result()\n  return result\n}\n```\n\nThe cost is a closure allocation per step, so it is slower than a loop and much faster than a\ncrash. Reach for it when the depth is data-dependent and you cannot bound it.",
     "rungs": [
       {
         "id": "implement",

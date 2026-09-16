@@ -2,11 +2,51 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const higherOrderFunctions: ExerciseSet = {
   termId: 'higher-order-functions-hof',
-  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
-  notesTodo: true,
+  rubric: [
+    {
+      id: 'two-shapes',
+      statement: 'Can recognize both shapes: a function that takes a function, and one that returns a function.',
+    },
+    {
+      id: 'takes-one',
+      statement: 'Can write one that takes a function, walking a structure and leaving the input alone.',
+    },
+    {
+      id: 'returns-one',
+      statement: 'Can write one that returns a function, and knows the closure is what makes the returned function remember anything.',
+    },
+    {
+      id: 'wrapping',
+      statement:
+        'Can wrap an existing function to change when or how often it runs, without changing what it computes.',
+    },
+  ],
+  notes: `A higher-order function does one of two things, or both: it **takes** a function as
+an argument, or it **returns** one. Nothing else is required, and JavaScript's built-ins are
+full of them.
+
+The taking kind is the familiar half. \`map\`, \`filter\`, \`reduce\`, \`sort\`: each
+takes the varying part as a function and keeps the walking part for itself. When you write one,
+the discipline is to build a new structure rather than edit the one you were handed, because
+the caller still holds it.
+
+The returning kind is the one that unlocks the rest of this vocabulary. \`is(Array)\` does not
+test anything; it hands back a function that will. That is only useful because of
+[closure](#closure): the returned function still has access to \`type\` after \`is\` has
+finished. Every curried function, every partially applied one, every combinator in this glossary
+is this shape.
+
+The third use is **wrapping**: take a function, return a function with the same signature but
+different timing. \`once\`, \`memoize\`, \`debounce\`, \`withContract\` are all this.
+
+Wrapping has a trap worth naming. When the wrapper remembers something, track *whether it has
+run* separately from *what it returned*. Using the stored result as the flag looks tidier and
+breaks the moment the function legitimately returns \`0\`, \`''\`, \`false\`, or
+\`undefined\`: the wrapper decides it has not run yet and runs again.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['two-shapes', 'takes-one', 'returns-one'],
       kind: 'code',
       role: 'implement',
       title: 'Write filter and is',
@@ -109,6 +149,7 @@ const is = (type) => (x) => x instanceof type
 
     {
       id: 'apply',
+      covers: ['wrapping', 'returns-one'],
       kind: 'code',
       role: 'apply',
       title: 'Write once',

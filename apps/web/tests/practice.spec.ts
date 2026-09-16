@@ -368,10 +368,16 @@ test.describe('the curriculum path', () => {
   });
 
   test('clearing a concept offers the next one in the curriculum', async ({ page }) => {
-    // `function` is first. Clearing it should point at `arity`, the second.
+    // `function` is first. Clearing all of it should point at `arity`, the second.
     await page.goto('/#/term/function/practice/recognize');
     await page.locator('.option').nth(2).click();
     await page.getByRole('button', { name: 'Check answer' }).click();
+
+    // The diagnose rung: the three that fail "same input, same output".
+    await page.goto('/#/term/function/practice/diagnose');
+    for (const i of [0, 2, 4]) await page.locator('.option').nth(i).click();
+    await page.getByRole('button', { name: 'Check answer' }).click();
+    await expect(page.locator('.tally')).toHaveText('Correct');
 
     await page.goto('/#/term/function/practice/implement');
     await typeCode(

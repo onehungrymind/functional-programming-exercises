@@ -2,11 +2,56 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const closure: ExerciseSet = {
   termId: 'closure',
-  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
-  notesTodo: true,
+  rubric: [
+    {
+      id: 'captures-bindings',
+      statement:
+        'Knows a closure captures the binding, not a copy of the value, so it sees later changes to that variable.',
+    },
+    {
+      id: 'private-state',
+      statement: 'Can use a closure to give something state that nothing outside can reach or corrupt.',
+    },
+    {
+      id: 'independent-instances',
+      statement: 'Knows each call to the enclosing function makes fresh bindings, so two instances do not share state.',
+    },
+    {
+      id: 'loop-bug',
+      statement:
+        'Can diagnose and fix the classic loop-capture bug, and can say why `let` fixes it and `var` does not.',
+    },
+  ],
+  notes: `A closure is a function plus the bindings it was created alongside. The part that
+decides whether your code works is one word in that sentence: **bindings**, not values.
+
+A closure does not photograph the variable. It keeps a reference to it. So this prints 2, not 1:
+
+\`\`\`js
+let n = 1
+const report = () => n
+n = 2
+report() // 2
+\`\`\`
+
+That is also the whole explanation of the loop bug. \`var\` creates **one** binding for the
+entire function, so every closure made inside the loop points at the same one, and by the time
+any of them runs, that binding holds the final value. \`let\` creates a **fresh binding each
+iteration**, so each closure gets its own.
+
+The same mechanism is what makes private state possible. Declare a variable inside a function
+and return something that uses it, and the only way to reach that variable is through what you
+returned. It is not a convention or a naming scheme; there is genuinely no reference to it from
+outside.
+
+And because the body runs again on every call, each call produces a **separate** set of
+bindings. Two counters built from the same factory share nothing. That is worth checking for
+deliberately, because moving one \`let\` outside the factory is an easy mistake that turns
+private state into global state and still passes a quick test with one instance.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['private-state', 'independent-instances'],
       kind: 'code',
       role: 'implement',
       title: 'A counter with private state',
@@ -85,6 +130,7 @@ const makeCounter = () => () => {
 
     {
       id: 'break',
+      covers: ['loop-bug', 'captures-bindings'],
       kind: 'code',
       role: 'break',
       title: 'Fix the loop that captured the wrong thing',

@@ -118,7 +118,7 @@ const note = (msg) => problems.push(msg);
 
 let codeRungs = 0;
 let variants = 0;
-const notesOutstanding = [];
+const migrationOutstanding = [];
 let timeouts = 0;
 
 const describe = (out) => {
@@ -145,19 +145,54 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
     note(`${termId}: no code-graded rung. Recognizing is not the same as writing it.`);
   }
 
+  // The rubric is the specification and the rungs are its tests, so the two have to line up
+  // in both directions or the traceability is decorative.
+  const rubric = set.rubric ?? [];
+  if (set.rubricTodo) {
+    // Not yet written to the rubric model. Counted below rather than failing the run.
+    migrationOutstanding.push(termId);
+    if (rubric.length) note(`${termId}: has a rubric and is still marked \`rubricTodo\`.`);
+  } else if (rubric.length === 0) {
+    note(`${termId}: no rubric. Say what competency looks like before saying how it is tested.`);
+  }
+  const rubricIds = new Set(rubric.map((r) => r.id));
+  if (rubricIds.size !== rubric.length) note(`${termId}: duplicate rubric item id.`);
+  for (const item of rubric) {
+    if (!item.statement?.trim()) note(`${termId}/${item.id}: rubric item has no statement.`);
+  }
+
+  const covered = new Set();
+  for (const rung of set.rungs) {
+    const covers = rung.covers ?? [];
+    if (set.rubricTodo) continue;
+    if (covers.length === 0) {
+      note(`${termId}/${rung.id}: covers no rubric item. Either it is off-syllabus, or the rubric is missing something.`);
+    }
+    for (const id of covers) {
+      if (!rubricIds.has(id)) note(`${termId}/${rung.id}: covers "${id}", which is not in the rubric.`);
+      covered.add(id);
+    }
+  }
+  const untested = [...rubricIds].filter((id) => !covered.has(id));
+  if (untested.length) {
+    note(
+      `${termId}: nothing demonstrates ${untested.map((id) => `"${id}"`).join(', ')}. ` +
+        `A rubric item with no rung is a claim the app never checks.`,
+    );
+  }
+
   // A rung may only ask about something Learn has covered. Upstream is a glossary, so for
   // most concepts that means this repo supplies the teaching itself. Every set has to declare
   // which case it is, so a new one cannot land without someone deciding.
-  const declared = [set.notes, set.upstreamIsEnough, set.notesTodo].filter(Boolean).length;
+  const declared = [set.notes, set.upstreamIsEnough, set.rubricTodo].filter(Boolean).length;
   if (declared === 0) {
     note(
-      `${termId}: declares none of \`notes\`, \`upstreamIsEnough\`, or \`notesTodo\`. ` +
+      `${termId}: declares none of \`notes\`, \`upstreamIsEnough\`, or \`rubricTodo\`. ` +
         `A rung may only ask about something the Learn tab has covered, so say which applies.`,
     );
   } else if (declared > 1) {
-    note(`${termId}: declares more than one of \`notes\`, \`upstreamIsEnough\`, and \`notesTodo\`.`);
+    note(`${termId}: declares more than one of \`notes\`, \`upstreamIsEnough\`, and \`rubricTodo\`.`);
   }
-  if (set.notesTodo) notesOutstanding.push(termId);
 
   const seen = new Set();
   for (const rung of set.rungs) {
@@ -233,9 +268,10 @@ await worker?.terminate();
 console.log(
   `\n  verify passed\n  ${termCount} concepts, ${codeRungs} code rungs, ${variants} variants graded through the real harness`,
 );
-if (notesOutstanding.length) {
+if (migrationOutstanding.length) {
+  const done = termCount - migrationOutstanding.length;
   console.log(
-    `  ${notesOutstanding.length} concepts still need Learn notes (marked \`notesTodo\`), so their rungs ask more than the page teaches`,
+    `  ${done}/${termCount} written to a competency rubric; ${migrationOutstanding.length} still marked \`rubricTodo\``,
   );
 }
 console.log('');

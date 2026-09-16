@@ -2,11 +2,61 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const pureFunction: ExerciseSet = {
   termId: 'pure-function',
-  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
-  notesTodo: true,
+  rubric: [
+    {
+      id: 'two-requirements',
+      statement:
+        'Can state the two requirements separately: the output depends on the inputs alone, and nothing observable changes.',
+    },
+    {
+      id: 'spot-the-breach',
+      statement: 'Given an impure function, can say which of the two it breaks, and name the specific line that breaks it.',
+    },
+    {
+      id: 'purify',
+      statement:
+        'Can purify a function by taking what it read as an argument and returning a new value instead of editing the one it was given.',
+    },
+    {
+      id: 'shallow-copy-trap',
+      statement:
+        'Knows that copying the top level of a structure is not enough, and can spot a copy that still shares a nested reference.',
+    },
+  ],
+  notes: `Two requirements, and it pays to keep them apart because code usually breaks one and
+not the other.
+
+**The output depends on the inputs alone.** No clock, no random, no globals, no reading a
+\`let\` from an enclosing scope that something else can write to. Same arguments, same answer,
+every time and forever.
+
+**Nothing observable changes.** No writing to anything the caller can see. That includes
+mutating the arguments, which is the one people miss, because it does not look like an effect.
+
+The practical move for the first requirement is to **take it as an argument**. A function that
+reads \`Date.now()\` becomes a function that takes \`now\`. The impurity does not vanish; it
+moves to the caller, and keeps moving up until it reaches somewhere you are content for it to
+live. That is the whole game: not eliminating effects, but pushing them to the edge.
+
+For the second, the move is to **build and return** rather than edit in place. And the trap here
+is depth. This is not pure:
+
+\`\`\`js
+const addItem = (cart, item) => {
+  const next = { ...cart }
+  next.items.push(item)   // same array the caller is holding
+  return next
+}
+\`\`\`
+
+Spreading copies the top level only. \`next.items\` is the very same array as \`cart.items\`,
+so pushing to it changes what the caller can see. You need \`items: [...cart.items, item]\`.
+Tests that only check the return value will pass this happily; tests that freeze the input will
+not, which is why the checks here freeze.`,
   rungs: [
     {
       id: 'recognize',
+      covers: ['two-requirements', 'spot-the-breach'],
       kind: 'choice',
       role: 'recognize',
       multi: false,
@@ -39,6 +89,7 @@ export const pureFunction: ExerciseSet = {
 
     {
       id: 'implement',
+      covers: ['purify', 'shallow-copy-trap', 'two-requirements'],
       kind: 'code',
       role: 'implement',
       title: 'Purify addItem',

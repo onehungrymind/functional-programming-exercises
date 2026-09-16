@@ -2,11 +2,52 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const thunk: ExerciseSet = {
   termId: 'thunk',
-  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
-  notesTodo: true,
+  rubric: [
+    {
+      id: 'what-it-is',
+      statement: 'Knows a thunk is a zero-argument function standing in for a value that has not been computed yet.',
+    },
+    {
+      id: 'defer',
+      statement: 'Can wrap work so that nothing runs until the thunk is called, and can prove it by counting calls.',
+    },
+    {
+      id: 'recompute-vs-cache',
+      statement:
+        'Knows a plain thunk recomputes on every call, and can add caching without breaking on a falsy or undefined result.',
+    },
+  ],
+  notes: `A thunk is a function of no arguments whose job is to stand in for a value you do not
+want computed yet. \`() => expensive()\` is a thunk; \`expensive()\` is a value.
+
+The zero arguments are the point. A thunk carries everything it needs already, so handing one
+around is handing around *the computation itself* rather than its result, and whoever ends up
+with it decides when, or whether, it happens.
+
+Two properties are worth separating.
+
+**Deferral.** Building a thunk must run nothing. The usual mistake is to compute up front and
+wrap the answer, which looks the same from outside and defers nothing:
+
+\`\`\`js
+const delay = (fn) => {
+  const value = fn()      // already too late
+  return () => value
+}
+\`\`\`
+
+**Recomputation.** A plain thunk runs its body every single time it is called. That is often
+what you want, because it means the thunk re-reads whatever it depends on. When you want the
+opposite, you add caching, and that is where the falsy trap lives: if you decide "have I run
+yet?" by checking whether the stored value is set, then a thunk that legitimately produces
+\`0\`, \`''\`, \`false\`, or \`undefined\` recomputes forever. Keep a separate flag.
+
+The same idea shows up as [lazy evaluation](#lazy-evaluation) over sequences, and as
+[IO](#io), which is a thunk with a name and a map.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['what-it-is', 'defer'],
       kind: 'code',
       role: 'implement',
       title: 'Defer the work',
@@ -78,6 +119,7 @@ const delay = (fn) => () => fn()
 
     {
       id: 'apply',
+      covers: ['recompute-vs-cache', 'defer'],
       kind: 'code',
       role: 'apply',
       title: 'Compute it at most once',

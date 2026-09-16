@@ -2,11 +2,59 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const trampoline: ExerciseSet = {
   termId: 'trampoline',
-  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
-  notesTodo: true,
+  rubric: [
+    {
+      id: 'why-the-stack-runs-out',
+      statement:
+        'Can say why deep self-recursion exhausts the stack in JavaScript, and why writing it in tail position does not help.',
+    },
+    {
+      id: 'return-instead-of-call',
+      statement: 'Can rewrite a recursive function to return a thunk for the next step instead of calling it.',
+    },
+    {
+      id: 'the-driver',
+      statement: 'Can write the loop that keeps invoking thunks until a real value falls out, and knows one unwrapping is not enough.',
+    },
+  ],
+  notes: `Every call JavaScript makes gets a stack frame, and a frame stays until the call
+returns. \`sumBelow(100000)\` calling itself means a hundred thousand frames waiting on each
+other, and somewhere before that the engine gives up with
+\`RangeError: Maximum call stack size exceeded\`.
+
+The usual next thought is tail calls: if the recursive call is the last thing the function does,
+its frame is not needed any more, so an engine could reuse it. The specification agrees. Engines
+largely do not implement it. **Writing your recursion in tail position buys you nothing in
+practice**, and a trampoline exists precisely because of that gap.
+
+The trick is to turn the recursion inside out. Instead of the function calling the next step, it
+**returns a description of the next step**, and a plain loop does the calling:
+
+\`\`\`js
+const sumBelow = (n, acc = 0) =>
+  n <= 0 ? acc : () => sumBelow(n - 1, acc + n)   // a thunk, not a call
+\`\`\`
+
+Each step now returns to the loop before the next one begins, so only one frame is ever live.
+Depth becomes iterations, which are free.
+
+Two things to get right. The function must return \`() => sumBelow(...)\`, not
+\`sumBelow(...)\`; the arrow is the entire difference. And the driver must loop **while** the
+result is still a function, not unwrap once:
+
+\`\`\`js
+const trampoline = (result) => {
+  while (typeof result === 'function') result = result()
+  return result
+}
+\`\`\`
+
+The cost is a closure allocation per step, so it is slower than a loop and much faster than a
+crash. Reach for it when the depth is data-dependent and you cannot bound it.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['return-instead-of-call', 'the-driver'],
       kind: 'code',
       role: 'implement',
       title: 'Bounce instead of recursing',
@@ -127,6 +175,7 @@ const sumBelow = (n, acc = 0) => {
 
     {
       id: 'recognize',
+      covers: ['why-the-stack-runs-out'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

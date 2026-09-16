@@ -2,11 +2,50 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const totalFunction: ExerciseSet = {
   termId: 'total-function',
-  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
-  notesTodo: true,
+  rubric: [
+    {
+      id: 'definition',
+      statement:
+        'Knows total means an answer for every input in the domain, and that not throwing is necessary but not sufficient.',
+    },
+    {
+      id: 'widen-the-output',
+      statement:
+        'Can make a function total by widening what it returns, rather than by inventing a value it does not have.',
+    },
+    {
+      id: 'identity-for-empty',
+      statement: 'Knows the empty case usually has a right answer already, and can say what it is for a sum, a product, and a repeat.',
+    },
+  ],
+  notes: `Total means: an answer for every input the signature admits. No throwing, no
+\`undefined\` where a value was promised, no hanging.
+
+There are exactly two ways to get there.
+
+**Widen the output.** \`first :: [a] -> a\` is a lie, but \`first :: [a] -> Option a\` is
+true, because \`None\` is a perfectly good answer for the empty list. The signature now admits
+what was always the case. This is the move that makes [Option](#option) and
+[Either](#either) worth having.
+
+**Narrow the input.** \`head :: NonEmptyList a -> a\` is total because the type will not let
+you ask the question that had no answer.
+
+What does *not* work is inventing a value. Returning \`null\` from \`first\` makes the throw
+go away without making the function total: the signature still says \`a\`, and the caller still
+gets something that is not one. You have moved the problem to a place with less context. The
+test is whether the returned thing **says which case it is**: \`{ found: false }\` is honest,
+a bare \`undefined\` is not.
+
+The empty case deserves its own paragraph, because people reach for an error when there is a
+right answer sitting there. The sum of no numbers is \`0\`. The product of none is \`1\`.
+Repeating a string zero times is \`''\`. In each case it is the value that leaves the other
+operand alone, which is exactly the [monoid](#monoid) identity. \`reduce\` without a seed
+throws on an empty array; \`reduce\` with the right seed never needs to.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['widen-the-output', 'identity-for-empty'],
       kind: 'code',
       role: 'implement',
       title: 'Make three functions total',
@@ -118,6 +157,7 @@ const times = (n, s) => (n > 0 ? s.repeat(n) : '')
 
     {
       id: 'recognize',
+      covers: ['definition'],
       kind: 'choice',
       role: 'recognize',
       multi: false,

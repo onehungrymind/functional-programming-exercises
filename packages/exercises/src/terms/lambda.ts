@@ -2,11 +2,48 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const lambda: ExerciseSet = {
   termId: 'lambda',
-  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
-  notesTodo: true,
+  rubric: [
+    {
+      id: 'function-as-value',
+      statement:
+        'Can say what "a function is a value" buys you: it can be passed, returned, stored, and applied on the spot, with no name involved.',
+    },
+    {
+      id: 'name-is-a-choice',
+      statement:
+        'Knows a name adds nothing semantically, so can decide when naming a callback helps a reader and when it just adds a hop.',
+    },
+    {
+      id: 'inline-it',
+      statement: 'Can rewrite a pipeline of single-use named helpers as inline lambdas without changing what it does.',
+    },
+  ],
+  notes: `A lambda is a function written as an expression rather than declared as a
+statement. That is the entire difference. \`function double(n) { return n * 2 }\` and
+\`(n) => n * 2\` describe the same thing; one of them happens to have a name bound to it.
+
+What makes that worth a word of its own is what follows from a function being an ordinary
+**value**. Four things you can do with a number, you can do with a function:
+
+- **Pass it.** \`xs.map(n => n * 2)\` hands one to \`map\` without ever naming it.
+- **Return it.** \`const adder = a => b => a + b\` gives one back, which is what makes
+  [currying](#currying) possible at all.
+- **Store it.** Put one in an array, an object, a Map. That is all a lookup table of
+  operations is.
+- **Apply it immediately.** \`(x => x * 2)(4)\` is legal, because the thing before the
+  parentheses is just a value that happens to be callable.
+
+None of that needs a name, which is why the anonymity is the headline. But the useful judgment
+is the reverse: a name is a **comment you cannot let go stale**. \`xs.filter(u => u.age >= 18)\`
+is clear inline. \`xs.filter(isEligibleForDiscount)\` earns its name, because the predicate
+encodes a rule the reader would otherwise have to reconstruct.
+
+The rule of thumb: inline it when the body says what the name would have said. Name it when
+the name says something the body does not.`,
   rungs: [
     {
       id: 'recognize',
+      covers: ['function-as-value'],
       kind: 'choice',
       role: 'recognize',
       multi: true,
@@ -44,6 +81,7 @@ export const lambda: ExerciseSet = {
 
     {
       id: 'guided',
+      covers: ['inline-it', 'name-is-a-choice'],
       kind: 'code',
       role: 'guided',
       title: 'Inline the named callbacks',

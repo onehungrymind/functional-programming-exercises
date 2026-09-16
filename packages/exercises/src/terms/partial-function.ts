@@ -2,11 +2,51 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const partialFunction: ExerciseSet = {
   termId: 'partial-function',
-  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
-  notesTodo: true,
+  rubric: [
+    {
+      id: 'three-failures',
+      statement:
+        'Can name the three ways a function can be undefined somewhere: it throws, it returns nothing useful, or it never returns at all.',
+    },
+    {
+      id: 'spot-them',
+      statement:
+        'Can look at a signature and say where reality will not match it, including the quiet cases that return undefined rather than throwing.',
+    },
+    {
+      id: 'survey',
+      statement: 'Can probe a function across a set of inputs and collect the ones it is not defined for, without the survey dying on the first throw.',
+    },
+  ],
+  notes: `A partial function is one whose signature promises more than it delivers. \`first ::
+[a] -> a\` claims that for any list it gives you an \`a\`. Hand it \`[]\` and it does not.
+
+There are three distinct ways that happens, and they are worth separating because they fail
+very differently in practice.
+
+**It throws.** \`JSON.parse('nope')\` is the honest one. Loud, immediate, easy to find, and it
+gives you a stack trace pointing at the problem.
+
+**It returns nothing useful.** \`[][0]\` gives you \`undefined\`, which is not an \`a\` but
+looks enough like one to travel. This is the dangerous case, because the failure surfaces later,
+somewhere else, as \`Cannot read property 'x' of undefined\`, and by then the list that was
+empty is nowhere near the stack trace.
+
+**It never returns.** A recursion that misses its base case, or a loop whose condition is never
+met. \`countDown(-1)\` where the base case tests \`n === 0\` will recurse until the stack runs
+out. The signature says \`Number -> [Number]\` and for negative inputs there is simply no
+answer coming.
+
+Two habits follow. When you write a signature, ask which inputs will not honour it. And when you
+survey someone else's function for these, catch each throw and carry on, or your survey stops at
+the first bad input and tells you about one problem instead of all of them.
+
+The repair is a [total function](#total-function): either widen what comes out, so
+\`[a] -> Option a\` can honestly say "nothing here", or narrow what goes in.`,
   rungs: [
     {
       id: 'recognize',
+      covers: ['three-failures', 'spot-them'],
       kind: 'choice',
       role: 'recognize',
       multi: true,
@@ -44,6 +84,7 @@ export const partialFunction: ExerciseSet = {
 
     {
       id: 'implement',
+      covers: ['survey', 'three-failures'],
       kind: 'code',
       role: 'implement',
       title: 'Find the inputs that break it',

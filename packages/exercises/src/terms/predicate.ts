@@ -2,11 +2,50 @@ import type { ExerciseSet } from '@fpx/engine/types';
 
 export const predicate: ExerciseSet = {
   termId: 'predicate',
-  // TODO: the upstream entry is a glossary line; the rungs assume more than it teaches.
-  notesTodo: true,
+  rubric: [
+    {
+      id: 'what-it-is',
+      statement: 'Knows a predicate answers true or false about one value, and that answering anything else breaks the contract.',
+    },
+    {
+      id: 'combinators',
+      statement:
+        'Can write combinators that build a bigger predicate from smaller ones, and knows they return predicates so they keep composing.',
+    },
+    {
+      id: 'compose-to-spec',
+      statement: 'Can turn a rule stated in English into a composition of named predicates, with the grouping right.',
+    },
+  ],
+  notes: `A predicate is a function from one value to a boolean: \`a -> Boolean\`. That is a
+small idea, and the reason it gets a name is that it is the shape \`filter\`, \`find\`,
+\`every\`, and \`some\` all expect.
+
+Two things are worth being strict about.
+
+**It answers true or false, not truthy or falsy.** \`&\` and \`|\` are bitwise and hand back
+numbers. \`a & b\` where both are booleans gives you \`1\` or \`0\`, which works in an
+\`if\` and then fails the moment anyone compares it to \`true\`. Use \`&&\`, \`||\`, and
+\`!\`.
+
+**A combinator returns a predicate, not an answer.** \`both(f, g)\` does not test anything;
+it builds a new predicate that will. That is what lets you keep going:
+\`both(inStock, either(isCheap, isOnSale))\` nests because every piece has the same shape as
+every other piece.
+
+Getting the grouping right is the part that needs care, because English is ambiguous where
+code is not. "In stock, and either cheap or on sale" is
+\`both(inStock, either(isCheap, isOnSale))\`. Written the other way round,
+\`either(both(inStock, isCheap), isOnSale)\`, it quietly lets through an item that is on sale
+but out of stock. Both read fine in prose. Only one is what you meant.
+
+Worth knowing: the combinators obey De Morgan's laws, so
+\`not(both(f, g))\` is the same predicate as \`either(not(f), not(g))\`. If those two ever
+disagree in your implementation, one of your and/or is the wrong way round.`,
   rungs: [
     {
       id: 'implement',
+      covers: ['what-it-is', 'combinators'],
       kind: 'code',
       role: 'implement',
       title: 'Combine predicates',
@@ -123,6 +162,7 @@ const not = (f) => (x) => !f(x)
 
     {
       id: 'apply',
+      covers: ['compose-to-spec', 'combinators'],
       kind: 'code',
       role: 'apply',
       title: 'Build a filter from the pieces',
