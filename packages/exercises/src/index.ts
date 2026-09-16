@@ -25,6 +25,17 @@ import { lazyEvaluation } from './terms/lazy-evaluation.js';
 import { partialApplication } from './terms/partial-application.js';
 import { pointFreeStyle } from './terms/point-free-style.js';
 
+// Purity & Reasoning
+import { constant } from './terms/constant.js';
+import { constantFunction } from './terms/constant-function.js';
+import { contracts } from './terms/contracts.js';
+import { equationalReasoning } from './terms/equational-reasoning.js';
+import { idempotence } from './terms/idempotence.js';
+import { memoization } from './terms/memoization.js';
+import { referentialTransparency } from './terms/referential-transparency.js';
+import { sideEffects } from './terms/side-effects.js';
+import { value } from './terms/value.js';
+
 // Algebraic Structures
 import { functor } from './terms/functor.js';
 
@@ -53,6 +64,16 @@ const ALL: ExerciseSet[] = [
   lazyEvaluation,
   io,
   algebraicEffects,
+  // Purity & Reasoning
+  sideEffects,
+  value,
+  constant,
+  constantFunction,
+  referentialTransparency,
+  equationalReasoning,
+  idempotence,
+  memoization,
+  contracts,
   // Algebraic Structures
   functor,
 ];

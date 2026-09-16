@@ -177,9 +177,21 @@ This category found four real bugs, three of them mine and one in the engine:
   eager was in fact lazy. Build-time execution is not observable from outside the learner's
   module, so that variant was replaced rather than papered over.
 
+### Purity & Reasoning — done (9 of 9)
+
+`constant`, `constant-function`, `contracts`, `equational-reasoning`, `idempotence`,
+`memoization`, `referential-transparency`, `side-effects`, `value`.
+
+`npm run verify`: 31 concepts, 44 code rungs, 195 variants.
+
+One engine gap: **a check could not see what the learner printed.** Learner code is handed a
+fake console, so the `side-effects` checks swapping `console.log` observed nothing. Captured
+output is now shared with the harness as `T.logs`, used the same way as `T.effects`. An
+exercise about effects has to be able to assert on the effect.
+
 ### Remaining
 
-Purity & Reasoning (9), Types & Data Modeling (11), Algebraic Structures (19),
-Category & Morphisms (12). 51 concepts.
+Types & Data Modeling (11), Algebraic Structures (19), Category & Morphisms (12).
+42 concepts.
 
 ## Phase 8 (stretch): TypeScript rungs — not started

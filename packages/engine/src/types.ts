@@ -140,6 +140,14 @@ export interface Harness {
   clone<T>(v: T): T;
   /** Impure calls spied since the last reset: `Date.now()`, `Math.random()`, `performance.now()`. */
   effects: string[];
+  /**
+   * Console output the learner's code has produced, in order.
+   *
+   * Learner code is handed a fake console, so a check cannot observe printing by swapping
+   * the global. Exercises about effects need to see it, so it is shared here. Empty it
+   * before the call you want to measure, the way `effects` is used.
+   */
+  logs: string[];
   spyFn<F extends (...args: any[]) => any>(f: F): F & { calls: unknown[][] };
   G: Gen;
   /** The learner's source, for shape rules. */

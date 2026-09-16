@@ -14,8 +14,9 @@ const MAX_LOG_LINES = 20;
  * main thread can terminate. See `runner.ts`.
  */
 export function evaluateRung(rung: CodeRung, code: string, seq = 0): RunResult {
-  const logs: string[] = [];
   const { api, state } = createHarness(code);
+  // Shared with the harness, so a check can assert on what the learner printed.
+  const logs = state.logs;
 
   const fakeConsole = {
     log: (...args: unknown[]) => {

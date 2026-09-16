@@ -92,6 +92,24 @@ describe('evaluateRung', () => {
     expect(r.logs).toEqual(['"hello" 42']);
   });
 
+  it('shares captured output with the checks, so an effects exercise can assert on it', () => {
+    // Learner code is handed a fake console, so a check cannot observe printing by
+    // swapping the global.
+    const r = evaluateRung(
+      rung({
+        exports: ['noisy'],
+        checks: (T, exp) => {
+          T.logs.length = 0;
+          (exp.noisy as any)();
+          T.check('printed once', () => T.eq(T.logs, ['"hi"']) || `Got ${T.fmt(T.logs)}`);
+        },
+      }),
+      'const noisy = () => console.log("hi")',
+    );
+    expect(r.results[0]!.ok).toBe(true);
+    expect(r.logs).toEqual(['"hi"']);
+  });
+
   it('caps captured output at 20 lines', () => {
     const r = evaluateRung(rung({}), 'for (let i = 0; i < 50; i++) console.log(i)\nconst f = (x) => x + 1');
     expect(r.logs).toHaveLength(21);

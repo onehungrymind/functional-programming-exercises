@@ -67,6 +67,7 @@ function clone<T>(o: T): T {
 export interface HarnessState {
   results: CheckResult[];
   effects: string[];
+  logs: string[];
 }
 
 /**
@@ -77,6 +78,7 @@ export interface HarnessState {
 export function createHarness(src: string, seed = 0x5eed): { api: Harness; state: HarnessState } {
   const results: CheckResult[] = [];
   const effects: string[] = [];
+  const logs: string[] = [];
   const G: Gen = createGen(seed);
 
   const describeError = (e: unknown): string => {
@@ -140,6 +142,7 @@ export function createHarness(src: string, seed = 0x5eed): { api: Harness; state
     freeze: deepFreeze,
     clone,
     effects,
+    logs,
 
     spyFn(f) {
       const calls: unknown[][] = [];
@@ -160,5 +163,5 @@ export function createHarness(src: string, seed = 0x5eed): { api: Harness; state
     shape: createShapeRules(src),
   };
 
-  return { api, state: { results, effects } };
+  return { api, state: { results, effects, logs } };
 }
