@@ -1163,7 +1163,7 @@ export const manifest: ManifestEntry[] = [
   {
     "termId": "lift",
     "notes": "Lifting takes a function that knows nothing about containers and makes it work on them.\n\n```js\nconst liftA2 = (f) => (ma) => (mb) => ma.map((a) => (b) => f(a, b)).ap(mb)\n\nliftA2((a, b) => a + b)(Box(2))(Box(3))     // Box(5)\n```\n\nThe currying is not optional. `ap` supplies **one** argument, so what `map` puts inside the\ncontainer has to be a function waiting for the next one:\n\n```js\nma.map((a) => (b) => f(a, b)).ap(mb)   // Box holds a function of one argument. Works.\nma.map(f).ap(mb)                        // Box holds a function of two. ap gives it one.\n```\n\nWhat makes one definition serve every applicative is that it only ever uses `map` and\n`ap`. It never looks inside:\n\n```js\nliftA2((a, b) => a + b)(Box(2))(Box(3))              // Box(5)\nliftA2((a, b) => a + b)(List([1, 2]))(List([10, 20])) // List([11, 21, 12, 22])\nliftA2((a, b) => a + b)(Just(2))(Nothing())           // Nothing\n```\n\nSame code, three behaviours, because each container's `ap` decides what combining means. For\na list it is every pairing; for Maybe it is short-circuiting.\n\nReaching for a field would throw all of that away:\n\n```js\nconst liftA2 = (f) => (ma) => (mb) => Box(f(ma.value, mb.value))\n// works for Box, wrong for List, and actively broken for Maybe\n```\n\nThe general rule: a function written against an interface stays general; one written against a\nrepresentation does not.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. The types explain the currying step, which in JavaScript looks like an\narbitrary flourish.\n\n```ts\nconst liftA2 =\n  <A, B, C>(f: (a: A, b: B) => C) =>\n  (ma: Box<A>) =>\n  (mb: Box<B>): Box<C> =>\n    ma.map((a) => (b: B) => f(a, b)).ap(mb)\n```\n\nFollow the middle line, because that is the whole trick. `f` arrives taking two arguments at\nonce, and `ap` has no use for that: `ap` needs its receiver to hold a `B -> C`. So you map\nover `ma` with something that takes an `A` and returns `(b: B) => C`.\n\n```ts\nma                                   // Box<A>\nma.map((a) => (b: B) => f(a, b))     // Box<(b: B) => C>\n   .ap(mb)                           // Box<C>\n```\n\nThree lines, three types, and each step is the only one available. Currying is not a style\nchoice here; a two-argument `f` produces a `Box<C>` on the first `map` and then there is\nnothing left for `mb` to do.\n\nWhat you never see in that definition is a `.value`. It goes in wrapped, moves through `map`\nand `ap`, and comes out wrapped, and every intermediate type in the chain still has `Box` on\nthe outside:\n\n```ts\nconst add = (a: number, b: number) => a + b\n\nliftA2(add)(box(1))(box(2)).value   // 3\n```\n\n**Where TypeScript runs out.** Go back and look at the JavaScript version:\n\n```js\nconst liftA2 = (f) => (ma) => (mb) => ma.map((a) => (b) => f(a, b)).ap(mb)\n```\n\nThat one definition works for Box, for Maybe, for Either, for arrays, for anything with `map`\nand `ap`. It is genuinely polymorphic in the container, and it is the same code, character for\ncharacter, as the typed one. The typed version had to nail itself to `Box`.\n\nThe signature you want is:\n\n```ts\nconst liftA2: <F, A, B, C>(f: (a: A, b: B) => C) => (ma: F<A>) => (mb: F<B>) => F<C>\n```\n\n`F<A>` is not legal there, because `F` is a plain type parameter and TypeScript will not let\nyou apply one to an argument. Abstracting over a container needs higher-kinded types, and\nTypeScript does not have them. So this is the rare case where the second lap is a step down:\nthe runtime behaviour is more general than anything you can write a type for, and you have to\npick a container or reach for an encoding. Worth knowing which of the two you are looking at.",
     "rungs": [
       {
         "id": "implement",
@@ -1178,13 +1178,20 @@ export const manifest: ManifestEntry[] = [
         "title": "What does lifting need from the container?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Write liftA2 over Box",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
   {
     "termId": "applicative-functor",
     "notes": "`map` applies a plain function to a wrapped value. `ap` applies a function that is **itself\nwrapped**.\n\n```js\nconst Box = (value) => ({\n  value,\n  map: (f) => Box(f(value)),\n  ap: (other) => other.map(value)    // this Box holds the function\n})\n\nBox((n) => n + 1).ap(Box(2))   // Box(3)\n```\n\nWhich side holds the function matters, and getting it backwards is the usual slip:\n\n```js\nap: (other) => Box(other.value(value))   // argument applied to function\nBox((n) => n * 10).ap(Box(3))            // TypeError: 3 is not a function\n```\n\nThe payoff is functions of more than one argument. `map` cannot do this at all:\n\n```js\nconst add = (a) => (b) => a + b\n\nBox(2).map(add)              // Box(a function waiting for b) and now you are stuck\nBox(add).ap(Box(2)).ap(Box(3))   // Box(5)\n```\n\nThat is precisely what `ap` adds over `map`: the ability to keep feeding arguments in\nwithout ever unwrapping.\n\nAnd it subsumes `map`, which is why every applicative is a functor:\n\n```js\nBox.of(f).ap(x)   // the same as x.map(f)\n```\n\nThe laws worth knowing are homomorphism, which says lifting then applying matches applying then\nlifting, and interchange, which pins down that `ap` cannot care about evaluation order:\n\n```js\nA.of(f).ap(A.of(x))              // equals A.of(f(x))\nA.of(f).ap(A.of(y))              // equals A.of((g) => g(y)).ap(A.of(f))\n```",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. `ap` is the first signature in this glossary that TypeScript has to\nwork at, and the second lap here comes with an honest limit attached.\n\nStart with the contrast:\n\n```ts\nmap: <B>(f: (a: A) => B)      => Box<B>   // the function is bare\nap:  <B>(other: Box<B>)       => Box<?>   // the function is the thing we are holding\n```\n\n`map` takes the function as an argument. `ap` does not take a function at all: it is called\n**on** the container that holds one. So `ap` only means anything when `A` is itself a function\ntype, and that is a condition on the receiver, not on the argument. TypeScript has a way to\nsay exactly that, a `this` parameter:\n\n```ts\ninterface Box<A> {\n  value: A\n  map: <B>(f: (a: A) => B) => Box<B>\n  ap: <B, C>(this: Box<(b: B) => C>, other: Box<B>) => Box<C>\n}\n```\n\nRead `this: Box<(b: B) => C>`. It says this method exists only when the box you are calling it\non holds a `B -> C`. Given that, and a `Box<B>` alongside, the only thing you could produce is\na `Box<C>`. Reach for `ap` on a `Box<number>` and it is a compile error rather than a runtime\none.\n\nThe `this` parameter also forces the method-shorthand form, because an arrow function has no\n`this` of its own:\n\n```ts\nconst box = <A>(value: A): Box<A> => ({\n  value,\n  map: (f) => box(f(value)),\n  ap<B, C>(this: Box<(b: B) => C>, other: Box<B>) {\n    return other.map(this.value)\n  }\n})\n\nbox((a: number) => (b: number) => a + b).ap(box(1)).ap(box(2)).value   // 3\n```\n\nTwo arguments, one at a time, each one wrapped. That chain is where `ap` earns its keep, and\nit is why an applicative is stronger than a [functor](#functor): `map` can only ever take one\nbare function and one wrapped value.\n\n**Where TypeScript runs out.** What you actually want to write is this:\n\n```ts\ninterface Applicative<F> {\n  of: <A>(a: A) => F<A>\n  ap: <A, B>(ff: F<(a: A) => B>, fa: F<A>) => F<B>\n}\n```\n\nThat is not legal TypeScript. `F` there is a type constructor, something you apply to an\nargument to get a type, and TypeScript's type parameters only range over types. Languages with\nhigher-kinded types let you abstract over `F`; here you cannot, so `Applicative` as an\ninterface does not exist. You write the shape once per container, and \"Box is an applicative\"\nstays a fact you hold in your head rather than one the compiler tracks. There are encodings\nthat fake it, and they are worth knowing about eventually, but they are machinery rather than\ninsight.",
     "rungs": [
       {
         "id": "implement",
@@ -1199,6 +1206,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Combine two Maybes without unwrapping either",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Box<A> including ap",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
@@ -1471,7 +1485,7 @@ export const manifest: ManifestEntry[] = [
   {
     "termId": "traversable",
     "notes": "Traversable swaps two layers. An array of Maybes becomes a Maybe of an array, so you check once\ninstead of at every element.\n\n```js\nconst sequence = (maybes) => {\n  const out = []\n  for (const m of maybes) {\n    if (m.isNothing) return Nothing()     // one failure sinks it\n    out.push(m.value)\n  }\n  return Just(out)\n}\n\nsequence([Just(1), Just(2), Just(3)])     // Just([1, 2, 3])\nsequence([Just(1), Nothing(), Just(3)])   // Nothing\n```\n\nAll-or-nothing is the contract. Dropping the failures is a perfectly good operation and it is\n**not** this one:\n\n```js\nJust(maybes.filter((m) => !m.isNothing).map((m) => m.value))   // Just([1, 3]). Different.\n```\n\nThe empty case succeeds, because nothing failed:\n\n```js\nsequence([])   // Just([]), not Nothing\n```\n\n`traverse` maps and sequences in one pass, which is what you actually reach for:\n\n```js\nconst traverse = (f, xs) => {\n  const out = []\n  for (const x of xs) {\n    const m = f(x)\n    if (m.isNothing) return Nothing()\n    out.push(m.value)\n  }\n  return Just(out)\n}\n\nconst parseNum = (s) => {\n  const n = Number(s)\n  return Number.isInteger(n) && s.trim() !== '' ? Just(n) : Nothing()\n}\n\ntraverse(parseNum, ['1', '2', '3'])   // Just([1, 2, 3])\ntraverse(parseNum, ['1', 'x', '3'])   // Nothing\ntraverse(parseNum, ['1', '', '3'])    // Nothing, and note Number('') is 0\n```\n\nSwap Maybe for a Promise-like and the same shape gives you \"run all of these and give me one\nresult\", which is what `Promise.all` is.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. The signature is the concept. Read it as two nested things trading\nplaces.\n\n```ts\nconst sequence = <A>(xs: Maybe<A>[]): Maybe<A[]> => ...\n```\n\nIn: an array of Maybes. Out: a Maybe of an array. Same two containers, opposite order. Nothing\nelse in this glossary has a type quite that legible, and the name for it is the layer swap.\n\nNow read it for consequences. The result is `Maybe<A[]>`, a single Maybe on the outside, so\nthere is exactly one decision to report. It cannot be partly empty. Either the whole thing is\na `some` carrying every value, or it is a `none` carrying nothing, and that is where \"all or\nnothing\" comes from. A signature returning `Maybe<A>[]` would be the other thing, one decision\nper element, and that is just the input again.\n\n```ts\nconst sequence = <A>(xs: Maybe<A>[]): Maybe<A[]> => {\n  const out: A[] = []\n  for (const m of xs) {\n    if (m.tag === 'none') return none\n    out.push(m.value)\n  }\n  return some(out)\n}\n\nsequence([some(1), some(2)])   // some [1, 2]\nsequence([some(1), none])      // none\nsequence([])                   // some []\n```\n\nThe empty case falls out of the type rather than being a special case. `Maybe<A[]>` with no\nelements to object is a `some` holding `[]`, because there was no `none` to find. Returning\n`none` there would be saying a failure happened, and none did.\n\n`traverse` is the same swap with a map folded in:\n\n```ts\nconst traverse = <A, B>(f: (a: A) => Maybe<B>, xs: A[]): Maybe<B[]> =>\n  sequence(xs.map(f))\n```\n\n`(a: A) => Maybe<B>` is a function that may fail, `A[]` is a list of inputs, and `Maybe<B[]>`\nis one answer for the lot. That is validation, written as a type.\n\n**Where TypeScript runs out.** The general statement is:\n\n```ts\nconst sequence: <F, G, A>(fga: F<G<A>>) => G<F<A>>\n```\n\nwhich needs `F` and `G` to be type constructors, and TypeScript's type parameters only range\nover types. So you cannot write \"for any traversable outer and any applicative inner\", and\nthere is no `interface Traversable<T>` to implement. What you can write is one `sequence` per\npair: array of Maybe, array of Either, tree of Maybe, each a separate function with the same\nshape.\n\nThat is a real loss, and it is worth being clear that it is a loss of expression rather than\nof understanding. The swap is the same swap every time. You just have to say it once per pair\ninstead of once.",
     "rungs": [
       {
         "id": "implement",
@@ -1486,6 +1500,13 @@ export const manifest: ManifestEntry[] = [
         "title": "traverse in one pass",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Write sequence over an array of Maybes",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },
@@ -1618,7 +1639,7 @@ export const manifest: ManifestEntry[] = [
   {
     "termId": "natural-transformation",
     "notes": "A natural transformation changes the **container** and leaves the **contents** alone.\n\n```js\n// head :: Array a -> Maybe a\nconst head = (xs) => (xs.length > 0 ? Just(xs[0]) : Nothing())\n\nhead([1, 2, 3])   // Just(1)\nhead([])          // Nothing\n```\n\nThe law says it cannot matter whether you map before or after:\n\n```js\nnat(fa.map(f))        // has to equal\nnat(fa).map(f)\n\nhead([1, 2].map((n) => n * 10))   // Just(10)\nhead([1, 2]).map((n) => n * 10)   // Just(10)\n```\n\nWhat that forbids is the transformation **looking at the values**. The moment it does, the two\nsides come apart:\n\n```js\nconst head = (xs) => (xs.length ? Just(xs[0] + 1) : Nothing())\n\nhead([1, 2].map((n) => n * 10))   // Just(11)\nhead([1, 2]).map((n) => n * 10)   // Just(20)\n```\n\nSo a natural transformation can only work on **shape**. Wrapping undefined instead of reporting\nemptiness breaks a different promise:\n\n```js\nconst head = (xs) => Just(xs[0])\nhead([])   // Just(undefined), which claims there is a value\n```\n\nIt **may** change how many elements there are. `head` drops all but one and is perfectly\nnatural; so are `reverse`, `Array -> Set`, and `Maybe -> Array`. Naturality constrains what\nit can know, not what it can keep.\n\nThe practical read: a conversion between two containers should be writable without ever\ninspecting an element. If you find yourself needing to, you are writing something else.",
-    "typedNotes": null,
+    "typedNotes": "Same track, second lap. This one the types tell you something the JavaScript could only ask\nyou to believe, and where they stop is worth knowing too.\n\n```ts\ntype ArrayToMaybe = <A>(xs: A[]) => Maybe<A>\n```\n\nLook at where `<A>` sits. It is on the **function**, not on the alias. `ArrayToMaybe` is one\nconcrete thing, and whoever calls it picks the `A`. That means the body has to work for every\n`A` at once: `number`, `string`, `User`, a function, a type nobody has written yet.\n\nSo ask what such a body is allowed to do. It cannot compare elements, because `A` has no `<`.\nIt cannot test them, because `A` has no truthiness you are entitled to rely on. It cannot make\none up, because there is no value of type `A` lying around. All it can do is look at the\n**shape**, choose some of the elements it was handed, and put them somewhere else.\n\n```ts\nconst head: ArrayToMaybe = (xs) => (xs.length ? some(xs[0]) : none)\nconst last: ArrayToMaybe = (xs) => (xs.length ? some(xs[xs.length - 1]) : none)\n```\n\nBoth legal, both natural, and neither one knows what it is carrying. Now try to write one that\nis not:\n\n```ts\nconst firstTruthy: ArrayToMaybe = (xs) => {\n  const hit = xs.find((x) => x)   // error: A is not known to be truthy-testable\n  return hit ? some(hit) : none\n}\n```\n\nThat is the naturality law showing up as a type error. The law says `head(xs.map(f))` is the\nsame as mapping `f` over `head(xs)`, and the reason it holds for `head` is precisely that\n`head` cannot consult the elements. The property you were checking by hand in the first lap is\na consequence of the signature.\n\n```ts\nconst xs = [3, 1, 2]\nhead(xs.map((n) => n * 10))          // some 30\nmapMaybe((n) => n * 10, head(xs))    // some 30\n```\n\n**Where TypeScript runs out.** What a natural transformation actually is, in general, is this:\n\n```ts\ntype Nat<F, G> = <A>(fa: F<A>) => G<A>\n```\n\n`F<A>` is not legal. `F` is a plain type parameter, and TypeScript will not let you apply one\nto an argument, so you cannot write \"for any two containers\". What you can write is one alias\nper pair, naming both containers concretely. The good news is that the interesting half, `A`\nbeing bound on the function so the elements stay opaque, survives that completely. You lose\nthe ability to say it once for all containers; you do not lose the thing it was saying.",
     "rungs": [
       {
         "id": "implement",
@@ -1633,6 +1654,13 @@ export const manifest: ManifestEntry[] = [
         "title": "What does naturality forbid?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy ArrayToMaybe",
+        "kind": "code",
+        "lang": "ts"
       }
     ]
   },

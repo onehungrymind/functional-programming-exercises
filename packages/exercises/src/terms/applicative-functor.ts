@@ -19,6 +19,11 @@ export const applicativeFunctor: ExerciseSet = {
       statement:
         "Knows map can be written from of and ap, so every applicative is a functor, and can say what ap adds.",
     },
+    {
+      id: 'typed-signature',
+      statement:
+        "Can read `ap`'s type and say why it only makes sense when the container holds a function, and can name what TypeScript cannot say about applicatives in general.",
+    },
   ],
   notes: `\`map\` applies a plain function to a wrapped value. \`ap\` applies a function that is **itself
 wrapped**.
@@ -65,6 +70,69 @@ lifting, and interchange, which pins down that \`ap\` cannot care about evaluati
 A.of(f).ap(A.of(x))              // equals A.of(f(x))
 A.of(f).ap(A.of(y))              // equals A.of((g) => g(y)).ap(A.of(f))
 \`\`\``,
+  typedNotes: `Same track, second lap. \`ap\` is the first signature in this glossary that TypeScript has to
+work at, and the second lap here comes with an honest limit attached.
+
+Start with the contrast:
+
+\`\`\`ts
+map: <B>(f: (a: A) => B)      => Box<B>   // the function is bare
+ap:  <B>(other: Box<B>)       => Box<?>   // the function is the thing we are holding
+\`\`\`
+
+\`map\` takes the function as an argument. \`ap\` does not take a function at all: it is called
+**on** the container that holds one. So \`ap\` only means anything when \`A\` is itself a function
+type, and that is a condition on the receiver, not on the argument. TypeScript has a way to
+say exactly that, a \`this\` parameter:
+
+\`\`\`ts
+interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+  ap: <B, C>(this: Box<(b: B) => C>, other: Box<B>) => Box<C>
+}
+\`\`\`
+
+Read \`this: Box<(b: B) => C>\`. It says this method exists only when the box you are calling it
+on holds a \`B -> C\`. Given that, and a \`Box<B>\` alongside, the only thing you could produce is
+a \`Box<C>\`. Reach for \`ap\` on a \`Box<number>\` and it is a compile error rather than a runtime
+one.
+
+The \`this\` parameter also forces the method-shorthand form, because an arrow function has no
+\`this\` of its own:
+
+\`\`\`ts
+const box = <A>(value: A): Box<A> => ({
+  value,
+  map: (f) => box(f(value)),
+  ap<B, C>(this: Box<(b: B) => C>, other: Box<B>) {
+    return other.map(this.value)
+  }
+})
+
+box((a: number) => (b: number) => a + b).ap(box(1)).ap(box(2)).value   // 3
+\`\`\`
+
+Two arguments, one at a time, each one wrapped. That chain is where \`ap\` earns its keep, and
+it is why an applicative is stronger than a [functor](#functor): \`map\` can only ever take one
+bare function and one wrapped value.
+
+**Where TypeScript runs out.** What you actually want to write is this:
+
+\`\`\`ts
+interface Applicative<F> {
+  of: <A>(a: A) => F<A>
+  ap: <A, B>(ff: F<(a: A) => B>, fa: F<A>) => F<B>
+}
+\`\`\`
+
+That is not legal TypeScript. \`F\` there is a type constructor, something you apply to an
+argument to get a type, and TypeScript's type parameters only range over types. Languages with
+higher-kinded types let you abstract over \`F\`; here you cannot, so \`Applicative\` as an
+interface does not exist. You write the shape once per container, and "Box is an applicative"
+stays a fact you hold in your head rather than one the compiler tracks. There are encodings
+that fake it, and they are worth knowing about eventually, but they are machinery rather than
+insight.`,
   rungs: [
     {
       id: 'implement',
@@ -269,6 +337,158 @@ const liftA2 = (f, ma, mb) => ma.map((a) => (b) => f(b, a)).ap(mb)
         T.check('It works for a function of any two types', () => {
           const r = liftA2((s: string, n: number) => s.repeat(n), Just('ab'), Just(3));
           return r?.value === 'ababab' || `Got ${T.fmt(r)}`;
+        });
+      },
+    },
+
+    {
+      id: 'typed',
+      kind: 'code',
+      role: 'implement',
+      lang: 'ts',
+      covers: ['wrapped-function', 'stronger-than-functor', 'typed-signature'],
+      title: "Satisfy Box<A> including ap",
+      prompt:
+        "The interface is given, with a `this` parameter on `ap`. Write `box` so a wrapped function can be applied to a wrapped value.",
+      hints: [
+        "`this` is the box holding the function, and `other` is the box holding the argument.",
+        "`ap` has to be a method, not an arrow. An arrow function has no `this` of its own.",
+        "You already have something that applies a bare function to a wrapped value. Use it on `other`.",
+      ],
+      exports: ['box'],
+      starter: `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+  ap: <B, C>(this: Box<(b: B) => C>, other: Box<B>) => Box<C>
+}
+
+const box = <A>(value: A): Box<A> => ({
+  value,
+  map: (f) => box(f(value)),
+  ap<B, C>(this: Box<(b: B) => C>, other: Box<B>) {
+    return other
+  }
+})
+`,
+      solution: `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+  ap: <B, C>(this: Box<(b: B) => C>, other: Box<B>) => Box<C>
+}
+
+const box = <A>(value: A): Box<A> => ({
+  value,
+  map: (f) => box(f(value)),
+  ap<B, C>(this: Box<(b: B) => C>, other: Box<B>) {
+    return other.map(this.value)
+  }
+})
+`,
+      broken: [
+        `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+  ap: <B, C>(this: Box<(b: B) => C>, other: Box<B>) => Box<C>
+}
+
+const box = <A>(value: A): Box<A> => ({
+  value,
+  map: (f) => box(f(value)),
+  ap<B, C>(this: Box<(b: B) => C>, other: Box<B>) {
+    return box((other.value as unknown as (x: unknown) => unknown)(this.value)) as never
+  }
+})
+`,
+        `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+  ap: <B, C>(this: Box<(b: B) => C>, other: Box<B>) => Box<C>
+}
+
+const box = <A>(value: A): Box<A> => ({
+  value,
+  map: (f) => box(f(value)),
+  ap<B, C>(this: Box<(b: B) => C>, other: Box<B>) {
+    return this.value(other.value) as never
+  }
+})
+`,
+        `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+  ap: <B, C>(this: Box<(b: B) => C>, other: Box<B>) => Box<C>
+}
+
+const box = <A>(value: A): Box<A> => ({
+  value,
+  map: (f) => box(value) as never,
+  ap<B, C>(this: Box<(b: B) => C>, other: Box<B>) {
+    return other.map(this.value)
+  }
+})
+`,
+      ],
+      checks: (T, exp) => {
+        T.check('The annotations are still doing work', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          if (/(:\s*any\b)|(\bas\s+any\b)/.test(src)) {
+            return 'The answer leans on `any`, which satisfies nothing. The point is to satisfy the signature.';
+          }
+          return true;
+        });
+        T.check('The Box declaration is still there to satisfy', () => {
+          return /interface\s+Box/.test(T.src) || 'The Box declaration has gone. It is the thing being satisfied.';
+        });
+        const box = exp.box;
+
+        T.check('map still works', () => {
+          const r = box(21).map((n: number) => n * 2);
+          return r.value === 42 || `Mapping gave a box holding ${T.fmt(r.value)}.`;
+        });
+
+        T.check('ap applies the wrapped function to the wrapped value', () => {
+          const r = box((n: number) => n + 1).ap(box(41));
+          return (
+            (r && r.value === 42) ||
+            `Applying a wrapped increment to a wrapped 41 gave ${T.fmt(r && r.value)}. \`this\` holds the function and \`other\` holds the argument.`
+          );
+        });
+
+        T.check('The arguments are not the other way round', () => {
+          const r = box((s: string) => s + '!').ap(box('hi'));
+          return r.value === 'hi!' || `Applying an appender to 'hi' gave ${T.fmt(r.value)}.`;
+        });
+
+        T.check('ap gives back a box, not a bare value', () => {
+          const r = box((n: number) => n + 1).ap(box(41));
+          return (
+            (r && typeof r.map === 'function') ||
+            `ap gave ${T.fmt(r)}. The return type is Box<C>, so it has to be applyable again.`
+          );
+        });
+
+        T.check('Two arguments, one ap at a time', () => {
+          const r = box((a: number) => (b: number) => a + b).ap(box(1)).ap(box(2));
+          return r.value === 3 || `Adding 1 and 2 through two aps gave ${T.fmt(r.value)}. This is the chain map cannot do.`;
+        });
+
+        T.check('Three arguments still works', () => {
+          const r = box((a: number) => (b: number) => (c: number) => a + b + c).ap(box(1)).ap(box(2)).ap(box(3));
+          return r.value === 6 || `Three aps gave ${T.fmt(r.value)}, expected 6.`;
+        });
+
+        T.law('ap with a wrapped identity changes nothing', 60, (G) => {
+          const n = G.int();
+          const r = box((x: number) => x).ap(box(n));
+          return r.value === n || `${n} came back as ${T.fmt(r.value)}.`;
+        });
+
+        T.law('Applying a wrapped f agrees with mapping a bare f', 60, (G) => {
+          const n = G.int();
+          const f = G.fn();
+          const a = box(f.f).ap(box(n)).value;
+          const b = box(n).map(f.f).value;
+          return a === b || `With ${f.name} at ${n}: ap gave ${T.fmt(a)} and map gave ${T.fmt(b)}.`;
         });
       },
     },
