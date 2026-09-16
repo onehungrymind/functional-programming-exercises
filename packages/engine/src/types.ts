@@ -132,6 +132,16 @@ export interface ExerciseSet {
    * notes are needed.
    */
   upstreamIsEnough?: true;
+  /**
+   * The second lap: the same concept with the types written down.
+   *
+   * Kept separate from `notes` so Learn can mark the inflection point rather than sliding
+   * from JavaScript into TypeScript mid-paragraph. Required whenever the set has a rung with
+   * `lang: 'ts'`, since that rung asks the learner to read a signature.
+   *
+   * Markdown. Internal `#term` links are routed in-app.
+   */
+  typedNotes?: string;
 }
 
 // ---------------------------------------------------------------- results

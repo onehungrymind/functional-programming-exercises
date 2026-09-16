@@ -109,7 +109,14 @@ const note = (msg) => problems.push(msg);
   const fromSets = exerciseTermIds.map((termId) => ({
     termId,
     notes: exerciseSets[termId].notes ?? null,
-    rungs: exerciseSets[termId].rungs.map((r) => ({ id: r.id, role: r.role, title: r.title, kind: r.kind })),
+    typedNotes: exerciseSets[termId].typedNotes ?? null,
+    rungs: exerciseSets[termId].rungs.map((r) => ({
+      id: r.id,
+      role: r.role,
+      title: r.title,
+      kind: r.kind,
+      lang: r.lang ?? 'js',
+    })),
   }));
   if (JSON.stringify(fromSets) !== JSON.stringify(manifest)) {
     note('packages/exercises/src/manifest.ts has drifted from the exercise sets. Run `npm run build:manifest`.');
@@ -188,6 +195,22 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
     );
   }
 
+  // A typed rung asks the learner to read a signature, so the typed lap has to have been
+  // written. Prose cannot be checked mechanically; this much can.
+  const hasTypedRung = set.rungs.some((r) => r.lang === 'ts');
+  if (hasTypedRung && !set.typedNotes) {
+    note(
+      `${termId}: has a typed rung but no \`typedNotes\`. ` +
+        `Lap two has to be taught before it is tested.`,
+    );
+  }
+  if (set.typedNotes && !/```ts/.test(set.typedNotes)) {
+    note(`${termId}: \`typedNotes\` never shows a type.`);
+  }
+  if (set.typedNotes && !hasTypedRung) {
+    note(`${termId}: has \`typedNotes\` but no typed rung, so lap two is taught and never tested.`);
+  }
+
   // Code carries more than prose does. Notes that explain a concept without showing it are
   // the thing this catches.
   if (set.notes) {
@@ -196,15 +219,6 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
       note(
         `${termId}: notes have ${blocks} code block${blocks === 1 ? '' : 's'}, want at least ${MIN_CODE_BLOCKS}. ` +
           `Show the concept, do not only describe it.`,
-      );
-    }
-    // A typed rung asks the learner to read a signature. If the notes never show one, the
-    // rung is asking about something the Learn tab has not covered. Prose cannot be checked
-    // mechanically; this one case can.
-    if (set.rungs.some((r) => r.lang === 'ts') && !/```ts/.test(set.notes)) {
-      note(
-        `${termId}: has a typed rung, but the notes never show a type. ` +
-          `A rung may only ask about something the Learn tab has covered.`,
       );
     }
     notedConcepts.push({ termId, blocks, code: [...set.notes.matchAll(/```[\s\S]*?```/g)].reduce((a, m) => a + m[0].length, 0), prose: set.notes.replace(/```[\s\S]*?```/g, '').length });

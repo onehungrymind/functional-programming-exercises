@@ -491,3 +491,63 @@ const Box = <A,>(value: A): Box<A> => ({
     await expect(page.locator('.fatal')).toContainText('SyntaxError', { timeout: 15000 });
   });
 });
+
+test.describe('the typed lap', () => {
+  async function clearLapOne(page: Page) {
+    const set = async (code: string) => {
+      await page.waitForSelector('.cm-content', { timeout: 15000 });
+      await page.click('.cm-content');
+      await page.keyboard.press('ControlOrMeta+a');
+      await page.keyboard.insertText(code);
+      await expect(page.locator('.cleared')).toBeVisible({ timeout: 15000 });
+    };
+    await page.goto('/#/term/functor/practice/implement');
+    await set('const Box = (value) => ({\n  value,\n  map: (f) => Box(f(value)),\n  inspect: () => "Box"\n})\n');
+    await page.goto('/#/term/functor/practice/apply');
+    await set(
+      'const Maybe = (value) => ({\n  value,\n  isNothing: () => value === null || value === undefined,\n  map: (f) => (value === null || value === undefined ? Maybe(value) : Maybe(f(value))),\n  inspect: () => "Maybe"\n})\n',
+    );
+    await page.goto('/#/term/functor/practice/break');
+    await set('let calls = 0\nconst BadBox = (value) => ({\n  value,\n  map: (f) => BadBox(f(value) + calls++),\n  inspect: () => "BadBox"\n})\n');
+  }
+
+  test('Learn marks where JavaScript ends and types begin', async ({ page }) => {
+    await page.goto('/#/term/functor');
+    await expect(page.locator('.sect.lap')).toContainText('LAP 2');
+    await expect(page.locator('.sect.lap')).toContainText('WITH TYPES');
+    // The typed material is below the divider, not sprinkled through the JavaScript.
+    await expect(page.locator('.code-block .code-lang', { hasText: 'TS' }).first()).toBeVisible();
+  });
+
+  test('the stepper separates the two laps', async ({ page }) => {
+    await page.goto('/#/term/functor/practice');
+    await expect(page.locator('.lap-head').first()).toContainText('LAP 1');
+    await expect(page.locator('.lap-head.second')).toContainText('LAP 2');
+  });
+
+  test('lap 2 reads as not yet reached, and says how far off it is', async ({ page }) => {
+    await page.goto('/#/term/functor/practice');
+    await expect(page.locator('.lap-head.second .togo')).toContainText('3 rungs to go on lap 1');
+    await expect(page.locator('.step.not-yet')).toHaveCount(1);
+  });
+
+  test('lap 2 is reachable anyway, so a deep link still works', async ({ page }) => {
+    await page.goto('/#/term/functor/practice/typed');
+    await expect(page.getByRole('heading', { name: /with the type written down/i })).toBeVisible();
+    await expect(page.locator('.cm-content')).toBeVisible();
+  });
+
+  test('clearing lap 1 opens lap 2 and says so', async ({ page }) => {
+    await clearLapOne(page);
+    await expect(page.locator('.cleared')).toContainText('Lap 1 cleared');
+    await expect(page.getByRole('button', { name: 'Start lap 2, with types' })).toBeVisible();
+    await expect(page.locator('.step.not-yet')).toHaveCount(0);
+    await expect(page.locator('.lap-head.second .togo')).toHaveCount(0);
+  });
+
+  test('the transition button lands on the typed rung', async ({ page }) => {
+    await clearLapOne(page);
+    await page.getByRole('button', { name: 'Start lap 2, with types' }).click();
+    await expect(page).toHaveURL(/\/practice\/typed$/);
+  });
+});

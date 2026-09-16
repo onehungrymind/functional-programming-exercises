@@ -1077,3 +1077,52 @@ kbd {
 .tok-punc { color: var(--tok-punc); }
 .tok-op { color: var(--tok-op); }
 .tok-bad { color: var(--no); }
+
+/*
+ * The lap divider. Learn runs a JavaScript lap and then the same concept again with types,
+ * and without a marked inflection point the prose slides from one into the other.
+ */
+.sect.lap {
+  border-top: 1px solid var(--accent-line);
+  margin-top: 28px;
+  padding-top: 14px;
+  color: var(--accent);
+}
+.sect.lap span:last-child {
+  color: var(--faint);
+}
+
+/* The same divider inside the rung stepper. */
+.lap-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin: 2px 0 6px;
+  width: 100%;
+}
+.lap-head.second {
+  border-top: 1px solid var(--accent-line);
+  margin-top: 10px;
+  padding-top: 10px;
+  color: var(--accent);
+}
+.lap-head .togo {
+  color: var(--faint);
+  letter-spacing: 0;
+}
+.step.not-yet {
+  opacity: 0.45;
+}
+.step.not-yet:hover {
+  opacity: 0.8;
+}
+
+/* The lap header spans the whole stepper row rather than sitting in the flow of steps. */
+.stepper .lap-row {
+  width: 100%;
+  list-style: none;
+}

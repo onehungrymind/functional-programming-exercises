@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Circle, Lightbulb, Play, RotateCcw, Sparkles } from 'lucide-react';
 // Imported by path rather than from the barrel: the barrel re-exports the shape rules and
 // the evaluator, which would drag acorn into the main bundle for no reason.
@@ -73,28 +73,60 @@ export function PracticePanel({
   const doneCount = rungs.filter((r) => progress.isDone(termId, r.id)).length;
   const allDone = doneCount === rungs.length;
 
+  /**
+   * Two laps round the same track. The first is JavaScript, the second is the same concept
+   * with the types written down. Lap two is always reachable, so someone who already knows
+   * this can go straight to it and a deep link still resolves, but it reads as not yet
+   * reached until lap one is clear.
+   */
+  const lapOne = rungs.filter((r) => (r as { lang?: string }).lang !== 'ts');
+  const lapTwo = rungs.filter((r) => (r as { lang?: string }).lang === 'ts');
+  const lapOneLeft = lapOne.filter((r) => !progress.isDone(termId, r.id)).length;
+  const lapOneDone = lapOneLeft === 0;
+
   return (
     <div className="practice">
       <ol className="stepper" aria-label="Exercise steps">
-        {rungs.map((r, i) => {
-          const done = progress.isDone(termId, r.id);
-          return (
-            <li key={r.id}>
-              <button
-                type="button"
-                className={`step${i === activeIndex ? ' active' : ''}${done ? ' done' : ''}`}
-                onClick={() => onNavigate({ rungId: r.id })}
-                aria-current={i === activeIndex ? 'step' : undefined}
-              >
-                <span className="step-mark" aria-hidden>
-                  {done ? <Check size={11} /> : <Circle size={9} />}
-                </span>
-                <span className="step-num">{i + 1}</span>
-                <span className="step-title">{r.title}</span>
-              </button>
-            </li>
-          );
-        })}
+        {(lapTwo.length > 0 ? [lapOne, lapTwo] : [rungs]).map((lap, lapIndex) => (
+          <Fragment key={lapIndex}>
+            {lapTwo.length > 0 && (
+              <li className="lap-row">
+                <p className={lapIndex === 0 ? 'lap-head' : 'lap-head second'}>
+                  <span>
+                    LAP {lapIndex + 1} &middot; {lapIndex === 0 ? 'JAVASCRIPT' : 'WITH TYPES'}
+                  </span>
+                  {lapIndex === 1 && !lapOneDone && (
+                    <span className="togo">
+                      {lapOneLeft} rung{lapOneLeft === 1 ? '' : 's'} to go on lap 1
+                    </span>
+                  )}
+                </p>
+              </li>
+            )}
+            {lap.map((r) => {
+              const i = rungs.indexOf(r);
+              const done = progress.isDone(termId, r.id);
+              const notYet = lapIndex === 1 && !lapOneDone;
+              return (
+                <li key={r.id}>
+                  <button
+                    type="button"
+                    className={`step${i === activeIndex ? ' active' : ''}${done ? ' done' : ''}${notYet ? ' not-yet' : ''}`}
+                    onClick={() => onNavigate({ rungId: r.id })}
+                    aria-current={i === activeIndex ? 'step' : undefined}
+                    title={notYet ? 'Lap 2. Finish the JavaScript rungs first, or jump ahead.' : undefined}
+                  >
+                    <span className="step-mark" aria-hidden>
+                      {done ? <Check size={11} /> : <Circle size={9} />}
+                    </span>
+                    <span className="step-num">{i + 1}</span>
+                    <span className="step-title">{r.title}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </Fragment>
+        ))}
       </ol>
 
       <div className="rung-head">
@@ -131,9 +163,11 @@ export function PracticePanel({
       {progress.isDone(termId, rung.id) && (
         <ClearedBanner
           allDone={allDone}
+          lapOneJustCleared={lapTwo.length > 0 && lapOneDone && !allDone}
           hasNextRung={activeIndex < rungs.length - 1}
           nextConcept={nextConcept ?? null}
           onNextRung={() => onNavigate({ rungId: rungs[activeIndex + 1]?.id })}
+          onStartLapTwo={() => onNavigate({ rungId: lapTwo[0]?.id })}
           onNextConcept={() => nextConcept && onNavigate({ termId: nextConcept.id, rungId: null })}
           onComplete={onCompleteConcept}
         />
@@ -580,34 +614,51 @@ function RevealRungView({
 
 function ClearedBanner({
   allDone,
+  lapOneJustCleared,
   hasNextRung,
   nextConcept,
   onNextRung,
+  onStartLapTwo,
   onNextConcept,
   onComplete,
 }: {
   allDone: boolean;
+  lapOneJustCleared: boolean;
   hasNextRung: boolean;
   nextConcept: { id: string; title: string } | null;
   onNextRung: () => void;
+  onStartLapTwo: () => void;
   onNextConcept: () => void;
   onComplete?: () => void;
 }) {
   const fired = useRef(false);
+  const lapFired = useRef(false);
   useEffect(() => {
     if (allDone && !fired.current) {
       fired.current = true;
       onComplete?.();
     }
-  }, [allDone, onComplete]);
+    // Clearing lap one is its own moment, so it gets the same celebration.
+    if (lapOneJustCleared && !lapFired.current) {
+      lapFired.current = true;
+      onComplete?.();
+    }
+  }, [allDone, lapOneJustCleared, onComplete]);
+
+  const headline = allDone ? 'Concept cleared.' : lapOneJustCleared ? 'Lap 1 cleared.' : 'Cleared.';
 
   return (
-    <div className={`cleared${allDone ? ' concept-done' : ''}`}>
+    <div className={`cleared${allDone || lapOneJustCleared ? ' concept-done' : ''}`}>
       <span className="cleared-mark" aria-hidden>
-        {allDone ? <Sparkles size={13} /> : <Check size={13} />}
+        {allDone || lapOneJustCleared ? <Sparkles size={13} /> : <Check size={13} />}
       </span>
-      <span>{allDone ? 'Concept cleared.' : 'Cleared.'}</span>
-      {hasNextRung && (
+      <span>{headline}</span>
+      {lapOneJustCleared && (
+        <button type="button" className="ghost-btn" onClick={onStartLapTwo}>
+          Start lap 2, with types
+        </button>
+      )}
+      {!lapOneJustCleared && hasNextRung && (
         <button type="button" className="ghost-btn" onClick={onNextRung}>
           Next rung
         </button>

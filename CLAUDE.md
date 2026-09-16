@@ -21,6 +21,11 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
   covering no item is asking about something we never said mattered.
 - **A rung may only ask about something the Learn tab has covered.** Upstream is a glossary,
   not a syllabus: 50 of 73 entries are under 400 characters of prose. Diverge from it freely.
+- **The typed material is a second lap, not a continuation.** It lives in `typedNotes`, gets
+  its own divider in Learn and in the stepper, and is visible but marked as not yet reached
+  until the JavaScript rungs are clear. Never slide from JavaScript into TypeScript inside one
+  run of prose. Verify requires `typedNotes` whenever a set has a `lang: 'ts'` rung, and
+  rejects `typedNotes` with no typed rung to test it.
 - **A typed rung supplies the interface.** `lang: 'ts'` erases types with sucrase and grades at
   runtime, so what is tested is reading a signature and satisfying it. It does not check the
   learner's own annotations; that would mean shipping the TypeScript compiler, roughly 1.5MB

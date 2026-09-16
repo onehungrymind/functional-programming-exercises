@@ -27,7 +27,14 @@ export function buildManifest() {
     return {
       termId,
       notes: set.notes ?? null,
-      rungs: set.rungs.map((r) => ({ id: r.id, role: r.role, title: r.title, kind: r.kind })),
+      typedNotes: set.typedNotes ?? null,
+      rungs: set.rungs.map((r) => ({
+        id: r.id,
+        role: r.role,
+        title: r.title,
+        kind: r.kind,
+        lang: r.lang ?? 'js',
+      })),
     };
   });
 }
@@ -48,12 +55,16 @@ export interface ManifestRung {
   role: 'recognize' | 'guided' | 'implement' | 'break' | 'apply' | 'articulate';
   title: string;
   kind: 'choice' | 'expr' | 'code' | 'reveal';
+  /** Which lap this rung belongs to. */
+  lang: 'js' | 'ts';
 }
 
 export interface ManifestEntry {
   termId: string;
   /** Teaching this repo owns, rendered in Learn after the upstream entry. */
   notes: string | null;
+  /** The second lap: the same concept with the types written down. */
+  typedNotes: string | null;
   rungs: ManifestRung[];
 }
 

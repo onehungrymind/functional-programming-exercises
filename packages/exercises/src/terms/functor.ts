@@ -81,9 +81,9 @@ const BadBox = (value) => ({
   value,
   map: (f) => BadBox(f(value) + calls++)   // depends on history, so it cannot compose
 })
-\`\`\`
-
-The same thing written as a type says it more precisely than a paragraph can:
+\`\`\``,
+  typedNotes: `Same track, second lap. The shape is the one you already built; writing it as a type says it
+more precisely than a paragraph can.
 
 \`\`\`ts
 interface Box<A> {

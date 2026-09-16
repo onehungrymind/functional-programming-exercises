@@ -35,7 +35,15 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
     () => [...parseBody(term.body, undefined, term.summary), ...(entry?.notes ? parseNotes(entry.notes) : [])],
     [term.body, term.summary, entry?.notes],
   );
-  const codeBlockCount = useMemo(() => parts.filter((p) => p.type === 'code').length, [parts]);
+  /** The second lap, kept separate so the page can mark where JavaScript ends. */
+  const typedParts = useMemo(
+    () => (entry?.typedNotes ? parseNotes(entry.typedNotes) : []),
+    [entry?.typedNotes],
+  );
+  const codeBlockCount = useMemo(
+    () => [...parts, ...typedParts].filter((p) => p.type === 'code').length,
+    [parts, typedParts],
+  );
   const related = useMemo(() => neighborsOf(term.id), [term.id]);
 
   const rungTotal = entry?.rungs.length ?? 0;
@@ -145,6 +153,22 @@ export function Drawer({ term, route, onClose, onSelectTerm, onConceptComplete }
               ) : (
                 <div key={i} className="prose" dangerouslySetInnerHTML={{ __html: part.html }} />
               ),
+            )}
+
+            {typedParts.length > 0 && (
+              <>
+                <p className="sect lap">
+                  <span>LAP 2 &middot; WITH TYPES</span>
+                  <span>SAME CONCEPT, TYPES WRITTEN DOWN</span>
+                </p>
+                {typedParts.map((part, i) =>
+                  part.type === 'code' ? (
+                    <CodeBlock key={i} code={part.code} lang={part.lang} />
+                  ) : (
+                    <div key={i} className="prose" dangerouslySetInnerHTML={{ __html: part.html }} />
+                  ),
+                )}
+              </>
             )}
 
             {term.furtherReading.length > 0 && (
