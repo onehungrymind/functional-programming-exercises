@@ -36,6 +36,19 @@ import { referentialTransparency } from './terms/referential-transparency.js';
 import { sideEffects } from './terms/side-effects.js';
 import { value } from './terms/value.js';
 
+// Types & Data Modeling
+import { algebraicDataType } from './terms/algebraic-data-type.js';
+import { either } from './terms/either.js';
+import { iso } from './terms/iso.js';
+import { lambdaCalculus } from './terms/lambda-calculus.js';
+import { lens } from './terms/lens.js';
+import { option } from './terms/option.js';
+import { prism } from './terms/prism.js';
+import { productType } from './terms/product-type.js';
+import { sumType } from './terms/sum-type.js';
+import { traversal } from './terms/traversal.js';
+import { typeSignatures } from './terms/type-signatures.js';
+
 // Algebraic Structures
 import { functor } from './terms/functor.js';
 
@@ -74,6 +87,18 @@ const ALL: ExerciseSet[] = [
   idempotence,
   memoization,
   contracts,
+  // Types & Data Modeling
+  typeSignatures,
+  algebraicDataType,
+  productType,
+  sumType,
+  option,
+  either,
+  lens,
+  prism,
+  iso,
+  traversal,
+  lambdaCalculus,
   // Algebraic Structures
   functor,
 ];

@@ -189,9 +189,23 @@ fake console, so the `side-effects` checks swapping `console.log` observed nothi
 output is now shared with the harness as `T.logs`, used the same way as `T.effects`. An
 exercise about effects has to be able to assert on the effect.
 
+### Types & Data Modeling — done (11 of 11)
+
+`algebraic-data-type`, `either`, `iso`, `lambda-calculus`, `lens`, `option`, `prism`,
+`product-type`, `sum-type`, `traversal`, `type-signatures`.
+
+`npm run verify`: 42 concepts, 58 code rungs, 262 variants.
+
+The optics rungs use the law library rather than restating the laws: `lens` gets get-set,
+set-get and set-set, `prism` gets both round trips, `iso` gets both directions.
+
+One thing worth recording: **the iso counterexample survived by luck.** A rounded
+Celsius/Fahrenheit pair round-trips whole degrees correctly often enough that a law sampling
+integers accepted it. The samples are fractional now. Picking a generator that cannot
+distinguish the broken case from the right one is a quiet way for a law to be useless.
+
 ### Remaining
 
-Types & Data Modeling (11), Algebraic Structures (19), Category & Morphisms (12).
-42 concepts.
+Algebraic Structures (19), Category & Morphisms (12). 31 concepts.
 
 ## Phase 8 (stretch): TypeScript rungs — not started
