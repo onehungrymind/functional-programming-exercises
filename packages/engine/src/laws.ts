@@ -123,24 +123,41 @@ export const functor: Suite<any> = (api, ctx) => {
   });
 };
 
-export const contravariant: Suite<any> = (api, ctx) => {
-  const { eq, runs } = prep(api, ctx);
+export interface ContravariantContext extends LawContext<any> {
+  /**
+   * Runs the structure on an input. Required, and deliberately so.
+   *
+   * A Predicate's whole content is a function, and structural equality skips
+   * function-valued keys, so comparing two of them directly compares nothing and every law
+   * passes vacuously. Contravariant instances have to be judged by what they do.
+   */
+  run: (u: any, x: number) => unknown;
+}
 
-  api.law('Identity: u.contramap(x => x) equals u', runs, (G: Gen) => {
-    const n = G.int();
-    const u = ctx.of(n);
+export const contravariant = (api: Harness, ctx: ContravariantContext): void => {
+  const runs = ctx.runs ?? DEFAULT_RUNS;
+  // Behavioral equality: two instances agree when they agree on every sample input.
+  const SAMPLES = [-7, -1, 0, 1, 2, 5, 11];
+  const same = (a: any, b: any) => SAMPLES.every((x) => api.eq(ctx.run(a, x), ctx.run(b, x)));
+  const showOn = (u: any) => SAMPLES.map((x) => `${x} -> ${api.fmt(ctx.run(u, x))}`).join(', ');
+
+  api.law('Identity: u.contramap(x => x) behaves like u', runs, () => {
+    const u = ctx.of(null);
     const mapped = u.contramap((x: unknown) => x);
-    return eq(mapped, u) || `contramap with identity changed ${api.fmt(u)} into ${api.fmt(mapped)}.`;
+    return same(mapped, u) || `contramap with identity changed the behavior. Before: ${showOn(u)}. After: ${showOn(mapped)}.`;
   });
 
   api.law('Composition: u.contramap(f).contramap(g) equals u.contramap(x => f(g(x)))', runs, (G: Gen) => {
-    const n = G.int();
     const f = G.fn();
     const g = G.fn();
-    const u = ctx.of(n);
+    const u = ctx.of(null);
     const left = u.contramap(f.f).contramap(g.f);
     const right = u.contramap((x: number) => f.f(g.f(x)));
-    return eq(left, right) || `With n = ${n}, f = ${f.name}, g = ${g.name}: got ${api.fmt(left)} and ${api.fmt(right)}. Note the order reverses: contramap composes the other way round from map.`;
+    const x = SAMPLES.find((s) => !api.eq(ctx.run(left, s), ctx.run(right, s)));
+    return (
+      x === undefined ||
+      `With f = ${f.name}, g = ${g.name}, on input ${x}: contramapping twice gave ${api.fmt(ctx.run(left, x))}, contramapping the composition gave ${api.fmt(ctx.run(right, x))}. Note the order reverses: contramap composes the other way round from map.`
+    );
   });
 };
 
@@ -192,7 +209,31 @@ export const profunctor: Suite<any> = (api, ctx) => {
 
 // ---------------------------------------------------------------- apply, applicative
 
+/**
+ * Apply is Functor plus `ap`. Composition is its only law, and it is the one that catches
+ * an `ap` that applies its arguments in the wrong order.
+ */
+export const apply: Suite<any> = (api, ctx) => {
+  const { eq, runs } = prep(api, ctx);
+
+  api.law('Composition: v.ap(u.ap(a.map(compose))) equals v.ap(u).ap(a)', runs, (G: Gen) => {
+    const n = G.int();
+    const f = G.fn();
+    const g = G.fn();
+    const compose = (h: (x: number) => number) => (i: (x: number) => number) => (x: number) => h(i(x));
+
+    const a = ctx.of(n);
+    const u = ctx.of(f.f);
+    const v = ctx.of(g.f);
+
+    const left = ctx.of(compose).ap(v).ap(u).ap(a);
+    const right = v.ap(u.ap(a));
+    return eq(left, right) || `With n = ${n}, f = ${f.name}, g = ${g.name}: composing first gave ${api.fmt(left)}, applying in sequence gave ${api.fmt(right)}.`;
+  });
+};
+
 export const applicative: Suite<any> = (api, ctx) => {
+  apply(api, ctx);
   const { eq, runs } = prep(api, ctx);
 
   api.law('Identity: A.of(x => x).ap(v) equals v', runs, (G: Gen) => {
@@ -364,6 +405,186 @@ export const iso = (api: Harness, ctx: IsoContext): void => {
     const y = ctx.to(ctx.sample(G));
     const out = ctx.to(ctx.from(y));
     return close(out, y) || `${api.fmt(y)} became ${api.fmt(ctx.from(y))} and came back as ${api.fmt(out)}.`;
+  });
+};
+
+// ---------------------------------------------------------------- alt, alternative
+
+export interface AltContext<T> extends LawContext<T> {
+  /** The empty case, for the annihilation laws. Alt alone does not need it. */
+  zero?: () => T;
+}
+
+export const alt = <T,>(api: Harness, ctx: AltContext<T>): void => {
+  const { eq, runs } = prep(api, ctx);
+
+  api.law('Associativity: a.alt(b).alt(c) equals a.alt(b.alt(c))', runs, (G: Gen) => {
+    const [x, y, z] = [G.int(), G.int(), G.int()];
+    const [a, b, c] = [ctx.of(x), ctx.of(y), ctx.of(z)] as any[];
+    const left = a.alt(b).alt(c);
+    const right = a.alt(b.alt(c));
+    return eq(left, right) || `With ${x}, ${y}, ${z}: grouping left gave ${api.fmt(left)}, grouping right gave ${api.fmt(right)}.`;
+  });
+
+  api.law('Distributivity: a.alt(b).map(f) equals a.map(f).alt(b.map(f))', runs, (G: Gen) => {
+    const [x, y] = [G.int(), G.int()];
+    const f = G.fn();
+    const [a, b] = [ctx.of(x), ctx.of(y)] as any[];
+    const left = a.alt(b).map(f.f);
+    const right = a.map(f.f).alt(b.map(f.f));
+    return eq(left, right) || `With ${x}, ${y}, f = ${f.name}: mapping after alt gave ${api.fmt(left)}, mapping each side gave ${api.fmt(right)}.`;
+  });
+};
+
+export const alternative = <T,>(api: Harness, ctx: AltContext<T>): void => {
+  alt(api, ctx);
+  if (!ctx.zero) return;
+  const { eq, runs } = prep(api, ctx);
+
+  api.law('Left annihilation: zero().alt(a) equals a', runs, (G: Gen) => {
+    const n = G.int();
+    const a = ctx.of(n) as any;
+    const out = (ctx.zero!() as any).alt(a);
+    return eq(out, a) || `With ${n}: zero().alt(${api.fmt(a)}) gave ${api.fmt(out)}. The empty case has to step aside.`;
+  });
+
+  api.law('Right annihilation: a.alt(zero()) equals a', runs, (G: Gen) => {
+    const n = G.int();
+    const a = ctx.of(n) as any;
+    const out = (a as any).alt(ctx.zero!());
+    return eq(out, a) || `With ${n}: ${api.fmt(a)}.alt(zero()) gave ${api.fmt(out)}.`;
+  });
+
+  api.law('Annihilation: zero().map(f) equals zero()', runs, (G: Gen) => {
+    const f = G.fn();
+    const out = (ctx.zero!() as any).map(f.f);
+    return eq(out, ctx.zero!()) || `zero().map(${f.name}) gave ${api.fmt(out)}. There is nothing inside to map over.`;
+  });
+};
+
+// ---------------------------------------------------------------- comonad
+
+export const comonad: Suite<any> = (api, ctx) => {
+  const { eq, runs } = prep(api, ctx);
+
+  api.law('Left identity: w.extend(w => w.extract()) equals w', runs, (G: Gen) => {
+    const n = G.int();
+    const w = ctx.of(n);
+    const out = w.extend((x: any) => x.extract());
+    return eq(out, w) || `With ${n}: extending with extract gave ${api.fmt(out)}, not ${api.fmt(w)}.`;
+  });
+
+  api.law('Right identity: w.extend(f).extract() equals f(w)', runs, (G: Gen) => {
+    const n = G.int();
+    const fn = G.fn();
+    const f = (x: any) => fn.f(x.extract());
+    const w = ctx.of(n);
+    const left = w.extend(f).extract();
+    const right = f(w);
+    return left === right || `With ${n}, f = w => ${fn.name}(w.extract()): got ${api.fmt(left)} and ${api.fmt(right)}.`;
+  });
+
+  api.law('Associativity: w.extend(f).extend(g) equals w.extend(w => g(w.extend(f)))', runs, (G: Gen) => {
+    const n = G.int();
+    const [fn, gn] = [G.fn(), G.fn()];
+    const f = (x: any) => fn.f(x.extract());
+    const g = (x: any) => gn.f(x.extract());
+    const w = ctx.of(n);
+    const left = w.extend(f).extend(g);
+    const right = w.extend((x: any) => g(x.extend(f)));
+    return eq(left, right) || `With ${n}, f via ${fn.name}, g via ${gn.name}: got ${api.fmt(left)} and ${api.fmt(right)}.`;
+  });
+};
+
+// ---------------------------------------------------------------- foldable, traversable
+
+export interface FoldableContext {
+  /** Builds the structure from a list of numbers. */
+  fromArray: (xs: number[]) => any;
+  /** The list the structure should fold down to, in order. */
+  toArray: (u: any) => number[];
+  runs?: number;
+}
+
+export const foldable = (api: Harness, ctx: FoldableContext): void => {
+  const runs = ctx.runs ?? DEFAULT_RUNS;
+
+  api.law('reduce agrees with folding the same elements in order', runs, (G: Gen) => {
+    const xs = G.ints();
+    const u = ctx.fromArray(xs);
+    const f = (acc: number, x: number) => acc * 2 + x;
+    const left = u.reduce(f, 0);
+    const right = ctx.toArray(u).reduce(f, 0);
+    return left === right || `On ${api.fmt(xs)}: reduce gave ${api.fmt(left)}, folding the elements gave ${api.fmt(right)}. Check the order and that nothing is visited twice.`;
+  });
+
+  api.law('An empty structure reduces to the seed', 1, () => {
+    const u = ctx.fromArray([]);
+    const out = u.reduce((acc: number, x: number) => acc + x, 42);
+    return out === 42 || `Reducing an empty structure gave ${api.fmt(out)} instead of the seed, 42.`;
+  });
+};
+
+export interface TraversableContext extends FoldableContext {
+  /** The applicative to traverse into. Needs `of` and `ap`, or `map` and `ap`. */
+  of: (x: any) => any;
+  /** Pulls the plain value back out of that applicative, to compare results. */
+  extract: (fa: any) => any;
+}
+
+export const traversable = (api: Harness, ctx: TraversableContext): void => {
+  const runs = ctx.runs ?? DEFAULT_RUNS;
+
+  api.law('Identity: traversing with of rebuilds the same structure', runs, (G: Gen) => {
+    const xs = G.ints();
+    const u = ctx.fromArray(xs);
+    const out = ctx.extract(u.traverse(ctx.of, ctx.of));
+    return api.eq(ctx.toArray(out), xs) || `On ${api.fmt(xs)}: came back as ${api.fmt(ctx.toArray(out))}.`;
+  });
+
+  api.law('Naturality: traversing then mapping equals mapping then traversing', runs, (G: Gen) => {
+    const xs = G.ints();
+    const f = G.fn();
+    const u = ctx.fromArray(xs);
+    const left = ctx.toArray(ctx.extract(u.traverse(ctx.of, (x: number) => ctx.of(f.f(x)))));
+    const right = ctx.toArray(ctx.extract(u.map(f.f).traverse(ctx.of, ctx.of)));
+    return api.eq(left, right) || `On ${api.fmt(xs)} with f = ${f.name}: got ${api.fmt(left)} and ${api.fmt(right)}.`;
+  });
+};
+
+// ---------------------------------------------------------------- prism
+
+export interface PrismContext {
+  /** Returns the focus when the case matches, and nothing when it does not. */
+  preview: (s: any) => any;
+  /** Rebuilds the whole from a focus. */
+  review: (a: any) => any;
+  /** True when preview found something. */
+  matched: (p: any) => boolean;
+  /** Reads the focus out of a successful preview. */
+  focus: (p: any) => any;
+  /** Values that should match, and values that should not. */
+  sample: (G: Gen) => any;
+  value: (G: Gen) => any;
+  runs?: number;
+}
+
+export const prism = (api: Harness, ctx: PrismContext): void => {
+  const runs = ctx.runs ?? DEFAULT_RUNS;
+
+  api.law('Preview-review: rebuilding what you previewed gives back the original', runs, (G: Gen) => {
+    const s = ctx.sample(G);
+    const p = ctx.preview(s);
+    if (!ctx.matched(p)) return true; // the case did not match, so there is nothing to rebuild
+    const out = ctx.review(ctx.focus(p));
+    return api.eq(out, s) || `On ${api.fmt(s)}: previewed ${api.fmt(ctx.focus(p))} and rebuilt ${api.fmt(out)}.`;
+  });
+
+  api.law('Review-preview: previewing something you built always matches', runs, (G: Gen) => {
+    const a = ctx.value(G);
+    const p = ctx.preview(ctx.review(a));
+    if (!ctx.matched(p)) return `Building from ${api.fmt(a)} produced something the prism does not recognize.`;
+    return api.eq(ctx.focus(p), a) || `Built from ${api.fmt(a)} and previewed ${api.fmt(ctx.focus(p))}.`;
   });
 };
 
