@@ -13,14 +13,17 @@
     "test": "vitest run",
     "typecheck": "tsc --build --force",
     "verify": "tsx scripts/verify-exercises.mjs",
-    "sync:jargons": "node scripts/sync-jargons.mjs"
+    "sync:jargons": "node scripts/sync-jargons.mjs",
+    "test:e2e": "playwright test --config apps/web/playwright.config.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.10.2",
+    "playwright": "^1.63.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.7",
-    "vitest": "^2.1.8",
-    "tsx": "^4.19.2",
-    "@types/node": "^22.10.2"
+    "vitest": "^2.1.8"
   },
   "engines": {
     "node": ">=20"

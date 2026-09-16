@@ -1,4 +1,5 @@
-import { laws, type ExerciseSet } from '@fpx/engine';
+import * as laws from '@fpx/engine/laws';
+import type { ExerciseSet } from '@fpx/engine/types';
 
 export const functor: ExerciseSet = {
   termId: 'functor',

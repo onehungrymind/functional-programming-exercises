@@ -1,4 +1,4 @@
-import type { CodeRung, ExerciseSet } from '@fpx/engine';
+import type { CodeRung, ExerciseSet } from '@fpx/engine/types';
 import { currying } from './terms/currying.js';
 import { functor } from './terms/functor.js';
 import { pureFunction } from './terms/pure-function.js';

@@ -1,4 +1,4 @@
-import type { ExerciseSet } from '@fpx/engine';
+import type { ExerciseSet } from '@fpx/engine/types';
 
 export const pureFunction: ExerciseSet = {
   termId: 'pure-function',
