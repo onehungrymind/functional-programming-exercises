@@ -76,6 +76,7 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
 | `npm run test:e2e` | Playwright against `apps/web`, starting the dev server itself |
 | `npm run build:manifest` | Regenerate `packages/exercises/src/{manifest,notes}.ts` after changing an exercise |
 | `npm run sync:jargons` | Re-read the sibling clone into `data/`. Never commits. |
+| `npx tsx scripts/build-answer-key.mjs` | Authoring copy of every rubric, solution, hint and failing variant. Gitignored. |
 
 ## Layout
 

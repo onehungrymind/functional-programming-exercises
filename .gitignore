@@ -6,3 +6,6 @@ dist/
 test-results/
 playwright-report/
 *.tmp.mjs
+
+# Authoring copy of every solution. Regenerate with scripts/build-answer-key.mjs.
+answer-key.html
