@@ -1186,3 +1186,53 @@ kbd {
 .sidequest li a::after {
   content: ' \2192';
 }
+
+/*
+ * The hover card over a graph node.
+ *
+ * pointer-events: none matters: the card follows the cursor, and catching the pointer would
+ * make it flicker as the node underneath stops being hovered.
+ */
+.node-card {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  width: 280px;
+  padding: 9px 11px;
+  border: 1px solid var(--line2);
+  border-radius: 6px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.node-card-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.node-card-cat::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  background: var(--c);
+}
+.node-card b {
+  display: block;
+  margin-top: 3px;
+  font-weight: 600;
+  color: var(--text);
+}
+.node-card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

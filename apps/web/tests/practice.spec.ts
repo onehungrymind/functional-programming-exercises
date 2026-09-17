@@ -98,6 +98,50 @@ test.describe('opening a concept', () => {
   });
 });
 
+test.describe('the graph hover card', () => {
+  /**
+   * Walks the canvas until a node is under the cursor.
+   *
+   * The layout settles to quiescence so it is stable between runs, but nothing exposes node
+   * positions to the page, so finding one means looking.
+   */
+  async function hoverANode(page: Page) {
+    const box = (await page.locator('.graph-canvas').boundingBox())!;
+    for (let gy = 0.25; gy <= 0.8; gy += 0.03) {
+      for (let gx = 0.15; gx <= 0.85; gx += 0.03) {
+        await page.mouse.move(box.x + box.width * gx, box.y + box.height * gy);
+        if (await page.locator('.node-card').count()) return true;
+      }
+    }
+    return false;
+  }
+
+  test('hovering a node shows its category, name and summary', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForTimeout(2500); // let the simulation settle
+    expect(await hoverANode(page)).toBe(true);
+    const card = page.locator('.node-card');
+    await expect(card).toBeVisible();
+    await expect(card.locator('.node-card-cat')).not.toBeEmpty();
+    await expect(card.locator('b')).not.toBeEmpty();
+  });
+
+  test('it goes away when the pointer leaves the graph', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForTimeout(2500);
+    expect(await hoverANode(page)).toBe(true);
+    await page.mouse.move(5, 5);
+    await page.locator('.graph-canvas').dispatchEvent('pointerleave');
+    await expect(page.locator('.node-card')).toHaveCount(0);
+  });
+
+  test('a concept lists its connected concepts', async ({ page }) => {
+    await page.goto('/#/term/algebraic-data-type');
+    await expect(page.getByText('CONNECTED CONCEPTS')).toBeVisible();
+    await expect(page.locator('.related-chip').first()).toBeVisible();
+  });
+});
+
 test.describe('the wordmark', () => {
   test('reads FP Jargon: Applied Edition, with the edition set lighter', async ({ page }) => {
     await page.goto('/');

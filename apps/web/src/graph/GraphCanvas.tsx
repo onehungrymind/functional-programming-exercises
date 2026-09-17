@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { categoriesById, categoryColor, graph, type GraphNode } from '../data';
+import { categoriesById, categoryColor, graph, termsById, type GraphNode } from '../data';
 import {
   GLOW_RADIUS,
   HALO_RADIUS,
@@ -65,6 +65,8 @@ export function GraphCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  /** Pointer position within the wrapper, for the hover card. Null when nothing is hovered. */
+  const [hoverAt, setHoverAt] = useState<{ x: number; y: number } | null>(null);
   const [focusIndex, setFocusIndex] = useState(0);
   // Focus starts on the first node so Tab has somewhere to land, but the camera must not
   // chase it until the learner actually moves focus, or the opening view is one node.
@@ -493,6 +495,7 @@ export function GraphCanvas({
   const onPointerDown = (e: React.PointerEvent) => {
     const s = sim.current!;
     s.moved = false;
+    setHoverAt(null);
     const hit = nodeAt(e.clientX, e.clientY);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     if (hit) {
@@ -524,6 +527,12 @@ export function GraphCanvas({
     }
     const hit = nodeAt(e.clientX, e.clientY);
     setHoveredId(hit?.id ?? null);
+    if (hit) {
+      const rect = wrapRef.current!.getBoundingClientRect();
+      setHoverAt({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    } else {
+      setHoverAt(null);
+    }
     if (canvasRef.current) canvasRef.current.style.cursor = hit ? 'pointer' : 'grab';
   };
 
@@ -591,6 +600,11 @@ export function GraphCanvas({
   }, [focusIndex]);
 
   const focused: GraphNode | undefined = sim.current!.nodes[focusIndex];
+  const hovered: GraphNode | undefined = hoveredId
+    ? sim.current!.nodes.find((n) => n.id === hoveredId)
+    : undefined;
+  // The graph node carries a name and a category; the summary lives with the term.
+  const hoveredSummary = hovered ? termsById.get(hovered.id)?.summary : undefined;
 
   return (
     <div className="graph-wrap" ref={wrapRef}>
@@ -603,10 +617,36 @@ export function GraphCanvas({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerLeave={() => setHoveredId(null)}
+        onPointerLeave={() => {
+          setHoveredId(null);
+          setHoverAt(null);
+        }}
         onWheel={onWheel}
         onKeyDown={onKeyDown}
       />
+      {/*
+        A hover card, because a canvas node shows a name and nothing else. It follows the
+        pointer and flips near the right or bottom edge so it never leaves the viewport.
+      */}
+      {hovered && hoverAt && (
+        <div
+          className="node-card"
+          style={{
+            left: hoverAt.x,
+            top: hoverAt.y,
+            transform: `translate(${hoverAt.x > (wrapRef.current?.clientWidth ?? 0) - 300 ? '-100%' : '0'}, ${
+              hoverAt.y > (wrapRef.current?.clientHeight ?? 0) - 150 ? 'calc(-100% - 18px)' : '18px'
+            })`,
+          }}
+        >
+          <span className="node-card-cat" style={{ '--c': categoryColor(hovered.category) } as React.CSSProperties}>
+            {categoriesById.get(hovered.category)?.name ?? hovered.category}
+          </span>
+          <b>{hovered.name}</b>
+          {hoveredSummary && <p>{hoveredSummary}</p>}
+        </div>
+      )}
+
       {/* Announces the focused node, since a canvas tells a screen reader nothing. */}
       <div className="sr-only" aria-live="polite">
         {focused ? `${focused.name}, ${categoriesById.get(focused.category)?.name}` : ''}
