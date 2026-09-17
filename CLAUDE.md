@@ -14,6 +14,12 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
 - Every code rung ships `starter`, `solution`, and `broken` variants. `npm run verify` must pass
   before committing exercise changes.
 - Every concept gets at least two rungs and at least one that is code-graded. Enforced by verify.
+- **Every rubric item is demonstrated twice, and at least once by running code.** An item behind
+  a single rung is a single point of failure: if that rung is soft, the claim is unverified and
+  nothing says so. An item graded only by a `choice` rung can be cleared by elimination, which
+  is not the same as being able to do the thing. Both are enforced by verify. If an existing
+  rung already demonstrates an item, say so in its `covers` rather than adding a rung for the
+  count, but only where a learner lacking that competency would actually fail its checks.
 - **The rubric is the spec, the rungs are the tests, the notes are the implementation.**
   Write the rubric first: what would a person need to know to show solid competency here?
   Then rungs that demonstrate each item, then notes that teach it. Verify enforces the

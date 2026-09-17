@@ -412,6 +412,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Predict what arity each definition reports",
         "kind": "expr",
         "lang": "js"
+      },
+      {
+        "id": "groupings",
+        "role": "apply",
+        "title": "Every grouping reaches the same answer",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -514,6 +521,13 @@ export const manifest: ManifestEntry[] = [
         "id": "name-it",
         "role": "apply",
         "title": "Write the continuation down, then intercept one",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "sequence",
+        "role": "apply",
+        "title": "Run a list of continuation-passing steps in order",
         "kind": "code",
         "lang": "js"
       }
@@ -672,6 +686,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Prove that const promises nothing about the value",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "use-frozen",
+        "role": "apply",
+        "title": "Freeze a whole config and use it inline",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -724,6 +745,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Write the substitution test",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "repair-more",
+        "role": "apply",
+        "title": "Repair two calls that are not substitutable",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -750,6 +778,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Find the input where a safe rewrite stops being safe",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "fuse",
+        "role": "apply",
+        "title": "Fuse a pipeline and check it still agrees",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -774,6 +809,13 @@ export const manifest: ManifestEntry[] = [
         "id": "classify",
         "role": "apply",
         "title": "Tell idempotent apart from safe to repeat",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "make-it-so",
+        "role": "apply",
+        "title": "Make a normalizer idempotent",
         "kind": "code",
         "lang": "js"
       }
@@ -1033,6 +1075,13 @@ export const manifest: ManifestEntry[] = [
         "lang": "js"
       },
       {
+        "id": "deep-compose",
+        "role": "apply",
+        "title": "Compose three lenses to reach three levels down",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
         "id": "typed",
         "role": "implement",
         "title": "A lens with its types written down",
@@ -1170,6 +1219,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Name the three forms, then find the free variables",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "church",
+        "role": "implement",
+        "title": "succ and add, out of nothing but functions",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -1293,6 +1349,13 @@ export const manifest: ManifestEntry[] = [
         "id": "break",
         "role": "break",
         "title": "Break a law on purpose",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "break-composition",
+        "role": "break",
+        "title": "Break composition while identity still holds",
         "kind": "code",
         "lang": "js"
       },

@@ -370,5 +370,101 @@ const substitutable = (fn, args) => true
         });
       },
     },
+
+    {
+      id: 'repair-more',
+      kind: 'code',
+      role: 'apply',
+      covers: ['repair', 'what-breaks-it'],
+      title: "Repair two calls that are not substitutable",
+      prompt:
+        "The repair is always the same shape: take what it read as an argument, and leave what it was given alone. Fix both, and keep them doing what they obviously do.",
+      hints: [
+        "`priceWith` reads a rate from outside itself. Hand it in.",
+        "`sortedBy` sorts the array it was given, in place, which is the other breach.",
+        "`.sort()` writes into the array. Copy first.",
+      ],
+      exports: ['priceWith', 'sortedBy'],
+      starter: `let vatRate = 0.2
+
+// priceWith :: Number -> Number
+const priceWith = (net) => Math.round(net * (1 + vatRate))
+
+// sortedBy :: ([a], (a -> Number)) -> [a]
+const sortedBy = (xs, key) => xs.sort((a, b) => key(a) - key(b))
+`,
+      solution: `// priceWith :: (Number, Number) -> Number
+const priceWith = (net, vatRate) => Math.round(net * (1 + vatRate))
+
+// sortedBy :: ([a], (a -> Number)) -> [a]
+const sortedBy = (xs, key) => [...xs].sort((a, b) => key(a) - key(b))
+`,
+      broken: [
+        `let vatRate = 0.2
+const priceWith = (net) => Math.round(net * (1 + vatRate))
+const sortedBy = (xs, key) => [...xs].sort((a, b) => key(a) - key(b))
+`,
+        `const priceWith = (net, vatRate) => Math.round(net * (1 + vatRate))
+const sortedBy = (xs, key) => xs.sort((a, b) => key(a) - key(b))
+`,
+        `const priceWith = (net, vatRate) => Math.round(net * (1 + vatRate))
+const sortedBy = (xs, key) => [...xs]
+`,
+      ],
+      checks: (T, exp) => {
+        const { priceWith, sortedBy } = exp;
+
+        T.check('priceWith takes the rate rather than reading it', () => {
+          return (
+            priceWith.length >= 2 ||
+            `priceWith takes ${priceWith.length} argument${priceWith.length === 1 ? '' : 's'}. Whatever it read has to arrive as one, or the same input can give two answers.`
+          );
+        });
+
+        T.check('It uses the rate it was handed', () => {
+          const got = [priceWith(100, 0.2), priceWith(100, 0)];
+          return T.eq(got, [120, 100]) || `Rates of 0.2 and 0 gave ${T.fmt(got)}.`;
+        });
+
+        T.check('It reaches for nothing', () => {
+          T.effects.length = 0;
+          priceWith(100, 0.2);
+          return T.effects.length === 0 || `It called ${T.effects.join(' and ')}.`;
+        });
+
+        T.law('The same arguments always give the same answer', 60, (G) => {
+          const n = Math.abs(G.int());
+          const a = priceWith(n, 0.2);
+          const b = priceWith(n, 0.2);
+          return a === b || `Two calls at ${n} gave ${T.fmt(a)} and ${T.fmt(b)}.`;
+        });
+
+        T.check('sortedBy sorts', () => {
+          const r = sortedBy([{ n: 3 }, { n: 1 }, { n: 2 }], (o: { n: number }) => o.n);
+          return T.eq(r.map((o: { n: number }) => o.n), [1, 2, 3]) || `It gave ${T.fmt(r)}.`;
+        });
+
+        T.check('sortedBy leaves its argument in the order it arrived', () => {
+          const xs = [{ n: 3 }, { n: 1 }, { n: 2 }];
+          sortedBy(xs, (o: { n: number }) => o.n);
+          return (
+            T.eq(xs.map((o) => o.n), [3, 1, 2]) ||
+            `The original is now ${T.fmt(xs.map((o) => o.n))}. sort writes into the array, so it has to be copied first.`
+          );
+        });
+
+        T.check('It gives back a different array', () => {
+          const xs = [{ n: 1 }];
+          return sortedBy(xs, (o: { n: number }) => o.n) !== xs || 'It handed the same array back, so the caller and the result are the same object.';
+        });
+
+        T.check('Both calls could be replaced by their results', () => {
+          const xs = [{ n: 2 }, { n: 1 }];
+          const first = JSON.stringify(sortedBy(xs, (o: { n: number }) => o.n));
+          const second = JSON.stringify(sortedBy(xs, (o: { n: number }) => o.n));
+          return first === second || `Calling it twice on the same list gave ${first} then ${second}.`;
+        });
+      },
+    },
   ],
 };

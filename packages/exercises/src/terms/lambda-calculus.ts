@@ -358,5 +358,126 @@ const freeVars = (t) => {
         });
       },
     },
+
+    {
+      id: 'church',
+      kind: 'code',
+      role: 'implement',
+      covers: ['church-numerals', 'three-rules'],
+      title: "succ and add, out of nothing but functions",
+      prompt:
+        "A Church numeral IS 'apply f this many times'. Read it that way and `succ` and `add` write themselves. Build `toNumber` as well, so you can see what you made.",
+      hints: [
+        "`zero` applies f no times, so it hands back x. `one` applies it once.",
+        "`succ(n)` applies f once more than n does, so apply n's worth and then f again.",
+        "`add(m)(n)` applies f m times and then n times. Feed one into the other.",
+      ],
+      exports: ['zero', 'succ', 'add', 'toNumber'],
+      starter: `// zero :: (a -> a) -> a -> a
+const zero = (f) => (x) => x
+
+// succ :: Numeral -> Numeral
+const succ = (n) => n
+
+// add :: Numeral -> Numeral -> Numeral
+const add = (m) => (n) => m
+
+// toNumber :: Numeral -> Number
+const toNumber = (n) => 0
+`,
+      solution: `// zero :: (a -> a) -> a -> a
+const zero = (f) => (x) => x
+
+// succ :: Numeral -> Numeral
+const succ = (n) => (f) => (x) => f(n(f)(x))
+
+// add :: Numeral -> Numeral -> Numeral
+const add = (m) => (n) => (f) => (x) => m(f)(n(f)(x))
+
+// toNumber :: Numeral -> Number
+const toNumber = (n) => n((k) => k + 1)(0)
+`,
+      broken: [
+        `const zero = (f) => (x) => x
+const succ = (n) => (f) => (x) => f(x)
+const add = (m) => (n) => (f) => (x) => m(f)(n(f)(x))
+const toNumber = (n) => n((k) => k + 1)(0)
+`,
+        `const zero = (f) => (x) => x
+const succ = (n) => (f) => (x) => f(n(f)(x))
+const add = (m) => (n) => (f) => (x) => m(f)(x)
+const toNumber = (n) => n((k) => k + 1)(0)
+`,
+        `const zero = (f) => (x) => x
+const succ = (n) => (f) => (x) => f(n(f)(x))
+const add = (m) => (n) => (f) => (x) => m(f)(n(f)(x))
+const toNumber = (n) => n((k) => k + 1)(1)
+`,
+      ],
+      checks: (T, exp) => {
+        const { zero, succ, add, toNumber } = exp;
+        const of = (k: number) => {
+          let n = zero;
+          for (let i = 0; i < k; i += 1) n = succ(n);
+          return n;
+        };
+
+        T.check('Zero applies the function no times', () => {
+          let calls = 0;
+          const r = zero(() => {
+            calls += 1;
+            return 0;
+          })('start');
+          return (calls === 0 && r === 'start') || `It ran the function ${calls} times and gave ${T.fmt(r)}.`;
+        });
+
+        T.check('toNumber reads zero as 0', () => {
+          return toNumber(zero) === 0 || `It read zero as ${T.fmt(toNumber(zero))}.`;
+        });
+
+        T.check('succ applies it one more time', () => {
+          let calls = 0;
+          succ(succ(zero))((x: number) => {
+            calls += 1;
+            return x;
+          })(0);
+          return calls === 2 || `Two succs applied the function ${calls} times.`;
+        });
+
+        T.check('toNumber counts up correctly', () => {
+          const got = [0, 1, 2, 5].map((k) => toNumber(of(k)));
+          return T.eq(got, [0, 1, 2, 5]) || `It read them as ${T.fmt(got)}.`;
+        });
+
+        T.check('add joins two numerals', () => {
+          return toNumber(add(of(2))(of(3))) === 5 || `2 plus 3 read as ${T.fmt(toNumber(add(of(2))(of(3))))}.`;
+        });
+
+        T.check('Adding zero changes nothing', () => {
+          const got = [toNumber(add(of(4))(zero)), toNumber(add(zero)(of(4)))];
+          return T.eq(got, [4, 4]) || `Adding zero on either side gave ${T.fmt(got)}.`;
+        });
+
+        T.law('add agrees with addition', 60, (G) => {
+          const a = G.nat() % 8;
+          const b = G.nat() % 8;
+          const r = toNumber(add(of(a))(of(b)));
+          return r === a + b || `${a} plus ${b} read as ${T.fmt(r)}.`;
+        });
+
+        T.check('A numeral works on something other than numbers', () => {
+          const r = of(3)((s: string) => s + '!')('hi');
+          return r === 'hi!!!' || `Applying an appender three times gave ${T.fmt(r)}, expected 'hi!!!'.`;
+        });
+
+        T.check('Nothing reaches outside its own arguments', () => {
+          for (const name of ['zero', 'succ', 'add']) {
+            const r = T.shape.usesOnly(name, ['zero', 'succ', 'add']);
+            if (r !== true) return `${name}: ${r}`;
+          }
+          return true;
+        });
+      },
+    },
   ],
 };

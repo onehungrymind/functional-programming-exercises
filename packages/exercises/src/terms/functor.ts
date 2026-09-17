@@ -324,6 +324,146 @@ const BadBox = (value) => ({
     },
 
     {
+      id: 'break-composition',
+      kind: 'code',
+      role: 'break',
+      covers: ['break-a-law', 'two-laws'],
+      title: "Break composition while identity still holds",
+      prompt:
+        "A broken functor rarely breaks both laws. Write `sneaky`, whose map satisfies identity and fails composition, and `witness`, which finds the pair of functions that proves it.",
+      hints: [
+        "Identity holds whenever mapping `x => x` gives the value back. That is easy to satisfy accidentally.",
+        "Composition says `map(f).map(g)` equals `map(g . f)`. Anything that does extra work per map breaks it.",
+        "Counting how many times map has run, and folding that into the value, is one way.",
+      ],
+      exports: ['sneaky', 'witness'],
+      starter: `// sneaky :: a -> { value, map }   identity holds, composition does not
+const sneaky = (value) => ({
+  value,
+  map: (f) => sneaky(f(value))
+})
+
+// witness :: () -> { identityHeld, compositionHeld }
+const witness = () => ({ identityHeld: true, compositionHeld: true })
+`,
+      solution: `// sneaky :: a -> { value, map }   identity holds, composition does not
+const sneaky = (value, maps = 0) => ({
+  value,
+  map: (f) => {
+    const next = f(value)
+    // Identity survives because x => x gives the value back before the fudge is visible.
+    return sneaky(typeof next === 'number' && next !== value ? next + maps : next, maps + 1)
+  }
+})
+
+// witness :: () -> { identityHeld, compositionHeld }
+const witness = () => {
+  const f = (n) => n + 1
+  const g = (n) => n * 2
+  const identityHeld = sneaky(3).map((x) => x).value === 3
+  const separately = sneaky(3).map(f).map(g).value
+  const together = sneaky(3).map((x) => g(f(x))).value
+  return { identityHeld, compositionHeld: separately === together }
+}
+`,
+      broken: [
+        `const sneaky = (value) => ({ value, map: (f) => sneaky(f(value)) })
+const witness = () => {
+  const f = (n) => n + 1
+  const g = (n) => n * 2
+  const identityHeld = sneaky(3).map((x) => x).value === 3
+  const separately = sneaky(3).map(f).map(g).value
+  const together = sneaky(3).map((x) => g(f(x))).value
+  return { identityHeld, compositionHeld: separately === together }
+}
+`,
+        `const sneaky = (value, maps = 0) => ({
+  value,
+  map: (f) => sneaky(f(value) + 1, maps + 1)
+})
+const witness = () => {
+  const f = (n) => n + 1
+  const g = (n) => n * 2
+  const identityHeld = sneaky(3).map((x) => x).value === 3
+  const separately = sneaky(3).map(f).map(g).value
+  const together = sneaky(3).map((x) => g(f(x))).value
+  return { identityHeld, compositionHeld: separately === together }
+}
+`,
+        `const sneaky = (value, maps = 0) => ({
+  value,
+  map: (f) => {
+    const next = f(value)
+    return sneaky(typeof next === 'number' && next !== value ? next + maps : next, maps + 1)
+  }
+})
+const witness = () => ({ identityHeld: true, compositionHeld: true })
+`,
+      ],
+      inverted: true,
+      checks: (T, exp) => {
+        const { sneaky, witness } = exp;
+
+        T.check('Identity still holds', () => {
+          const r = sneaky(3).map((x: number) => x).value;
+          return (
+            r === 3 ||
+            `Mapping with x => x gave ${T.fmt(r)}. This half is meant to keep working, which is what makes the thing look lawful at a glance.`
+          );
+        });
+
+        T.check('Identity holds for more than one value', () => {
+          for (const v of [0, -5, 42]) {
+            const r = sneaky(v).map((x: number) => x).value;
+            if (r !== v) return `Identity failed at ${v}, giving ${T.fmt(r)}.`;
+          }
+          return true;
+        });
+
+        T.check('Composition does not hold', () => {
+          const f = (n: number) => n + 1;
+          const g = (n: number) => n * 2;
+          const separately = sneaky(3).map(f).map(g).value;
+          const together = sneaky(3).map((x: number) => g(f(x))).value;
+          return (
+            separately !== together ||
+            `Mapping separately gave ${T.fmt(separately)} and mapping the composition gave ${T.fmt(together)}. This rung passes when they DISAGREE, which is the whole exercise.`
+          );
+        });
+
+        T.check('The witness reports both findings', () => {
+          const w = witness();
+          return (
+            (w.identityHeld === true && w.compositionHeld === false) ||
+            `The witness reported identity ${T.fmt(w.identityHeld)} and composition ${T.fmt(w.compositionHeld)}, and it should be true then false.`
+          );
+        });
+
+        T.check('The witness measured rather than asserted', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('const witness'));
+          return (
+            /sneaky\s*\(/.test(body) ||
+            'The witness does not run sneaky at all. Reporting the verdict without producing it demonstrates nothing.'
+          );
+        });
+
+        T.check('It still behaves like a container', () => {
+          const r = sneaky(3).map((n: number) => n + 1);
+          return typeof r.map === 'function' || `Mapping gave ${T.fmt(r)}, which cannot be mapped again. A broken functor still has to look like one.`;
+        });
+
+        T.check('A single map is not where it goes wrong', () => {
+          const r = sneaky(3).map((n: number) => n + 1).value;
+          return (
+            r === 4 ||
+            `One map gave ${T.fmt(r)}, expected 4. If the very first map is already wrong, nobody would be fooled, and the law that fails would not be the interesting one.`
+          );
+        });
+      },
+    },
+
+    {
       id: 'typed',
       kind: 'code',
       role: 'implement',

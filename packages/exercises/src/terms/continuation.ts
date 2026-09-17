@@ -334,5 +334,135 @@ const intercept = (cpsFn, spy) => (value, k) =>
         });
       },
     },
+
+    {
+      id: 'sequence',
+      kind: 'code',
+      role: 'apply',
+      covers: ['sequence', 'convert'],
+      title: "Run a list of continuation-passing steps in order",
+      prompt:
+        "Chaining two steps is one nesting. Write `seqCps`, which chains as many as you like, feeding each answer into the next and calling the outer continuation once at the end.",
+      hints: [
+        "Each step is `(value, k) => ...`. Its answer becomes the value handed to the next one.",
+        "Work from the end backwards, or recurse on the list. Either way the outer continuation goes last.",
+        "With no steps at all the value should reach the continuation untouched.",
+      ],
+      exports: ['seqCps'],
+      starter: `// seqCps :: ([((a, (b -> c)) -> c)], a, (b -> c)) -> c
+const seqCps = (steps, value, k) => k(value)
+`,
+      solution: `// seqCps :: ([((a, (b -> c)) -> c)], a, (b -> c)) -> c
+const seqCps = (steps, value, k) => {
+  if (steps.length === 0) return k(value)
+  const [first, ...rest] = steps
+  return first(value, (next) => seqCps(rest, next, k))
+}
+`,
+      broken: [
+        `const seqCps = (steps, value, k) => {
+  if (steps.length === 0) return k(value)
+  const [first, ...rest] = steps
+  first(value, (next) => seqCps(rest, next, k))
+  return k(value)
+}
+`,
+        `const seqCps = (steps, value, k) => {
+  let v = value
+  for (const step of steps) step(v, (next) => { v = next })
+  return k(v)
+}
+`,
+        `const seqCps = (steps, value, k) => {
+  if (steps.length === 0) return k(value)
+  const [first, ...rest] = steps
+  return first(value, (next) => seqCps(rest, value, k))
+}
+`,
+      ],
+      checks: (T, exp) => {
+        const seqCps = exp.seqCps;
+        const addOne = (n: number, k: (x: number) => unknown) => k(n + 1);
+        const double = (n: number, k: (x: number) => unknown) => k(n * 2);
+        const stringify = (n: number, k: (x: string) => unknown) => k('n=' + n);
+
+        T.check('No steps hands the value straight on', () => {
+          const r = seqCps([], 7, (x: number) => x);
+          return r === 7 || `With no steps it gave ${T.fmt(r)}.`;
+        });
+
+        T.check('One step runs', () => {
+          const r = seqCps([addOne], 1, (x: number) => x);
+          return r === 2 || `One step gave ${T.fmt(r)}.`;
+        });
+
+        T.check('Each answer feeds the next', () => {
+          const r = seqCps([addOne, double], 1, (x: number) => x);
+          return r === 4 || `Adding one to 1 then doubling should give 4. It gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The order is the list order', () => {
+          const r = seqCps([double, addOne], 1, (x: number) => x);
+          return r === 3 || `Doubling 1 then adding one should give 3. It gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The types can change along the way', () => {
+          const r = seqCps([addOne, double, stringify], 1, (x: string) => x + '!');
+          return r === 'n=4!' || `It gave ${T.fmt(r)}, expected 'n=4!'.`;
+        });
+
+        T.check('The outer continuation runs exactly once', () => {
+          let calls = 0;
+          seqCps([addOne, double, addOne], 1, (x: number) => {
+            calls += 1;
+            return x;
+          });
+          return calls === 1 || `The outer continuation ran ${calls} times, and it should run once, at the end.`;
+        });
+
+        T.check('The outer continuation runs last', () => {
+          const order: string[] = [];
+          const mark = (name: string) => (n: number, k: (x: number) => unknown) => {
+            order.push(name);
+            return k(n);
+          };
+          seqCps([mark('a'), mark('b')], 0, (x: number) => {
+            order.push('out');
+            return x;
+          });
+          return T.eq(order, ['a', 'b', 'out']) || `They ran in the order ${T.fmt(order)}.`;
+        });
+
+        T.check('Whatever the continuation returns comes back out', () => {
+          const r = seqCps([addOne], 1, (x: number) => 'got ' + x);
+          return r === 'got 2' || `It gave ${T.fmt(r)}.`;
+        });
+
+        T.check('A step can act on what its own continuation returns', () => {
+          // This is what separates real continuation passing from a loop that stashes each
+          // answer in a variable. In a loop the continuation returns nothing, so a step has
+          // no way to wrap the rest of the computation on the way back out.
+          const tag = (n: number, k: (x: number) => unknown) => 'tag(' + k(n) + ')';
+          const r = seqCps([tag], 5, (x: number) => x);
+          return (
+            r === 'tag(5)' ||
+            `It gave ${T.fmt(r)}, expected 'tag(5)'. The continuation returns the rest of the computation's answer, so a step can do something with it after calling k.`
+          );
+        });
+
+        T.check('That still works with steps on either side', () => {
+          const tag = (n: number, k: (x: number) => unknown) => 'tag(' + k(n) + ')';
+          const r = seqCps([addOne, tag, double], 1, (x: number) => x);
+          return r === 'tag(4)' || `It gave ${T.fmt(r)}, expected 'tag(4)': add one to 1, tag around the rest, double to 4.`;
+        });
+
+        T.law('It agrees with applying the steps by hand', 60, (G) => {
+          const n = G.int();
+          const r = seqCps([addOne, double, addOne], n, (x: number) => x);
+          const want = (n + 1) * 2 + 1;
+          return r === want || `At ${n}: ${T.fmt(r)} against ${T.fmt(want)}.`;
+        });
+      },
+    },
   ],
 };

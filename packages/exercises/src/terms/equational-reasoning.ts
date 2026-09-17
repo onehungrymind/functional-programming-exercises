@@ -306,5 +306,110 @@ const agree = (f, x) => true
         });
       },
     },
+
+    {
+      id: 'fuse',
+      kind: 'code',
+      role: 'apply',
+      covers: ['apply-them', 'safe-rewrites'],
+      title: "Fuse a pipeline and check it still agrees",
+      prompt:
+        "Two maps are one map of the composition, and a filter after a map can often move in front of it. Rewrite `slow` as `fast` using both, and write `agreeOn`, which checks the rewrite on every input you give it.",
+      hints: [
+        "`xs.map(f).map(g)` is `xs.map(x => g(f(x)))`. One pass instead of two.",
+        "The filter tests the mapped value, so it cannot simply move. Compose the test with the map instead.",
+        "`agreeOn` runs both and compares, which is what makes this a rewrite rather than a guess.",
+      ],
+      exports: ['slow', 'fast', 'agreeOn'],
+      starter: `// slow :: [Number] -> [Number]
+const slow = (xs) => xs.map((n) => n + 1).map((n) => n * 2).filter((n) => n > 6)
+
+// fast :: [Number] -> [Number]   same answer, one pass
+const fast = (xs) => slow(xs)
+
+// agreeOn :: ([a] -> b, [a] -> b, [[a]]) -> Boolean
+const agreeOn = (a, b, samples) => true
+`,
+      solution: `// slow :: [Number] -> [Number]
+const slow = (xs) => xs.map((n) => n + 1).map((n) => n * 2).filter((n) => n > 6)
+
+// fast :: [Number] -> [Number]   same answer, one pass
+const fast = (xs) => xs.filter((n) => (n + 1) * 2 > 6).map((n) => (n + 1) * 2)
+
+// agreeOn :: ([a] -> b, [a] -> b, [[a]]) -> Boolean
+const agreeOn = (a, b, samples) =>
+  samples.every((s) => JSON.stringify(a(s)) === JSON.stringify(b(s)))
+`,
+      broken: [
+        `const slow = (xs) => xs.map((n) => n + 1).map((n) => n * 2).filter((n) => n > 6)
+const fast = (xs) => xs.filter((n) => n > 6).map((n) => (n + 1) * 2)
+const agreeOn = (a, b, samples) =>
+  samples.every((s) => JSON.stringify(a(s)) === JSON.stringify(b(s)))
+`,
+        `const slow = (xs) => xs.map((n) => n + 1).map((n) => n * 2).filter((n) => n > 6)
+const fast = (xs) => xs.map((n) => (n + 1) * 2).filter((n) => n > 6)
+const agreeOn = (a, b, samples) => true
+`,
+        `const slow = (xs) => xs.map((n) => n + 1).map((n) => n * 2).filter((n) => n > 6)
+const fast = (xs) => xs.map((n) => n * 2 + 1).filter((n) => n > 6)
+const agreeOn = (a, b, samples) =>
+  samples.every((s) => JSON.stringify(a(s)) === JSON.stringify(b(s)))
+`,
+      ],
+      checks: (T, exp) => {
+        const { slow, fast, agreeOn } = exp;
+
+        T.check('fast gives the same answer as slow', () => {
+          const xs = [1, 2, 3, 4];
+          return T.eq(fast(xs), slow(xs)) || `slow gave ${T.fmt(slow(xs))} and fast gave ${T.fmt(fast(xs))}.`;
+        });
+
+        T.check('The empty list agrees', () => {
+          return T.eq(fast([]), slow([])) || `They gave ${T.fmt(fast([]))} and ${T.fmt(slow([]))}.`;
+        });
+
+        T.check('A list where everything is filtered out agrees', () => {
+          const xs = [0, 1];
+          return T.eq(fast(xs), slow(xs)) || `On ${T.fmt(xs)}: ${T.fmt(fast(xs))} against ${T.fmt(slow(xs))}.`;
+        });
+
+        T.check('The filter test was composed, not simply moved', () => {
+          const xs = [4];
+          return (
+            T.eq(fast(xs), [10]) ||
+            `On [4] it gave ${T.fmt(fast(xs))}, expected [10]. The filter tests the MAPPED value, so moving it in front means composing it with the map rather than reusing it unchanged.`
+          );
+        });
+
+        T.check('fast really is one pass', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('const fast'), src.indexOf('const agreeOn'));
+          const maps = (body.match(/\.map\(/g) ?? []).length;
+          return maps <= 1 || `fast still maps ${maps} times. Two maps are one map of the composition, which is the whole saving.`;
+        });
+
+        T.check('agreeOn says yes when they match', () => {
+          const r = agreeOn(slow, fast, [[1, 2, 3], [], [9]]);
+          return r === true || `It reported ${T.fmt(r)} for two pipelines that agree.`;
+        });
+
+        T.check('agreeOn says no when they do not', () => {
+          const wrong = (xs: number[]) => xs.map((n) => n + 1);
+          const r = agreeOn(slow, wrong, [[1, 2, 3]]);
+          return r === false || `It reported ${T.fmt(r)} for two pipelines that clearly differ.`;
+        });
+
+        T.check('One disagreeing sample is enough', () => {
+          const almost = (xs: number[]) => (xs.length === 0 ? [] : slow(xs).slice(1));
+          const r = agreeOn(slow, almost, [[], [1, 2, 3, 4]]);
+          return r === false || `A pipeline that agrees on the empty list and nowhere else was reported as ${T.fmt(r)}.`;
+        });
+
+        T.law('They agree on any list at all', 80, (G) => {
+          const xs = G.ints();
+          return T.eq(slow(xs), fast(xs)) || `On ${T.fmt(xs)}: ${T.fmt(slow(xs))} against ${T.fmt(fast(xs))}.`;
+        });
+      },
+    },
   ],
 };

@@ -213,5 +213,126 @@ const destructured = ({ x, y }) => x + y
       solution: "[plain.length, defaulted.length, rested.length, destructured.length]",
       broken: ["[3, 3, 2, 2]", "[3, 3, 1, 1]", "[3, 2, 2, 1]", "[3, 2, 1, 2]"],
     },
+
+    {
+      id: 'groupings',
+      kind: 'code',
+      role: 'apply',
+      covers: ['any-grouping', 'waits'],
+      title: "Every grouping reaches the same answer",
+      prompt:
+        "Auto-currying differs from currying by accepting the arguments in any grouping at all. Write `autoCurry`, then `allGroupings`, which applies a three-argument function every way there is and collects the results.",
+      hints: [
+        "Collect what arrives, and call through only once you have enough.",
+        "More than one argument can arrive in a single call, so take a rest parameter.",
+        "There are four ways to group three arguments, and all four should reach the same number.",
+      ],
+      exports: ['autoCurry', 'allGroupings'],
+      starter: `// autoCurry :: ((...a) -> r) -> curried
+const autoCurry = (fn) => fn
+
+// allGroupings :: ((a, b, c) -> r, a, b, c) -> [r]
+const allGroupings = (fn, a, b, c) => []
+`,
+      solution: `// autoCurry :: ((...a) -> r) -> curried
+const autoCurry = (fn) => {
+  const collect = (got) =>
+    got.length >= fn.length ? fn(...got) : (...more) => collect([...got, ...more])
+  return collect([])
+}
+
+// allGroupings :: ((a, b, c) -> r, a, b, c) -> [r]
+const allGroupings = (fn, a, b, c) => {
+  const f = autoCurry(fn)
+  return [f(a, b, c), f(a)(b, c), f(a, b)(c), f(a)(b)(c)]
+}
+`,
+      broken: [
+        `const autoCurry = (fn) => {
+  const collect = (got) => (got.length >= fn.length ? fn(...got) : (more) => collect([...got, more]))
+  return collect([])
+}
+const allGroupings = (fn, a, b, c) => {
+  const f = autoCurry(fn)
+  return [f(a, b, c), f(a)(b, c), f(a, b)(c), f(a)(b)(c)]
+}
+`,
+        `const autoCurry = (fn) => {
+  const collect = (got) => (got.length > fn.length ? fn(...got) : (...more) => collect([...got, ...more]))
+  return collect([])
+}
+const allGroupings = (fn, a, b, c) => {
+  const f = autoCurry(fn)
+  return [f(a, b, c), f(a)(b, c), f(a, b)(c), f(a)(b)(c)]
+}
+`,
+        `const autoCurry = (fn) => {
+  const collect = (got) =>
+    got.length >= fn.length ? fn(...got) : (...more) => collect([...got, ...more])
+  return collect([])
+}
+const allGroupings = (fn, a, b, c) => {
+  const f = autoCurry(fn)
+  return [f(a)(b)(c)]
+}
+`,
+      ],
+      checks: (T, exp) => {
+        const { autoCurry, allGroupings } = exp;
+        const vol = (l: number, w: number, h: number) => l * w * h;
+
+        T.check('All at once works', () => {
+          return autoCurry(vol)(2, 3, 4) === 24 || `It gave ${T.fmt(autoCurry(vol)(2, 3, 4))}.`;
+        });
+
+        T.check('One at a time works', () => {
+          return autoCurry(vol)(2)(3)(4) === 24 || `It gave ${T.fmt(autoCurry(vol)(2)(3)(4))}.`;
+        });
+
+        T.check('One then two works', () => {
+          const r = autoCurry(vol)(2)(3, 4);
+          return r === 24 || `It gave ${T.fmt(r)}. More than one argument can arrive in a single call, which is the difference from ordinary currying.`;
+        });
+
+        T.check('Two then one works', () => {
+          const r = autoCurry(vol)(2, 3)(4);
+          return r === 24 || `It gave ${T.fmt(r)}.`;
+        });
+
+        T.check('Every grouping reaches the same answer', () => {
+          const r = allGroupings(vol, 2, 3, 4);
+          return (
+            Array.isArray(r) && r.length === 4 && r.every((x: number) => x === 24) ||
+            `The four groupings gave ${T.fmt(r)}. All four should be 24, and there should be four of them.`
+          );
+        });
+
+        T.check('Nothing runs until enough have arrived', () => {
+          const spy = T.spyFn((a: number, b: number, c: number) => a + b + c);
+          const f = autoCurry(spy);
+          f(1);
+          f(1, 2);
+          f(1)(2);
+          return spy.calls.length === 0 || `It ran early, with ${T.fmt(spy.calls[0])}.`;
+        });
+
+        T.check('It calls through as soon as it has enough, not later', () => {
+          const r = autoCurry(vol)(2, 3, 4);
+          return typeof r === 'number' || `With all three supplied it gave ${T.fmt(r)}, which is still waiting for something.`;
+        });
+
+        T.check('A partly applied one is reusable', () => {
+          const base = autoCurry(vol)(2, 3);
+          return (base(4) === 24 && base(5) === 30) || `Reusing it gave ${T.fmt(base(4))} then ${T.fmt(base(5))}.`;
+        });
+
+        T.law('Any grouping agrees with calling directly', 60, (G) => {
+          const a = G.int(), b = G.int(), c = G.int();
+          const got = allGroupings(vol, a, b, c);
+          const want = vol(a, b, c);
+          return got.every((x: number) => x === want) || `At ${T.fmt([a, b, c])}: ${T.fmt(got)}, all should be ${want}.`;
+        });
+      },
+    },
   ],
 };

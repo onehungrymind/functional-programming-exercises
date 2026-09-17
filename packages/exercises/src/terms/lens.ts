@@ -361,6 +361,165 @@ const renameCity = (city, user) => set(cityLens, city, user)
     },
 
     {
+      id: 'deep-compose',
+      kind: 'code',
+      role: 'apply',
+      covers: ['compose', 'view-set-over'],
+      title: "Compose three lenses to reach three levels down",
+      prompt:
+        "Composing lenses is what makes them worth having: the composition is another lens, so it goes anywhere a lens goes. Write `composeLens`, then reach a field three levels down and change it without disturbing anything around it.",
+      hints: [
+        "The composed getter reads through the outer, then the inner.",
+        "The composed setter writes the inner into what the outer read, and then writes that back through the outer.",
+        "`deep` is `composeLens` applied twice. Do not write a three-level getter by hand.",
+      ],
+      exports: ['composeLens', 'deep'],
+      starter: `const lensProp = (key) => ({
+  getter: (s) => s[key],
+  setter: (value, s) => ({ ...s, [key]: value })
+})
+
+const view = (l, s) => l.getter(s)
+const set = (l, value, s) => l.setter(value, s)
+const over = (l, f, s) => set(l, f(view(l, s)), s)
+
+// composeLens :: (Lens s a, Lens a b) -> Lens s b
+const composeLens = (outer, inner) => outer
+
+// deep :: Lens   company -> address -> city
+const deep = lensProp('company')
+`,
+      solution: `const lensProp = (key) => ({
+  getter: (s) => s[key],
+  setter: (value, s) => ({ ...s, [key]: value })
+})
+
+const view = (l, s) => l.getter(s)
+const set = (l, value, s) => l.setter(value, s)
+const over = (l, f, s) => set(l, f(view(l, s)), s)
+
+// composeLens :: (Lens s a, Lens a b) -> Lens s b
+const composeLens = (outer, inner) => ({
+  getter: (s) => inner.getter(outer.getter(s)),
+  setter: (value, s) => outer.setter(inner.setter(value, outer.getter(s)), s)
+})
+
+// deep :: Lens   company -> address -> city
+const deep = composeLens(composeLens(lensProp('company'), lensProp('address')), lensProp('city'))
+`,
+      broken: [
+        `const lensProp = (key) => ({
+  getter: (s) => s[key],
+  setter: (value, s) => ({ ...s, [key]: value })
+})
+const view = (l, s) => l.getter(s)
+const set = (l, value, s) => l.setter(value, s)
+const over = (l, f, s) => set(l, f(view(l, s)), s)
+const composeLens = (outer, inner) => ({
+  getter: (s) => inner.getter(outer.getter(s)),
+  setter: (value, s) => inner.setter(value, outer.getter(s))
+})
+const deep = composeLens(composeLens(lensProp('company'), lensProp('address')), lensProp('city'))
+`,
+        `const lensProp = (key) => ({
+  getter: (s) => s[key],
+  setter: (value, s) => ({ ...s, [key]: value })
+})
+const view = (l, s) => l.getter(s)
+const set = (l, value, s) => l.setter(value, s)
+const over = (l, f, s) => set(l, f(view(l, s)), s)
+const composeLens = (outer, inner) => ({
+  getter: (s) => outer.getter(inner.getter(s)),
+  setter: (value, s) => outer.setter(inner.setter(value, outer.getter(s)), s)
+})
+const deep = composeLens(composeLens(lensProp('company'), lensProp('address')), lensProp('city'))
+`,
+        `const lensProp = (key) => ({
+  getter: (s) => s[key],
+  setter: (value, s) => ({ ...s, [key]: value })
+})
+const view = (l, s) => l.getter(s)
+const set = (l, value, s) => l.setter(value, s)
+const over = (l, f, s) => set(l, f(view(l, s)), s)
+const composeLens = (outer, inner) => ({
+  getter: (s) => inner.getter(outer.getter(s)),
+  setter: (value, s) => outer.setter(inner.setter(value, outer.getter(s)), s)
+})
+const deep = { getter: (s) => s.company.address.city, setter: (v, s) => ({ ...s, company: { ...s.company, address: { ...s.company.address, city: v } } }) }
+`,
+      ],
+      checks: (T, exp) => {
+        const { composeLens, deep } = exp;
+        const ada = () => ({
+          name: 'ada',
+          company: { name: 'acme', address: { city: 'london', zip: 'E1' }, size: 10 },
+        });
+
+        T.check('The composition reads three levels down', () => {
+          const r = deep.getter(ada());
+          return r === 'london' || `Reading through gave ${T.fmt(r)}.`;
+        });
+
+        T.check('It writes three levels down', () => {
+          const r = deep.setter('paris', ada());
+          return r.company.address.city === 'paris' || `Writing gave ${T.fmt(r.company.address.city)}.`;
+        });
+
+        T.check('Everything beside it survives', () => {
+          const r = deep.setter('paris', ada());
+          return (
+            (r.name === 'ada' && r.company.name === 'acme' && r.company.size === 10 && r.company.address.zip === 'E1') ||
+            `The result lost something: ${T.fmt(r)}. Each level has to be rebuilt around the change, not replaced by it.`
+          );
+        });
+
+        T.check('The original is untouched', () => {
+          const a = ada();
+          deep.setter('paris', a);
+          return a.company.address.city === 'london' || `The original now reads ${T.fmt(a.company.address.city)}.`;
+        });
+
+        T.check('A new object comes back at every level', () => {
+          const a = ada();
+          const r = deep.setter('paris', a);
+          return (
+            r !== a && r.company !== a.company && r.company.address !== a.company.address ||
+            'Some level is shared with the original, so writing to the result would write to both.'
+          );
+        });
+
+        T.check('The composition is itself a lens', () => {
+          const two = composeLens({ getter: (s: { a: { b: number } }) => s.a, setter: (v: { b: number }, s: { a: { b: number } }) => ({ ...s, a: v }) }, { getter: (s: { b: number }) => s.b, setter: (v: number, s: { b: number }) => ({ ...s, b: v }) });
+          return (
+            typeof two.getter === 'function' && typeof two.setter === 'function' ||
+            `composeLens gave ${T.fmt(two)}, which is not a lens, so it could not be composed again.`
+          );
+        });
+
+        T.check('deep was built by composing, not written out', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('const deep'));
+          return (
+            /composeLens\s*\(/.test(body) ||
+            'deep was written as a hand-rolled getter and setter. It works and it demonstrates nothing, because the point is that composing two lenses gives you a third for free.'
+          );
+        });
+
+        T.law('Setting then getting gives back what you set', 60, (G) => {
+          const v = G.str();
+          const r = deep.getter(deep.setter(v, ada()));
+          return r === v || `Set ${T.fmt(v)} and read back ${T.fmt(r)}.`;
+        });
+
+        T.law('Setting what is already there changes nothing', 60, (G) => {
+          const a = ada();
+          const r = deep.setter(deep.getter(a), a);
+          return T.eq(r, a) || `It came back as ${T.fmt(r)}.`;
+        });
+      },
+    },
+
+    {
       id: 'typed',
       kind: 'code',
       role: 'implement',

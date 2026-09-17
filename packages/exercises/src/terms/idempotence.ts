@@ -332,5 +332,89 @@ const verdicts = { abs: true, append: false, trim: true, increment: false }
         });
       },
     },
+
+    {
+      id: 'make-it-so',
+      kind: 'code',
+      role: 'apply',
+      covers: ['make-it-so', 'the-law'],
+      title: "Make a normalizer idempotent",
+      prompt:
+        "`normalizePath` does some of its work on each pass, so running it twice keeps changing the answer. Rewrite it to do all of the work in the first pass.",
+      hints: [
+        "Collapsing one run of slashes per pass is the bug. Collapse every run at once.",
+        "Stripping one trailing slash per pass has the same problem.",
+        "Test your own answer by running it twice before you submit.",
+      ],
+      exports: ['normalizePath'],
+      starter: `// normalizePath :: String -> String
+const normalizePath = (path) =>
+  path.replace('//', '/').replace(/\\/$/, '')
+`,
+      solution: `// normalizePath :: String -> String
+const normalizePath = (path) =>
+  path.replace(/\\/+/g, '/').replace(/\\/+$/, '')
+`,
+      broken: [
+        `const normalizePath = (path) => path.replace('//', '/').replace(/\\/$/, '')
+`,
+        `const normalizePath = (path) => path.replace(/\\/\\//g, '/').replace(/\\/+$/, '')
+`,
+        `const normalizePath = (path) => path.replace(/\\/+/g, '/')
+`,
+      ],
+      checks: (T, exp) => {
+        const normalizePath = exp.normalizePath;
+
+        T.check('It collapses a doubled slash', () => {
+          return normalizePath('/a//b') === '/a/b' || `'/a//b' gave ${T.fmt(normalizePath('/a//b'))}.`;
+        });
+
+        T.check('It collapses a longer run in one pass', () => {
+          const r = normalizePath('/a////b');
+          return (
+            r === '/a/b' ||
+            `'/a////b' gave ${T.fmt(r)}. Replacing two at a time leaves work for the next pass, which is exactly what stops it being idempotent.`
+          );
+        });
+
+        T.check('It strips a trailing slash', () => {
+          return normalizePath('/a/b/') === '/a/b' || `'/a/b/' gave ${T.fmt(normalizePath('/a/b/'))}.`;
+        });
+
+        T.check('It strips several trailing slashes at once', () => {
+          const r = normalizePath('/a/b///');
+          return r === '/a/b' || `'/a/b///' gave ${T.fmt(r)}.`;
+        });
+
+        T.check('A path already in shape is left alone', () => {
+          return normalizePath('/a/b') === '/a/b' || `'/a/b' gave ${T.fmt(normalizePath('/a/b'))}.`;
+        });
+
+        T.check('Running it twice changes nothing', () => {
+          for (const p of ['/a////b', '/a/b///', '/a//b//c//', '//', '/']) {
+            const once = normalizePath(p);
+            const twice = normalizePath(once);
+            if (once !== twice) {
+              return `'${p}' gave ${T.fmt(once)} on the first pass and ${T.fmt(twice)} on the second. That is the law, and it is failing.`;
+            }
+          }
+          return true;
+        });
+
+        T.law('f(f(x)) is f(x) for any path', 80, (G) => {
+          const parts = Array.from({ length: G.nat() % 4 }, () => '/'.repeat((G.nat() % 3) + 1) + G.str());
+          const p = parts.join('') + '/'.repeat(G.nat() % 3);
+          const once = normalizePath(p);
+          const twice = normalizePath(once);
+          return once === twice || `${T.fmt(p)} gave ${T.fmt(once)} then ${T.fmt(twice)}.`;
+        });
+
+        T.check('It does not eat slashes it should keep', () => {
+          const r = normalizePath('/a/b/c');
+          return r === '/a/b/c' || `'/a/b/c' gave ${T.fmt(r)}. Only runs collapse, and only the trailing one goes.`;
+        });
+      },
+    },
   ],
 };

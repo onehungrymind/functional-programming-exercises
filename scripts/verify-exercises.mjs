@@ -193,6 +193,8 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
   }
 
   const covered = new Set();
+  const graded = new Set();
+  const timesCovered = new Map();
   for (const rung of set.rungs) {
     const covers = rung.covers ?? [];
     if (covers.length === 0) {
@@ -201,6 +203,8 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
     for (const id of covers) {
       if (!rubricIds.has(id)) note(`${termId}/${rung.id}: covers "${id}", which is not in the rubric.`);
       covered.add(id);
+      timesCovered.set(id, (timesCovered.get(id) ?? 0) + 1);
+      if (rung.kind === 'code' || rung.kind === 'expr') graded.add(id);
     }
   }
   const untested = [...rubricIds].filter((id) => !covered.has(id));
@@ -208,6 +212,28 @@ for (const [termId, set] of Object.entries(exerciseSets)) {
     note(
       `${termId}: nothing demonstrates ${untested.map((id) => `"${id}"`).join(', ')}. ` +
         `A rubric item with no rung is a claim the app never checks.`,
+    );
+  }
+
+  // An item demonstrated only by a choice rung can be cleared by ruling out three wrong
+  // answers, which is not the same as being able to do the thing.
+  const recognitionOnly = [...rubricIds].filter((id) => covered.has(id) && !graded.has(id));
+  if (recognitionOnly.length) {
+    note(
+      `${termId}: ${recognitionOnly.map((id) => `"${id}"`).join(', ')} ` +
+        `${recognitionOnly.length === 1 ? 'is' : 'are'} graded only by a choice rung, so ${recognitionOnly.length === 1 ? 'it' : 'they'} can be cleared by elimination. ` +
+        `Add a rung that runs code.`,
+    );
+  }
+
+  // One rung behind a claim is a single point of failure: if that rung is soft, the item is
+  // unverified and nothing says so.
+  const onlyOnce = [...rubricIds].filter((id) => (timesCovered.get(id) ?? 0) === 1);
+  if (onlyOnce.length) {
+    note(
+      `${termId}: ${onlyOnce.map((id) => `"${id}"`).join(', ')} ` +
+        `${onlyOnce.length === 1 ? 'rests' : 'rest'} on a single rung. Demonstrate ${onlyOnce.length === 1 ? 'it' : 'them'} twice, ` +
+        `or say on an existing rung that it already does.`,
     );
   }
 

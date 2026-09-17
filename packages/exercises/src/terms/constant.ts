@@ -366,5 +366,134 @@ const shallowGap = () => false
         });
       },
     },
+
+    {
+      id: 'use-frozen',
+      kind: 'code',
+      role: 'apply',
+      covers: ['deep-freeze', 'freeze-is-shallow'],
+      title: "Freeze a whole config and use it inline",
+      prompt:
+        "A deep freeze has to reach arrays, nested objects, and structures that point back at themselves, and it has to return the thing so it can be used where it was written. Write it, then `config`, frozen inline.",
+      hints: [
+        "Freeze the object, then walk its values and freeze those too.",
+        "A cycle will send a naive walk round forever. `Object.isFrozen` is the cheapest way to know you have been here.",
+        "Return the object you were given, not a copy, or `const config = deepFreeze({...})` would not read right.",
+      ],
+      exports: ['deepFreeze', 'config'],
+      starter: `// deepFreeze :: a -> a   returns the same object, frozen all the way down
+const deepFreeze = (o) => o
+
+// config :: Object   frozen inline
+const config = {
+  retries: 3,
+  limits: { cpu: 2, tags: ['a', 'b'] }
+}
+`,
+      solution: `// deepFreeze :: a -> a   returns the same object, frozen all the way down
+const deepFreeze = (o) => {
+  if (o === null || typeof o !== 'object' || Object.isFrozen(o)) return o
+  Object.freeze(o)
+  for (const key of Object.keys(o)) deepFreeze(o[key])
+  return o
+}
+
+// config :: Object   frozen inline
+const config = deepFreeze({
+  retries: 3,
+  limits: { cpu: 2, tags: ['a', 'b'] }
+})
+`,
+      broken: [
+        `const deepFreeze = (o) => {
+  if (o === null || typeof o !== 'object') return o
+  Object.freeze(o)
+  for (const key of Object.keys(o)) deepFreeze(o[key])
+  return o
+}
+const config = deepFreeze({ retries: 3, limits: { cpu: 2, tags: ['a', 'b'] } })
+`,
+        `const deepFreeze = (o) => Object.freeze(o)
+const config = deepFreeze({ retries: 3, limits: { cpu: 2, tags: ['a', 'b'] } })
+`,
+        `const deepFreeze = (o) => {
+  if (o === null || typeof o !== 'object' || Object.isFrozen(o)) return o
+  const copy = Array.isArray(o) ? [...o] : { ...o }
+  Object.freeze(copy)
+  for (const key of Object.keys(copy)) deepFreeze(copy[key])
+  return copy
+}
+const config = deepFreeze({ retries: 3, limits: { cpu: 2, tags: ['a', 'b'] } })
+`,
+      ],
+      checks: (T, exp) => {
+        const { deepFreeze, config } = exp;
+
+        T.check('The top level is frozen', () => {
+          return Object.isFrozen(config) || 'The config itself is writable.';
+        });
+
+        T.check('One level down is frozen', () => {
+          return Object.isFrozen(config.limits) || 'config.limits is still writable. Object.freeze stops at the object you hand it.';
+        });
+
+        T.check('An array inside is frozen too', () => {
+          return Object.isFrozen(config.limits.tags) || 'The tags array is still writable, so anything holding the config can push to it.';
+        });
+
+        T.check('A nested write actually throws', () => {
+          let threw = false;
+          try {
+            'use strict';
+            (config.limits as { cpu: number }).cpu = 99;
+          } catch {
+            threw = true;
+          }
+          return (
+            (threw || config.limits.cpu === 2) ||
+            `config.limits.cpu is now ${T.fmt(config.limits.cpu)}. The write went through.`
+          );
+        });
+
+        T.check('It hands back the same object, not a copy', () => {
+          const o = { a: { b: 1 } };
+          return deepFreeze(o) === o || 'It returned a copy. Returning the same object is what lets it be used inline where the value is written.';
+        });
+
+        T.check('config was frozen inline', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('const config'));
+          return (
+            /deepFreeze\s*\(/.test(body) ||
+            'config was not passed through deepFreeze. Being usable at the point of definition is the reason it returns its argument.'
+          );
+        });
+
+        T.check('A structure that points at itself does not hang it', () => {
+          const a: Record<string, unknown> = { name: 'a' };
+          const b: Record<string, unknown> = { name: 'b', a };
+          a.b = b;
+          let ok = false;
+          try {
+            deepFreeze(a);
+            ok = true;
+          } catch {
+            ok = false;
+          }
+          if (!ok) return 'It threw on a structure that points back at itself.';
+          return (Object.isFrozen(a) && Object.isFrozen(b)) || 'It survived the cycle but did not freeze both sides.';
+        });
+
+        T.check('Primitives and null pass straight through', () => {
+          const got = [deepFreeze(1), deepFreeze('x'), deepFreeze(null), deepFreeze(undefined)];
+          return T.eq(got, [1, 'x', null, undefined]) || `It gave ${T.fmt(got)}.`;
+        });
+
+        T.check('Three levels down is frozen', () => {
+          const o = deepFreeze({ a: { b: { c: [1, 2] } } });
+          return Object.isFrozen(o.a.b.c) || 'The walk stopped before reaching the third level.';
+        });
+      },
+    },
   ],
 };
