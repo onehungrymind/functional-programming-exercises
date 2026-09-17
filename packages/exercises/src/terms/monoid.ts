@@ -510,5 +510,39 @@ const anyMonoid: Monoid<boolean> = { empty: false, concat: (a, b) => a || b }
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'not-every-semigroup'],
+      title: "The type demands an empty and cannot say which",
+      prompt:
+        "`Monoid<number>` does not say which number `empty` is, and `wrong` typechecks. Type an array of folding the empty list with each of the three.",
+      hints: [
+        "Folding nothing gives the seed back, and the seed is `empty`.",
+        "Sum wants 0 and product wants 1, and the compiler has no opinion about which.",
+        "`wrong` has the right shape and the wrong constant, which is the half still left to you.",
+      ],
+      context: `interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+
+interface Monoid<A> extends Semigroup<A> {
+  empty: A
+}
+
+const sum: Monoid<number> = { empty: 0, concat: (a, b) => a + b }
+const product: Monoid<number> = { empty: 1, concat: (a, b) => a * b }
+const wrong: Monoid<number> = { empty: 1, concat: (a, b) => a + b }
+
+const fold = <A>(M: Monoid<A>, xs: A[]): A => xs.reduce(M.concat, M.empty)
+`,
+      placeholder: "[..., ..., ...]",
+      expect: [0,1,1],
+      solution: "[fold(sum, []), fold(product, []), fold(wrong, [])]",
+      broken: ["[0, 1, 0]", "[0, 0, 0]", "[1, 1, 1]"],
+    },
   ],
 };

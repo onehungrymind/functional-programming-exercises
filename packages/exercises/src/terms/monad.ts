@@ -498,5 +498,50 @@ const nothing = <A>(): Maybe<A> => ({
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'short-circuits'],
+      title: "Count the layers map leaves behind",
+      prompt:
+        "`map` takes `(a: A) => B` and `chain` takes `(a: A) => Maybe<B>`, and both return `Maybe<B>`. Type an array of how deep the result is after mapping `head` and after chaining it.",
+      hints: [
+        "`head` already returns a Maybe, so mapping it wraps a Maybe inside a Maybe.",
+        "`chain` returns one layer, which means it must be dropping exactly one.",
+        "`depth` counts the wrappers for you.",
+      ],
+      context: `interface Maybe<A> {
+  map: <B>(f: (a: A) => B) => Maybe<B>
+  chain: <B>(f: (a: A) => Maybe<B>) => Maybe<B>
+  getOrElse: (fallback: A) => A
+}
+
+const just = <A>(value: A): Maybe<A> => ({
+  map: (f) => just(f(value)),
+  chain: (f) => f(value),
+  getOrElse: () => value
+})
+
+const nothing = <A>(): Maybe<A> => ({
+  map: () => nothing<A>(),
+  chain: () => nothing(),
+  getOrElse: (fallback) => fallback
+})
+
+const head = <A>(xs: A[]): Maybe<A> => (xs.length ? just(xs[0]) : nothing<A>())
+
+const depth = (v: unknown): number =>
+  v && typeof (v as { chain?: unknown }).chain === 'function'
+    ? 1 + depth((v as { getOrElse: (f: unknown) => unknown }).getOrElse(null))
+    : 0
+`,
+      placeholder: "[..., ...]",
+      expect: [2,1],
+      solution: "[depth(just([1, 2]).map(head)), depth(just([1, 2]).chain(head))]",
+      broken: ["[1, 1]", "[2, 2]", "[1, 2]"],
+    },
   ],
 };

@@ -495,5 +495,40 @@ const of = <A>(a: A): Box<A> => ({
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'neutral'],
+      title: "A generic of cannot have opinions",
+      prompt:
+        "`of` is typed `<A>(a: A) => Box<A>`, which leaves it nothing to do but wrap. `opinionated` typechecks anyway. Type an array of what each does with null.",
+      hints: [
+        "A fully generic `of` does not know what it is holding, so it cannot treat any value specially.",
+        "`opinionated` knows nothing either; it just decided to, and the compiler let it.",
+        "That is why the law `of(x).map(f)` equals `of(f(x))` is yours to keep, not the type system's.",
+      ],
+      context: `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+
+const of = <A>(a: A): Box<A> => ({
+  value: a,
+  map: (f) => of(f(a))
+})
+
+const opinionated = <A>(a: A): Box<A> => ({
+  value: (a === null || a === undefined ? 0 : a) as A,
+  map: (f) => opinionated(f(a))
+})
+`,
+      placeholder: "[..., ...]",
+      expect: [null,0],
+      solution: "[of(null).value, opinionated(null).value]",
+      broken: ["[null, null]", "[0, 0]", "[0, null]"],
+    },
   ],
 };

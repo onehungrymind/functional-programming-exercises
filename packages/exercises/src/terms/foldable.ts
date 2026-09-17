@@ -434,5 +434,36 @@ const node = <A>(left: Tree<A>, right: Tree<A>): Tree<A> => ({
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'order-matters'],
+      title: "The seed is what fixes B",
+      prompt:
+        "`B` is introduced by `reduce` itself, so the seed decides what the fold produces. Type an array of the same tree folded into a number, a string, and a list's length.",
+      hints: [
+        "Hand it 0 and `B` is a number. Hand it '' and `B` is a string.",
+        "Left finishes before right starts, so the order is 1, 2, 3, 4.",
+        "The list fold is the one where getting the order wrong is visible.",
+      ],
+      context: `interface Tree<A> {
+  reduce: <B>(f: (acc: B, a: A) => B, seed: B) => B
+}
+
+const leaf = <A>(value: A): Tree<A> => ({ reduce: (f, seed) => f(seed, value) })
+const node = <A>(left: Tree<A>, right: Tree<A>): Tree<A> => ({
+  reduce: (f, seed) => right.reduce(f, left.reduce(f, seed))
+})
+
+const t = node(node(leaf(1), leaf(2)), node(leaf(3), leaf(4)))
+`,
+      placeholder: "[..., ..., ...]",
+      expect: [10,"1234",4],
+      solution: "[t.reduce((acc: number, n) => acc + n, 0), t.reduce((acc: string, n) => acc + n, ''), t.reduce((acc: number[], n) => [...acc, n], [] as number[]).length]",
+      broken: ["[10, '1234', 1]", "[10, 10, 4]", "[10, '4321', 4]"],
+    },
   ],
 };

@@ -427,5 +427,45 @@ const liftA2 =
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'one-definition'],
+      title: "The curry step is what ap needs",
+      prompt:
+        "After the map, `ma` is holding a `(b: B) => C`, which is exactly what `ap` wants as its receiver. Type an array of two lifted operations, subtraction and joining.",
+      hints: [
+        "The first box is the first argument, so subtraction is 10 minus 3.",
+        "The same `liftA2` works for strings without a word changing.",
+        "Nothing is ever unwrapped, so read `.value` only at the very end.",
+      ],
+      context: `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+  ap: <B, C>(this: Box<(b: B) => C>, other: Box<B>) => Box<C>
+}
+
+const box = <A>(value: A): Box<A> => ({
+  value,
+  map: (f) => box(f(value)),
+  ap<B, C>(this: Box<(b: B) => C>, other: Box<B>) {
+    return other.map(this.value)
+  }
+})
+
+const liftA2 =
+  <A, B, C>(f: (a: A, b: B) => C) =>
+  (ma: Box<A>) =>
+  (mb: Box<B>): Box<C> =>
+    ma.map((a) => (b: B) => f(a, b)).ap(mb)
+`,
+      placeholder: "[..., ...]",
+      expect: [7,"hello world"],
+      solution: "[liftA2((a: number, b: number) => a - b)(box(10))(box(3)).value, liftA2((a: string, b: string) => a + ' ' + b)(box('hello'))(box('world')).value]",
+      broken: ["[-7, 'hello world']", "[7, 'world hello']", "[13, 'helloworld']"],
+    },
   ],
 };

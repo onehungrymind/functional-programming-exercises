@@ -600,5 +600,51 @@ const render = (s: Status): string => {
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'exhaustive-match'],
+      title: "What the never branch is actually for",
+      prompt:
+        "Every case is handled, so `s` narrows to `never` in the default branch. Type an array of what these four render to, including one tag the union does not have.",
+      hints: [
+        "An ok carrying an empty string is still an ok. The tag decides, not whether a field is truthy.",
+        "A tag the union has no room for reaches the default branch.",
+        "`assertNever` throws rather than returning, which is the whole point of putting it there.",
+      ],
+      context: `type Status =
+  | { tag: 'loading' }
+  | { tag: 'ok', data: string }
+  | { tag: 'failed', reason: string }
+
+const assertNever = (x: never): never => {
+  throw new Error('unhandled case: ' + JSON.stringify(x))
+}
+
+const render = (s: Status): string => {
+  switch (s.tag) {
+    case 'loading': return 'spinner'
+    case 'ok': return s.data
+    case 'failed': return s.reason
+    default: return assertNever(s)
+  }
+}
+
+const tryRender = (s: unknown): string => {
+  try {
+    return render(s as Status)
+  } catch {
+    return 'threw'
+  }
+}
+`,
+      placeholder: "[..., ..., ..., ...]",
+      expect: ["spinner","","timeout","threw"],
+      solution: "[tryRender({ tag: 'loading' }), tryRender({ tag: 'ok', data: '' }), tryRender({ tag: 'failed', reason: 'timeout' }), tryRender({ tag: 'cancelled' })]",
+      broken: ["['spinner', 'spinner', 'timeout', 'threw']", "['spinner', '', 'timeout', undefined]", "['spinner', '', 'timeout', '']"],
+    },
   ],
 };

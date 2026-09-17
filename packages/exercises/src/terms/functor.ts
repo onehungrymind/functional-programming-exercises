@@ -430,5 +430,36 @@ const Box = <A,>(value: A): Box<A> => ({
         laws.functor(T, { of: Box, runs: 50 });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['read-the-signature', 'skipping-is-lawful'],
+      title: "Read what map is allowed to change",
+      prompt:
+        "`map` is typed `<B>(f: (a: A) => B) => Box<B>`: the contents may change type, the container may not, and nothing says how many elements come out. Type an array of the box value after two maps and the lengths from the two list versions.",
+      hints: [
+        "`A` becomes `B` and `Box` stays `Box`, so mapping twice is fine and the second map sees the first one's output.",
+        "`mapSome` typechecks perfectly and drops anything falsy.",
+        "Mapping `n - 1` over [1, 2, 3] gives [0, 1, 2], and one of those is falsy.",
+      ],
+      context: `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+}
+
+const box = <A>(value: A): Box<A> => ({ value, map: (f) => box(f(value)) })
+
+// A functor over a list that keeps every element, and one that does not.
+const mapAll = <A, B>(f: (a: A) => B, xs: A[]): B[] => xs.map(f)
+const mapSome = <A, B>(f: (a: A) => B, xs: A[]): B[] => xs.map(f).filter(Boolean)
+`,
+      placeholder: "[..., ..., ...]",
+      expect: ["6",3,2],
+      solution: "[box(2).map((n) => n * 3).map(String).value, mapAll((n: number) => n - 1, [1, 2, 3]).length, mapSome((n: number) => n - 1, [1, 2, 3]).length]",
+      broken: ["['6', 3, 3]", "[6, 3, 2]", "['6', 2, 2]"],
+    },
   ],
 };

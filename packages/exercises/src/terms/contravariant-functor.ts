@@ -360,5 +360,38 @@ const predicate = <A>(run: (a: A) => boolean): Predicate<A> => ({
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'behavioural-equality'],
+      title: "The arrow runs before the predicate",
+      prompt:
+        "`contramap` takes `(b: B) => A`, which points inward, so the conversion happens on the way in. Type an array of the two answers for Grace and Ada.",
+      hints: [
+        "`nameIsLong` takes a record and reaches for its name before testing anything.",
+        "'Grace' has five letters and 'Ada' has three.",
+        "Contramapping never changes the answer that comes out, only what goes in.",
+      ],
+      context: `interface Predicate<A> {
+  run: (a: A) => boolean
+  contramap: <B>(f: (b: B) => A) => Predicate<B>
+}
+
+const predicate = <A>(run: (a: A) => boolean): Predicate<A> => ({
+  run,
+  contramap: (f) => predicate((b) => run(f(b)))
+})
+
+const isLong = predicate<string>((s) => s.length > 3)
+const nameIsLong = isLong.contramap((p: { name: string }) => p.name)
+`,
+      placeholder: "[..., ...]",
+      expect: [true,false],
+      solution: "[nameIsLong.run({ name: 'Grace' }), nameIsLong.run({ name: 'Ada' })]",
+      broken: ["[false, true]", "[true, true]", "[false, false]"],
+    },
   ],
 };

@@ -338,5 +338,37 @@ const pointSetoid: Setoid<Point> = {
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'three-laws'],
+      title: "The type cannot check the laws",
+      prompt:
+        "`broken` is a perfectly well-typed `Setoid<number>` and a terrible equality. Type an array of the contents comparison and whether `broken` is reflexive at 3.",
+      hints: [
+        "Two separate objects with the same contents are equal under a Setoid, and not under `===`.",
+        "Reflexive means every value equals itself.",
+        "`3 < 3` is false, so `broken` fails the first law while satisfying the type.",
+      ],
+      context: `interface Setoid<A> {
+  equals: (a: A, b: A) => boolean
+}
+
+interface Point { x: number, y: number }
+
+const pointSetoid: Setoid<Point> = {
+  equals: (a, b) => a.x === b.x && a.y === b.y
+}
+
+const broken: Setoid<number> = { equals: (a, b) => a < b }
+`,
+      placeholder: "[..., ...]",
+      expect: [true,false],
+      solution: "[pointSetoid.equals({ x: 1, y: 2 }, { x: 1, y: 2 }), broken.equals(3, 3)]",
+      broken: ["[false, false]", "[true, true]", "[false, true]"],
+    },
   ],
 };

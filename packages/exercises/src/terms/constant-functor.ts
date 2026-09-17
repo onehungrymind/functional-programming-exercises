@@ -520,5 +520,35 @@ const constant = <A, B>(value: A): Const<A, B> => ({
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'lawful'],
+      title: "There is no B to call the function on",
+      prompt:
+        "`B` appears in the type parameters and in `f`'s argument and nowhere in the structure. Type an array of the value after three maps and whether the function ever ran.",
+      hints: [
+        "Go looking for a `B` in the structure. There is one field and it holds an `A`.",
+        "`map` owes a `Const<A, C>`, and building one needs an `A`, which you have.",
+        "Both functor laws hold for free, because every map returns the same value.",
+      ],
+      context: `interface Const<A, B> {
+  value: A
+  map: <C>(f: (b: B) => C) => Const<A, C>
+}
+
+const constant = <A, B>(value: A): Const<A, B> => ({
+  value,
+  map: (f) => constant(value)
+})
+`,
+      placeholder: "[..., ...]",
+      expect: ["ada",false],
+      solution: "(() => { let ran = false; const r = constant<string, number>('ada').map((n) => { ran = true; return n * 2 }).map((n) => String(n)).map((s) => s.length); return [r.value, ran] })()",
+      broken: ["['ada', true]", "[3, false]", "[undefined, false]"],
+    },
   ],
 };

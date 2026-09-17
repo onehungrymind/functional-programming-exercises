@@ -479,5 +479,44 @@ const set = <S, A>(l: Lens<S, A>, value: A, s: S): S => l.setter(value, s)
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'view-set-over'],
+      title: "Read over's return type",
+      prompt:
+        "`view` returns `A` and `over` returns `S`. One of those lets you keep reaching for a field afterwards and the other does not. Type the expression's value.",
+      hints: [
+        "`over` is typed `(l, f, s) => S`, so what comes back is the whole record.",
+        "That means `.city` is still there to read off the result.",
+        "`f` is `(a: A) => A`, so the name goes in as a string and comes back as one.",
+      ],
+      context: `interface Lens<S, A> {
+  getter: (s: S) => A
+  setter: (value: A, s: S) => S
+}
+
+const lensProp = <S, K extends keyof S>(key: K): Lens<S, S[K]> => ({
+  getter: (s) => s[key],
+  setter: (value, s) => ({ ...s, [key]: value })
+})
+
+const view = <S, A>(l: Lens<S, A>, s: S): A => l.getter(s)
+const over = <S, A>(l: Lens<S, A>, f: (a: A) => A, s: S): S => l.setter(f(l.getter(s)), s)
+
+const ada = { name: 'ada', city: 'london' }
+`,
+      placeholder: "'...'",
+      expect: "LONDON",
+      solution: "over(lensProp('name'), (s) => s.toUpperCase(), ada).city.toUpperCase()",
+      broken: [
+        "'ADA'",
+        "'london'",
+        "over(lensProp('city'), (s) => s.toUpperCase(), ada).name.toUpperCase()",
+      ],
+    },
   ],
 };

@@ -380,5 +380,33 @@ const firstSemigroup: Semigroup<number> = { concat: (a, b) => b }
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'several-instances'],
+      title: "One type, three instances",
+      prompt:
+        "The three `A`s in `concat` are the same variable, which is what lets the result go straight back in. Type an array of what each of the three gives for 3 and 7.",
+      hints: [
+        "`first` ignores its second argument entirely, which the signature permits.",
+        "All three are `Semigroup<number>`, and all three are different.",
+        "Being lawful does not mean being interesting.",
+      ],
+      context: `interface Semigroup<A> {
+  concat: (a: A, b: A) => A
+}
+
+const max: Semigroup<number> = { concat: (a, b) => Math.max(a, b) }
+const min: Semigroup<number> = { concat: (a, b) => Math.min(a, b) }
+const first: Semigroup<number> = { concat: (a) => a }
+`,
+      placeholder: "[..., ..., ...]",
+      expect: [7,3,3],
+      solution: "[max.concat(3, 7), min.concat(3, 7), first.concat(3, 7)]",
+      broken: ["[7, 3, 7]", "[7, 3, 10]", "[3, 7, 3]"],
+    },
   ],
 };

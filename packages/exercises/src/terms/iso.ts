@@ -385,5 +385,40 @@ const coords: Iso<[number, number], Point> = {
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'float-tolerance'],
+      title: "Total does not mean lossless",
+      prompt:
+        "Both arrows on an Iso are total, and the compiler is satisfied by `lossy`. Type an array of the two round trips: `lossy` starting from 2.4, and `coords` starting from the pair.",
+      hints: [
+        "Neither function returns an Option, so neither can fail. That is all the types promise.",
+        "Rounding 2.4 gives 2, and coming back gives 2.",
+        "The pair round trip really is exact, which is the contrast.",
+      ],
+      context: `interface Iso<S, A> {
+  to: (s: S) => A
+  from: (a: A) => S
+}
+
+const coords: Iso<[number, number], { x: number, y: number }> = {
+  to: ([x, y]) => ({ x, y }),
+  from: ({ x, y }) => [x, y]
+}
+
+const lossy: Iso<number, number> = {
+  to: (n) => Math.round(n),
+  from: (n) => n
+}
+`,
+      placeholder: "[..., ...]",
+      expect: [2,[1,2]],
+      solution: "[lossy.from(lossy.to(2.4)), coords.from(coords.to([1, 2]))]",
+      broken: ["[2.4, [1, 2]]", "[2, [2, 1]]", "[2.4, [2, 1]]"],
+    },
   ],
 };

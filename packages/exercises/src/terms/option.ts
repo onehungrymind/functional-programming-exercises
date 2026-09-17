@@ -541,5 +541,36 @@ const getOrElse = <A>(fallback: A, o: Option<A>): A =>
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'absence-in-the-type'],
+      title: "Falsy is not the same as missing",
+      prompt:
+        "`fromNullable` takes `A | null | undefined`, and nothing else counts as absent. Type an array of the four results, each already unwrapped with a fallback of -1.",
+      hints: [
+        "Only `null` and `undefined` go to the empty case.",
+        "`0` and `''` are perfectly good values, so they survive and get doubled or measured.",
+        "`getOrElse` returns a bare `A`, which is why these come out as plain values.",
+      ],
+      context: `type Option<A> = { tag: 'some', value: A } | { tag: 'none' }
+
+const fromNullable = <A>(a: A | null | undefined): Option<A> =>
+  a === null || a === undefined ? { tag: 'none' } : { tag: 'some', value: a }
+
+const map = <A, B>(f: (a: A) => B, o: Option<A>): Option<B> =>
+  o.tag === 'some' ? { tag: 'some', value: f(o.value) } : o
+
+const getOrElse = <A>(fallback: A, o: Option<A>): A =>
+  o.tag === 'some' ? o.value : fallback
+`,
+      placeholder: "[..., ..., ..., ...]",
+      expect: [-1,0,-1,0],
+      solution: "[getOrElse(-1, map((n: number) => n * 2, fromNullable<number>(null))), getOrElse(-1, map((n: number) => n * 2, fromNullable(0))), getOrElse(-1, map((s: string) => s.length, fromNullable<string>(undefined))), getOrElse(-1, map((s: string) => s.length, fromNullable('')))]",
+      broken: ["[-1, -1, -1, -1]", "[-1, 0, -1, -1]", "[0, 0, 0, 0]"],
+    },
   ],
 };

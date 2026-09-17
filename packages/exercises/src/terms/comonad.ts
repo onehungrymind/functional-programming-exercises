@@ -385,5 +385,37 @@ const coidentity = <A>(value: A): CoIdentity<A> => ({
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'laws'],
+      title: "extend hands over the container, not the value",
+      prompt:
+        "`extend` takes `(w: CoIdentity<A>) => B`, so its function receives the whole container. Type an array of what a map-like function and a container-aware one give.",
+      hints: [
+        "A monad's chain takes a bare `A`. A comonad's extend takes a wrapped one.",
+        "`typeof w` would say 'object', because `w` is the container.",
+        "`w.extract()` is how you reach the value from inside.",
+      ],
+      context: `interface CoIdentity<A> {
+  value: A
+  extract: () => A
+  extend: <B>(f: (w: CoIdentity<A>) => B) => CoIdentity<B>
+}
+
+const coidentity = <A>(value: A): CoIdentity<A> => ({
+  value,
+  extract: () => value,
+  extend: (f) => coidentity(f(coidentity(value)))
+})
+`,
+      placeholder: "[..., ...]",
+      expect: [10,"object"],
+      solution: "[coidentity(5).extend((w) => w.extract() * 2).extract(), coidentity(5).extend((w) => typeof w).extract()]",
+      broken: ["[10, 'number']", "[5, 'object']", "[10, 'function']"],
+    },
   ],
 };

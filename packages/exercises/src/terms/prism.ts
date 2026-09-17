@@ -404,5 +404,39 @@ const numeric: Prism<string, number> = {
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'may-not-match'],
+      title: "Read where the Option is, and is not",
+      prompt:
+        "`preview` returns `Option<A>` and `review` returns `S` with no Option anywhere. Type the array of tags that `tags` produces for these four strings.",
+      hints: [
+        "Only `preview` can fail, so only `preview` returns an Option.",
+        "`'007'` is not a well-formed number, so the round trip would not hold for it.",
+        "The empty string is not a number either.",
+      ],
+      context: `type Option<A> = { tag: 'some', value: A } | { tag: 'none' }
+
+interface Prism<S, A> {
+  preview: (s: S) => Option<A>
+  review: (a: A) => S
+}
+
+const numeric: Prism<string, number> = {
+  preview: (s) => (/^(0|[1-9]\\d*)$/.test(s) ? { tag: 'some', value: Number(s) } : { tag: 'none' }),
+  review: (n) => String(n)
+}
+
+const tags = (xs: string[]) => xs.map((s) => numeric.preview(s).tag)
+`,
+      placeholder: "['...', '...']",
+      expect: ["some","none","none","none"],
+      solution: "tags(['42', '007', 'abc', ''])",
+      broken: ["['some','some','none','none']", "['some','none','none','some']", "['some','some','some','none']"],
+    },
   ],
 };

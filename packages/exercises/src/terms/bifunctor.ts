@@ -429,5 +429,37 @@ const pair = <A, B>(left: A, right: B): Pair<A, B> => ({
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'either-error-side'],
+      title: "The two slots cannot be crossed",
+      prompt:
+        "`f` is typed `(a: A) => C` and `g` is `(b: B) => D`, so neither one can reach the other slot. Type an array of the two sides after mapping length on the left and doubling on the right.",
+      hints: [
+        "The left holds a string, so the function that takes it is the one measuring length.",
+        "The right holds a number, and it is doubled.",
+        "Both slots change, and they change independently.",
+      ],
+      context: `interface Pair<A, B> {
+  left: A
+  right: B
+  bimap: <C, D>(f: (a: A) => C, g: (b: B) => D) => Pair<C, D>
+}
+
+const pair = <A, B>(left: A, right: B): Pair<A, B> => ({
+  left,
+  right,
+  bimap: (f, g) => pair(f(left), g(right))
+})
+`,
+      placeholder: "[..., ...]",
+      expect: [3,72],
+      solution: "[pair('ada', 36).bimap((s) => s.length, (n) => n * 2).left, pair('ada', 36).bimap((s) => s.length, (n) => n * 2).right]",
+      broken: ["[3, 36]", "[36, 3]", "['ada', 72]"],
+    },
   ],
 };

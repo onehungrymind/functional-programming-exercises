@@ -150,18 +150,28 @@ export function evaluateExpr(rung: ExprRung, source: string, seq = 0): RunResult
   fakeConsole.info = fakeConsole.warn = fakeConsole.error = fakeConsole.debug = fakeConsole.log;
 
   // A typed rung's context is a real signature, so it has to be erased before it can run.
+  // So does what the learner typed: in a typed rung an annotation or a type argument is a
+  // reasonable thing to write, and it must not come back as a syntax error.
   let context = rung.context ?? '';
-  if (rung.lang === 'ts' && context) {
-    const stripped = stripTypes(context);
-    if ('error' in stripped) {
-      return { seq, results: [], logs: [], fatal: `SyntaxError in the given code: ${stripped.error}` };
+  let expr = `(${expression})`;
+  if (rung.lang === 'ts') {
+    if (context) {
+      const stripped = stripTypes(context);
+      if ('error' in stripped) {
+        return { seq, results: [], logs: [], fatal: `SyntaxError in the given code: ${stripped.error}` };
+      }
+      context = stripped.code;
     }
-    context = stripped.code;
+    const strippedExpr = stripTypes(expr);
+    if ('error' in strippedExpr) {
+      return { seq, results: [], logs: [], fatal: `SyntaxError: ${strippedExpr.error}` };
+    }
+    expr = strippedExpr.code;
   }
 
   let value: unknown;
   try {
-    const body = `"use strict";\n${context}\n;return (${expression});`;
+    const body = `"use strict";\n${context}\n;return ${expr};`;
     let factory: (console: Console) => unknown;
     try {
       factory = new Function('console', body) as typeof factory;

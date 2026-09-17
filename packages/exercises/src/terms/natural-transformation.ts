@@ -391,5 +391,36 @@ const head: ArrayToMaybe = (xs) => (xs.length ? some(xs[xs.length - 1]) : none)
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'may-drop-elements'],
+      title: "A binds on the function, so the elements stay opaque",
+      prompt:
+        "`<A>` sits on the function, not the alias, so the body works for every type at once and cannot consult what it is carrying. Type an array of the tag for a falsy first element and the two sides of the naturality law.",
+      hints: [
+        "`0` is a perfectly good element. Nothing in the signature lets the body test it for truthiness.",
+        "Naturality says mapping then transforming equals transforming then mapping.",
+        "Both sides give the same Maybe, so compare the values they carry.",
+      ],
+      context: `type Maybe<A> = { tag: 'some', value: A } | { tag: 'none' }
+const some = <A>(value: A): Maybe<A> => ({ tag: 'some', value })
+const none: Maybe<never> = { tag: 'none' }
+
+type ArrayToMaybe = <A>(xs: A[]) => Maybe<A>
+
+const head: ArrayToMaybe = (xs) => (xs.length ? some(xs[0]) : none)
+
+const mapMaybe = <A, B>(f: (a: A) => B, m: Maybe<A>): Maybe<B> =>
+  m.tag === 'some' ? some(f(m.value)) : m
+`,
+      placeholder: "[..., ..., ...]",
+      expect: ["some",30,30],
+      solution: "[head([0, 1]).tag, (head([3, 1, 2].map((n) => n * 10)) as { value: number }).value, (mapMaybe((n: number) => n * 10, head([3, 1, 2])) as { value: number }).value]",
+      broken: ["['none', 30, 30]", "['some', 10, 30]", "['some', 30, 10]"],
+    },
   ],
 };

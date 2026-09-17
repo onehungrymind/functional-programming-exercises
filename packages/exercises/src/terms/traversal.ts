@@ -394,5 +394,39 @@ const scores: Traversal<Player, number> = {
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'consistency'],
+      title: "Read the plural and the singular",
+      prompt:
+        "`getAll` returns `A[]` and `modify` returns `S`. Type an array holding the name still on the modified player and the number of focuses it came back with.",
+      hints: [
+        "`modify` returns the whole structure, so the name survives.",
+        "`getAll` returns every focus, so the count does not change when you map over them.",
+        "Doubling three scores gives three scores.",
+      ],
+      context: `interface Player { name: string, scores: number[] }
+
+interface Traversal<S, A> {
+  getAll: (s: S) => A[]
+  modify: (f: (a: A) => A, s: S) => S
+}
+
+const scores: Traversal<Player, number> = {
+  getAll: (p) => p.scores,
+  modify: (f, p) => ({ ...p, scores: p.scores.map(f) })
+}
+
+const ada: Player = { name: 'Ada', scores: [3, 5, 7] }
+`,
+      placeholder: "[..., ...]",
+      expect: ["Ada",3],
+      solution: "[scores.modify((n) => n * 2, ada).name, scores.getAll(scores.modify((n) => n * 2, ada)).length]",
+      broken: ["['Ada', 1]", "[undefined, 3]", "['Ada', 6]"],
+    },
   ],
 };

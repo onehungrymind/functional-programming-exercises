@@ -841,6 +841,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Match on Status exhaustively",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "What the never branch is actually for",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -866,6 +873,13 @@ export const manifest: ManifestEntry[] = [
         "role": "implement",
         "title": "Satisfy Option<A>",
         "kind": "code",
+        "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "Falsy is not the same as missing",
+        "kind": "expr",
         "lang": "ts"
       }
     ]
@@ -893,6 +907,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Satisfy Either<E, A>",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "map names only A, so the reason survives",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -918,6 +939,13 @@ export const manifest: ManifestEntry[] = [
         "role": "implement",
         "title": "A lens with its types written down",
         "kind": "code",
+        "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "Read over's return type",
+        "kind": "expr",
         "lang": "ts"
       }
     ]
@@ -945,6 +973,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Satisfy Prism<string, number>",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "Read where the Option is, and is not",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -971,6 +1006,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Satisfy Iso<[number, number], Point>",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "Total does not mean lossless",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -996,6 +1038,13 @@ export const manifest: ManifestEntry[] = [
         "role": "implement",
         "title": "Satisfy Traversal<Player, number>",
         "kind": "code",
+        "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "Read the plural and the singular",
+        "kind": "expr",
         "lang": "ts"
       }
     ]
@@ -1049,6 +1098,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Satisfy Setoid<Point>",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "The type cannot check the laws",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -1075,6 +1131,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Satisfy Semigroup<number> three times",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "One type, three instances",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -1100,6 +1163,13 @@ export const manifest: ManifestEntry[] = [
         "role": "implement",
         "title": "Satisfy Monoid<A> four times",
         "kind": "code",
+        "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "The type demands an empty and cannot say which",
+        "kind": "expr",
         "lang": "ts"
       }
     ]
@@ -1134,6 +1204,13 @@ export const manifest: ManifestEntry[] = [
         "title": "The same Box, with the type written down",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "Read what map is allowed to change",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -1167,6 +1244,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Satisfy Box<A>",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "A generic of cannot have opinions",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -1199,6 +1283,13 @@ export const manifest: ManifestEntry[] = [
         "role": "implement",
         "title": "Satisfy Const<A, B>",
         "kind": "code",
+        "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "There is no B to call the function on",
+        "kind": "expr",
         "lang": "ts"
       }
     ]
@@ -1245,6 +1336,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Write liftA2 over Box",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "The curry step is what ap needs",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -1270,6 +1368,13 @@ export const manifest: ManifestEntry[] = [
         "role": "implement",
         "title": "Satisfy Box<A> including ap",
         "kind": "code",
+        "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "ap is a condition on the receiver",
+        "kind": "expr",
         "lang": "ts"
       }
     ]
@@ -1297,6 +1402,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Satisfy Maybe<A>",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "Count the layers map leaves behind",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -1323,6 +1435,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Write composeK",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "Where ordinary compose would not typecheck",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -1348,6 +1467,13 @@ export const manifest: ManifestEntry[] = [
         "role": "implement",
         "title": "Satisfy CoIdentity<A>",
         "kind": "code",
+        "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "extend hands over the container, not the value",
+        "kind": "expr",
         "lang": "ts"
       }
     ]
@@ -1427,6 +1553,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Satisfy Pair<A, B>",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "The two slots cannot be crossed",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -1452,6 +1585,13 @@ export const manifest: ManifestEntry[] = [
         "role": "implement",
         "title": "Satisfy Predicate<A>",
         "kind": "code",
+        "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "The arrow runs before the predicate",
+        "kind": "expr",
         "lang": "ts"
       }
     ]
@@ -1479,6 +1619,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Satisfy Fn<A, B>",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "One arrow in, one arrow out",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -1504,6 +1651,13 @@ export const manifest: ManifestEntry[] = [
         "role": "implement",
         "title": "Satisfy Maybe<A> with alt",
         "kind": "code",
+        "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "alt stays inside, getOrElse leaves",
+        "kind": "expr",
         "lang": "ts"
       }
     ]
@@ -1531,6 +1685,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Satisfy Tree<A>",
         "kind": "code",
         "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "The seed is what fixes B",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -1556,6 +1717,13 @@ export const manifest: ManifestEntry[] = [
         "role": "implement",
         "title": "Write sequence over an array of Maybes",
         "kind": "code",
+        "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "One Maybe on the outside means one decision",
+        "kind": "expr",
         "lang": "ts"
       }
     ]
@@ -1724,6 +1892,13 @@ export const manifest: ManifestEntry[] = [
         "role": "implement",
         "title": "Satisfy ArrayToMaybe",
         "kind": "code",
+        "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "A binds on the function, so the elements stay opaque",
+        "kind": "expr",
         "lang": "ts"
       }
     ]

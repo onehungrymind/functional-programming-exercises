@@ -492,5 +492,39 @@ const box = <A>(value: A): Box<A> => ({
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'multiple-arguments'],
+      title: "ap is a condition on the receiver",
+      prompt:
+        "`this: Box<(b: B) => C>` says `ap` only exists when the box holds a function. Type an array of applying one argument and applying two.",
+      hints: [
+        "The box you call `ap` on holds the function; the one you pass holds the argument.",
+        "A two-argument function has to be curried, so each `ap` supplies one.",
+        "Each `ap` returns a `Box<C>`, which is why another one fits on the end.",
+      ],
+      context: `interface Box<A> {
+  value: A
+  map: <B>(f: (a: A) => B) => Box<B>
+  ap: <B, C>(this: Box<(b: B) => C>, other: Box<B>) => Box<C>
+}
+
+const box = <A>(value: A): Box<A> => ({
+  value,
+  map: (f) => box(f(value)),
+  ap<B, C>(this: Box<(b: B) => C>, other: Box<B>) {
+    return other.map(this.value)
+  }
+})
+`,
+      placeholder: "[..., ...]",
+      expect: [42,3],
+      solution: "[box((n: number) => n + 1).ap(box(41)).value, box((a: number) => (b: number) => a + b).ap(box(1)).ap(box(2)).value]",
+      broken: ["[42, 2]", "[41, 3]", "[42, 12]"],
+    },
   ],
 };

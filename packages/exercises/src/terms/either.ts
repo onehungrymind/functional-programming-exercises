@@ -554,5 +554,45 @@ const fold = <E, A, B>(onLeft: (e: E) => B, onRight: (a: A) => B, e: Either<E, A
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'distinct-failures'],
+      title: "map names only A, so the reason survives",
+      prompt:
+        "`map` is typed `(f: (a: A) => B, e: Either<E, A>) => Either<E, B>`, and `E` goes in and out untouched. Type an array of what folding each of these gives after mapping and mapping the left.",
+      hints: [
+        "Mapping a left does nothing at all, because there is no `A` on that side to hand `f`.",
+        "`mapLeft` is the mirror: it does nothing to a right.",
+        "`fold` returns a bare `B`, and both handlers have to produce the same type.",
+      ],
+      context: `type Either<E, A> =
+  | { tag: 'left', left: E }
+  | { tag: 'right', right: A }
+
+const map = <E, A, B>(f: (a: A) => B, e: Either<E, A>): Either<E, B> =>
+  e.tag === 'right' ? { tag: 'right', right: f(e.right) } : e
+
+const mapLeft = <E, A, F>(f: (e: E) => F, e: Either<E, A>): Either<F, A> =>
+  e.tag === 'left' ? { tag: 'left', left: f(e.left) } : e
+
+const fold = <E, A, B>(onLeft: (e: E) => B, onRight: (a: A) => B, e: Either<E, A>): B =>
+  e.tag === 'left' ? onLeft(e.left) : onRight(e.right)
+
+const bad: Either<string, number> = { tag: 'left', left: 'nope' }
+const good: Either<string, number> = { tag: 'right', right: 3 }
+`,
+      placeholder: "[..., ...]",
+      expect: ["NOPE","got 6"],
+      solution: "[fold((e) => e.toUpperCase(), (n) => 'got ' + n, mapLeft((e: string) => e, map((n: number) => n * 2, bad))), fold((e) => e.toUpperCase(), (n) => 'got ' + n, map((n: number) => n * 2, good))]",
+      broken: [
+        "['nope', 'got 6']",
+        "['NOPE', 'got 3']",
+        "[fold((e) => e, (n) => 'got ' + n, bad), fold((e) => e.toUpperCase(), (n) => 'got ' + n, map((n: number) => n * 2, good))]",
+      ],
+    },
   ],
 };

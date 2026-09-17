@@ -483,5 +483,41 @@ const composeK = <A, B, C>(g: Kleisli<B, C>, f: Kleisli<A, B>): Kleisli<A, C> =>
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'short-circuits'],
+      title: "Where ordinary compose would not typecheck",
+      prompt:
+        "`f` returns `Maybe<B>` and `g` wants a `B`, which is the mismatch plain composition cannot bridge. Type an array of the pipeline at 4 and at 0, each with -1 as the fallback.",
+      hints: [
+        "16 divided by 4 is 4, and the square root of 4 is 2.",
+        "Dividing by zero comes back empty, and `chain` on an empty value never runs `g`.",
+        "`composeK` returns a `Kleisli<A, C>`, so the result is still one Maybe deep.",
+      ],
+      context: `interface Maybe<A> {
+  chain: <B>(f: (a: A) => Maybe<B>) => Maybe<B>
+  getOrElse: (fallback: A) => A
+}
+
+const just = <A>(value: A): Maybe<A> => ({ chain: (f) => f(value), getOrElse: () => value })
+const nothing = <A>(): Maybe<A> => ({ chain: () => nothing(), getOrElse: (f) => f })
+
+type Kleisli<A, B> = (a: A) => Maybe<B>
+
+const composeK = <A, B, C>(g: Kleisli<B, C>, f: Kleisli<A, B>): Kleisli<A, C> =>
+  (a) => f(a).chain(g)
+
+const safeDiv: Kleisli<number, number> = (n) => (n === 0 ? nothing<number>() : just(16 / n))
+const safeSqrt: Kleisli<number, number> = (n) => (n < 0 ? nothing<number>() : just(Math.sqrt(n)))
+`,
+      placeholder: "[..., ...]",
+      expect: [2,-1],
+      solution: "[composeK(safeSqrt, safeDiv)(4).getOrElse(-1), composeK(safeSqrt, safeDiv)(0).getOrElse(-1)]",
+      broken: ["[4, -1]", "[2, 0]", "[2, 4]"],
+    },
   ],
 };

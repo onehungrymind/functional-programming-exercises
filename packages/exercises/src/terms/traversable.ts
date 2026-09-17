@@ -531,5 +531,38 @@ const sequence = <A>(xs: Maybe<A>[]): Maybe<A[]> => {
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'traverse'],
+      title: "One Maybe on the outside means one decision",
+      prompt:
+        "`Maybe<A>[]` goes in and `Maybe<A[]>` comes out, so there is exactly one answer for the whole list. Type an array of the three tags.",
+      hints: [
+        "A single `none` anywhere settles the whole thing, because there is only one Maybe left to report with.",
+        "The empty list had no failure in it, so nothing went wrong.",
+        "There is no partly-successful result the return type could express.",
+      ],
+      context: `type Maybe<A> = { tag: 'some', value: A } | { tag: 'none' }
+const some = <A>(value: A): Maybe<A> => ({ tag: 'some', value })
+const none: Maybe<never> = { tag: 'none' }
+
+const sequence = <A>(xs: Maybe<A>[]): Maybe<A[]> => {
+  const out: A[] = []
+  for (const m of xs) {
+    if (m.tag === 'none') return none
+    out.push(m.value)
+  }
+  return some(out)
+}
+`,
+      placeholder: "[..., ..., ...]",
+      expect: ["some","none","some"],
+      solution: "[sequence([some(1), some(2)]).tag, sequence([some(1), none]).tag, sequence([]).tag]",
+      broken: ["['some', 'none', 'none']", "['some', 'some', 'some']", "['none', 'none', 'some']"],
+    },
   ],
 };

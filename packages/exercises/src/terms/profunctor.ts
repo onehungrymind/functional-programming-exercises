@@ -361,5 +361,37 @@ const fn = <A, B>(run: (a: A) => B): Fn<A, B> => ({
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'composition-order'],
+      title: "One arrow in, one arrow out",
+      prompt:
+        "`f` is `(c: C) => A` coming in and `g` is `(b: B) => D` going out, so the order is `f`, then `run`, then `g`. Type the result of parsing a string, doubling, and labelling.",
+      hints: [
+        "The input adapter turns the string into a number before `double` ever sees it.",
+        "`Number('21')` is 21, and doubling gives 42.",
+        "The output adapter runs last, on the number that came out.",
+      ],
+      context: `interface Fn<A, B> {
+  run: (a: A) => B
+  promap: <C, D>(f: (c: C) => A, g: (b: B) => D) => Fn<C, D>
+}
+
+const fn = <A, B>(run: (a: A) => B): Fn<A, B> => ({
+  run,
+  promap: (f, g) => fn((c) => g(run(f(c))))
+})
+
+const double = fn((n: number) => n * 2)
+`,
+      placeholder: "'...'",
+      expect: "= 42",
+      solution: "double.promap((s: string) => Number(s), (n) => '= ' + n).run('21')",
+      broken: ["'= 21'", "'= 4242'", "'21'"],
+    },
   ],
 };

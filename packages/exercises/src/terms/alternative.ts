@@ -484,5 +484,40 @@ const nothing = <A>(): Maybe<A> => ({
         });
       },
     },
+
+    {
+      id: 'typed-read',
+      kind: 'expr',
+      role: 'recognize',
+      lang: 'ts',
+      covers: ['typed-signature', 'annihilation'],
+      title: "alt stays inside, getOrElse leaves",
+      prompt:
+        "`alt` returns `Maybe<A>` so another one fits on the end; `getOrElse` returns a bare `A` and the chain is over. Type an array of three fallback chains.",
+      hints: [
+        "A `just` ignores what it is handed, because it already has a value.",
+        "The first success wins, so a later `just` never gets a look in.",
+        "Two empties stay empty, and `getOrElse` is the only way a value gets out.",
+      ],
+      context: `interface Maybe<A> {
+  alt: (other: Maybe<A>) => Maybe<A>
+  getOrElse: (fallback: A) => A
+}
+
+const just = <A>(value: A): Maybe<A> => ({
+  alt: () => just(value),
+  getOrElse: () => value
+})
+
+const nothing = <A>(): Maybe<A> => ({
+  alt: (other) => other,
+  getOrElse: (fallback) => fallback
+})
+`,
+      placeholder: "[..., ..., ...]",
+      expect: [9,1,0],
+      solution: "[just(9).alt(just(1)).getOrElse(0), nothing<number>().alt(just(1)).alt(just(2)).getOrElse(0), nothing<number>().alt(nothing<number>()).getOrElse(0)]",
+      broken: ["[9, 2, 0]", "[1, 1, 0]", "[9, 1, -1]"],
+    },
   ],
 };
