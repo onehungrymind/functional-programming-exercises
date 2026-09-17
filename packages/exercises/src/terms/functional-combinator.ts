@@ -219,7 +219,7 @@ const S = (f) => (g) => (x) => f(x)(g)
         "A combinator uses nothing but its own arguments. Write the three classics, then `skk`, built only out of them, and confirm it behaves like `I`.",
       hints: [
         "`I` gives back what it was handed. `K` takes two and keeps the first.",
-        "`S` is `(f) => (g) => (x) => f(x)(g(x))`: hand `x` to both, then apply one result to the other.",
+        "`S` takes three, one at a time. It hands the third to each of the first two, and then applies what one gave back to what the other gave back.",
         "`skk` is `S(K)(K)`. Build it from the pieces rather than writing it out, or the identity proves nothing.",
       ],
       exports: ['I', 'K', 'S', 'skk'],

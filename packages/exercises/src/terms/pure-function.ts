@@ -119,7 +119,7 @@ addItem(frozen, 'x')           // TypeError in strict mode
         'This addItem mutates the cart and reads the clock. Make it pure: return a new cart, leave the input alone, and take the timestamp as a third argument.',
       hints: [
         'Spread the old cart into a new object rather than writing into it.',
-        '`[...cart.items, item]` builds a new list. `cart.items.push(item)` changes the old one.',
+        '`push` writes into the array you were handed. You want the operation that produces a new array and leaves the old one as it was.',
         'The `now` parameter is there so the function never has to ask the clock itself.',
       ],
       exports: ['addItem'],

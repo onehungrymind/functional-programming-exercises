@@ -39,6 +39,10 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
   learner's own annotations; that would mean shipping the TypeScript compiler, roughly 1.5MB
   gzip against sucrase's 61KB. Add one only where the signature carries the lesson, which is
   the generic containers and optics, not `(n: number) => string`.
+- **A hint describes, it does not quote.** Someone who reads every hint should still have to
+  write the line themselves; the solution button is what exists for giving up. Verify rejects a
+  hint that quotes more than a fragment of its own solution, unless that text is already in the
+  starter, where it gives nothing away.
 - **Prefer an `expr` rung to a `choice` rung when the answer is a value.** Producing beats
   picking: a multiple-choice rung can be cleared by elimination. Keep `choice` for genuinely
   conceptual questions where there is no value to type.

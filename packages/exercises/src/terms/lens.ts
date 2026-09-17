@@ -259,7 +259,7 @@ const lensProp = (key) => lens((s) => s[key], (value, s) => ({ [key]: value }))
         'Compose two lenses into one that reaches `user.address.city`, then use it to update a deeply nested record without touching anything else.',
       hints: [
         'A composed lens views through both, and sets by setting the inner one inside the outer one.',
-        '`set(outer, set(inner, value, view(outer, s)), s)` is the shape.',
+        'Work outside in. Read the outer part, set the inner one inside what you read, then write that whole thing back through the outer lens.',
       ],
       exports: ['composeLens', 'cityLens', 'renameCity'],
       starter: `const lens = (getter, setter) => ({ getter, setter })

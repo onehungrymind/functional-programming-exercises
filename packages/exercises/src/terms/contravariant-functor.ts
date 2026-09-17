@@ -129,7 +129,7 @@ argument position. That is the variance you were reasoning about by hand, checke
         'A Predicate consumes values rather than producing them, so a function is applied before it runs, not after. That is `contramap`.',
       hints: [
         '`map` would apply f to the result. `contramap` applies it to the argument on the way in.',
-        '`Predicate((x) => run(f(x)))`.',
+        'Build a new Predicate whose own test converts its argument first and then defers to the one you already have.',
       ],
       exports: ['Predicate'],
       starter: `// Predicate :: (a -> Boolean) -> Predicate a

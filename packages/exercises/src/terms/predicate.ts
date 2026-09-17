@@ -189,7 +189,7 @@ const not = (f) => (x) => !f(x)
       title: 'Build a filter from the pieces',
       prompt:
         'Using only the combinators and the predicates given, define `wanted`: in stock, and either cheap or on sale.',
-      hints: ['`either(isCheap, isOnSale)` is the inner half. Then require `inStock` alongside it.'],
+      hints: ['Two of the three are alternatives to each other and the third is required whatever happens. Combine the pair first, then demand the third alongside.'],
       exports: ['wanted'],
       starter: `const both = (f, g) => (x) => f(x) && g(x)
 const either = (f, g) => (x) => f(x) || g(x)

@@ -244,7 +244,7 @@ Box.of = Box
         'Write `liftA2`, which applies a two-argument function to two wrapped values. If either is Nothing, the answer is Nothing.',
       hints: [
         'Curry the function, `map` it over the first, then `ap` the second.',
-        '`ma.map((a) => (b) => f(a, b))` gives you a Maybe holding a function, which is exactly what ap wants.',
+        'Map over the first one with something that takes an `a` and hands back a function still waiting for a `b`. What you are left holding is a Maybe of a function, which is what `ap` wants on its left.',
       ],
       exports: ['liftA2', 'Just', 'Nothing'],
       starter: `const Just = (value) => ({

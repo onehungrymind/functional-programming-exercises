@@ -136,6 +136,31 @@ const note = (msg) => problems.push(msg);
     note('packages/exercises/src/notes.ts has drifted from the exercise sets. Run `npm run build:manifest`.');
   }
 
+  // A hint names the shape or the stuck point. Quoting the answer turns the hint ladder into
+  // a slower way of pressing the solution button, and somebody who reads every hint should
+  // still have to write the line. Text already visible in the starter is fair game.
+  {
+    const flat = (t) => String(t).replace(/\/\/[^\n]*/g, '').replace(/\s+/g, ' ').trim();
+    for (const set of Object.values(exerciseSets)) {
+      for (const rung of set.rungs) {
+        if (rung.kind !== 'code' || !rung.hints?.length) continue;
+        const solution = flat(rung.solution);
+        const starter = flat(rung.starter);
+        for (const hint of rung.hints) {
+          for (const m of hint.matchAll(/`([^`]+)`/g)) {
+            const snippet = flat(m[1]);
+            if (snippet.length > 18 && solution.includes(snippet) && !starter.includes(snippet)) {
+              note(
+                `${set.termId}/${rung.id}: a hint quotes \`${snippet}\` straight out of the solution. ` +
+                  `Describe the shape instead; the solution button is what exists for giving up.`,
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+
   // The teaching plan names specific rungs to demo. A renamed rung turns those into dead
   // ends, and the place you find out is in front of a room.
   const PLAN = join(ROOT, 'docs/teaching-day.md');

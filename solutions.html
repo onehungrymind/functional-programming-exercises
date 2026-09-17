@@ -819,7 +819,7 @@ ul.flat { list-style: none; margin: 0; padding: 0; }
   <header><h4>Build a filter from the pieces</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">apply</span></div></header>
   <p class="prompt">Using only the combinators and the predicates given, define <code>wanted</code>: in stock, and either cheap or on sale.</p>
   <div class="covers">demonstrates <a class="pill" href="#predicate--compose-to-spec">compose-to-spec</a><a class="pill" href="#predicate--combinators">combinators</a></div>
-  <details class="hints"><summary>1 hint</summary><ol><li><code>either(isCheap, isOnSale)</code> is the inner half. Then require <code>inStock</code> alongside it.</li></ol></details>
+  <details class="hints"><summary>1 hint</summary><ol><li>Two of the three are alternatives to each other and the third is required whatever happens. Combine the pair first, then demand the third alongside.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> both = (f, g) =&gt; (x) =&gt; f(x) &amp;&amp; g(x)
 <i class="k">const</i> either = (f, g) =&gt; (x) =&gt; f(x) || g(x)
 
@@ -948,7 +948,7 @@ ul.flat { list-style: none; margin: 0; padding: 0; }
   <header><h4>Purify addItem</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
   <p class="prompt">This addItem mutates the cart and reads the clock. Make it pure: return a new cart, leave the input alone, and take the timestamp as a third argument.</p>
   <div class="covers">demonstrates <a class="pill" href="#pure-function--purify">purify</a><a class="pill" href="#pure-function--shallow-copy-trap">shallow-copy-trap</a><a class="pill" href="#pure-function--two-requirements">two-requirements</a></div>
-  <details class="hints"><summary>3 hints</summary><ol><li>Spread the old cart into a new object rather than writing into it.</li><li><code>[...cart.items, item]</code> builds a new list. <code>cart.items.push(item)</code> changes the old one.</li><li>The <code>now</code> parameter is there so the function never has to ask the clock itself.</li></ol></details>
+  <details class="hints"><summary>3 hints</summary><ol><li>Spread the old cart into a new object rather than writing into it.</li><li><code>push</code> writes into the array you were handed. You want the operation that produces a new array and leaves the old one as it was.</li><li>The <code>now</code> parameter is there so the function never has to ask the clock itself.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// addItem :: (Cart, Item, Number) -&gt; Cart</i>
 <i class="k">const</i> addItem = (cart, item, now) =&gt; ({
   ...cart,
@@ -2177,7 +2177,7 @@ ul.flat { list-style: none; margin: 0; padding: 0; }
   <header><h4>Write S, K, I and check that S(K)(K) is I</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
   <p class="prompt">A combinator uses nothing but its own arguments. Write the three classics, then <code>skk</code>, built only out of them, and confirm it behaves like <code>I</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#functional-combinator--no-free-variables">no-free-variables</a><a class="pill" href="#functional-combinator--the-classics">the-classics</a><a class="pill" href="#functional-combinator--identities">identities</a></div>
-  <details class="hints"><summary>3 hints</summary><ol><li><code>I</code> gives back what it was handed. <code>K</code> takes two and keeps the first.</li><li><code>S</code> is <code>(f) =&gt; (g) =&gt; (x) =&gt; f(x)(g(x))</code>: hand <code>x</code> to both, then apply one result to the other.</li><li><code>skk</code> is <code>S(K)(K)</code>. Build it from the pieces rather than writing it out, or the identity proves nothing.</li></ol></details>
+  <details class="hints"><summary>3 hints</summary><ol><li><code>I</code> gives back what it was handed. <code>K</code> takes two and keeps the first.</li><li><code>S</code> takes three, one at a time. It hands the third to each of the first two, and then applies what one gave back to what the other gave back.</li><li><code>skk</code> is <code>S(K)(K)</code>. Build it from the pieces rather than writing it out, or the identity proves nothing.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// I :: a -&gt; a</i>
 <i class="k">const</i> I = (x) =&gt; x
 
@@ -5158,7 +5158,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
   <header><h4>Update something nested</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">apply</span></div></header>
   <p class="prompt">Compose two lenses into one that reaches <code>user.address.city</code>, then use it to update a deeply nested record without touching anything else.</p>
   <div class="covers">demonstrates <a class="pill" href="#lens--compose">compose</a><a class="pill" href="#lens--getter-and-setter">getter-and-setter</a></div>
-  <details class="hints"><summary>2 hints</summary><ol><li>A composed lens views through both, and sets by setting the inner one inside the outer one.</li><li><code>set(outer, set(inner, value, view(outer, s)), s)</code> is the shape.</li></ol></details>
+  <details class="hints"><summary>2 hints</summary><ol><li>A composed lens views through both, and sets by setting the inner one inside the outer one.</li><li>Work outside in. Read the outer part, set the inner one inside what you read, then write that whole thing back through the outer lens.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> lens = (getter, setter) =&gt; ({ getter, setter })
 <i class="k">const</i> view = (l, s) =&gt; l.getter(s)
 <i class="k">const</i> set = (l, value, s) =&gt; l.setter(value, s)
@@ -5830,7 +5830,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
   <header><h4>Numbers made only of functions</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">guided</span></div></header>
   <p class="prompt">A Church numeral is a number encoded as &quot;apply this function n times&quot;. Build <code>zero</code>, <code>succ</code>, <code>add</code>, and <code>toInt</code> with nothing but functions.</p>
   <div class="covers">demonstrates <a class="pill" href="#lambda-calculus--church-numerals">church-numerals</a><a class="pill" href="#lambda-calculus--escape-hatch">escape-hatch</a></div>
-  <details class="hints"><summary>3 hints</summary><ol><li><code>zero</code> applies f no times: <code>(f) =&gt; (x) =&gt; x</code>. <code>one</code> applies it once.</li><li><code>succ(n)</code> applies f once more than n does: <code>(f) =&gt; (x) =&gt; f(n(f)(x))</code>.</li><li><code>toInt</code> is the escape hatch: run the numeral with &quot;add one&quot; and a starting point of 0.</li></ol></details>
+  <details class="hints"><summary>3 hints</summary><ol><li><code>zero</code> applies f no times: <code>(f) =&gt; (x) =&gt; x</code>. <code>one</code> applies it once.</li><li><code>succ(n)</code> applies f once more than n does. Let n do its applications first, then apply f to whatever came out.</li><li><code>toInt</code> is the escape hatch: run the numeral with &quot;add one&quot; and a starting point of 0.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// zero :: Church  applies f zero times</i>
 <i class="k">const</i> zero = (f) =&gt; (x) =&gt; x
 
@@ -7434,7 +7434,7 @@ Box.<i class="k">of</i> = Box</code></pre></details>
   <header><h4>Combine two Maybes without unwrapping either</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">apply</span></div></header>
   <p class="prompt">Write <code>liftA2</code>, which applies a two-argument function to two wrapped values. If either is Nothing, the answer is Nothing.</p>
   <div class="covers">demonstrates <a class="pill" href="#applicative-functor--multiple-arguments">multiple-arguments</a></div>
-  <details class="hints"><summary>2 hints</summary><ol><li>Curry the function, <code>map</code> it over the first, then <code>ap</code> the second.</li><li><code>ma.map((a) =&gt; (b) =&gt; f(a, b))</code> gives you a Maybe holding a function, which is exactly what ap wants.</li></ol></details>
+  <details class="hints"><summary>2 hints</summary><ol><li>Curry the function, <code>map</code> it over the first, then <code>ap</code> the second.</li><li>Map over the first one with something that takes an <code>a</code> and hands back a function still waiting for a <code>b</code>. What you are left holding is a Maybe of a function, which is what <code>ap</code> wants on its left.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> Just = (value) =&gt; ({
   isNothing: <i class="k">false</i>, value,
   map: (f) =&gt; Just(f(value)),
@@ -8656,7 +8656,7 @@ Just.<i class="k">of</i> = Just</code></pre></details>
   <header><h4>Map over the input instead of the output</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
   <p class="prompt">A Predicate consumes values rather than producing them, so a function is applied before it runs, not after. That is <code>contramap</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#contravariant-functor--maps-the-input">maps-the-input</a><a class="pill" href="#contravariant-functor--behavioural-equality">behavioural-equality</a></div>
-  <details class="hints"><summary>2 hints</summary><ol><li><code>map</code> would apply f to the result. <code>contramap</code> applies it to the argument on the way in.</li><li><code>Predicate((x) =&gt; run(f(x)))</code>.</li></ol></details>
+  <details class="hints"><summary>2 hints</summary><ol><li><code>map</code> would apply f to the result. <code>contramap</code> applies it to the argument on the way in.</li><li>Build a new Predicate whose own test converts its argument first and then defers to the one you already have.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// Predicate :: (a -&gt; Boolean) -&gt; Predicate a</i>
 <i class="k">const</i> Predicate = (run) =&gt; ({
   run,
@@ -8783,7 +8783,7 @@ Just.<i class="k">of</i> = Just</code></pre></details>
   <header><h4>Adjust both ends of a function</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
   <p class="prompt">A Profunctor consumes on one side and produces on the other. <code>promap(f, g)</code> pre-processes the input with f and post-processes the output with g.</p>
   <div class="covers">demonstrates <a class="pill" href="#profunctor--both-ends">both-ends</a><a class="pill" href="#profunctor--composition-order">composition-order</a></div>
-  <details class="hints"><summary>2 hints</summary><ol><li>f runs first, on the way in. g runs last, on the way out.</li><li><code>(x) =&gt; g(run(f(x)))</code>.</li></ol></details>
+  <details class="hints"><summary>2 hints</summary><ol><li>f runs first, on the way in. g runs last, on the way out.</li><li>Three calls nested. Start from the argument the new function receives, get it into the shape the old one accepts, run it, then adapt what comes out.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// Fn :: (a -&gt; b) -&gt; Profunctor a b</i>
 <i class="k">const</i> Fn = (run) =&gt; ({
   run,

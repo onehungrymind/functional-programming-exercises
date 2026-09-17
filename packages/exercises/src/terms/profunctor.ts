@@ -124,7 +124,7 @@ are the same.`,
         'A Profunctor consumes on one side and produces on the other. `promap(f, g)` pre-processes the input with f and post-processes the output with g.',
       hints: [
         'f runs first, on the way in. g runs last, on the way out.',
-        '`(x) => g(run(f(x)))`.',
+        'Three calls nested. Start from the argument the new function receives, get it into the shape the old one accepts, run it, then adapt what comes out.',
       ],
       exports: ['Fn'],
       starter: `// Fn :: (a -> b) -> Profunctor a b

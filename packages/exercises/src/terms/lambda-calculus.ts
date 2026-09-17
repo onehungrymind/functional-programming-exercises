@@ -73,7 +73,7 @@ are enough to express any computation at all.`,
         'A Church numeral is a number encoded as "apply this function n times". Build `zero`, `succ`, `add`, and `toInt` with nothing but functions.',
       hints: [
         '`zero` applies f no times: `(f) => (x) => x`. `one` applies it once.',
-        '`succ(n)` applies f once more than n does: `(f) => (x) => f(n(f)(x))`.',
+        '`succ(n)` applies f once more than n does. Let n do its applications first, then apply f to whatever came out.',
         '`toInt` is the escape hatch: run the numeral with "add one" and a starting point of 0.',
       ],
       exports: ['zero', 'succ', 'add', 'toInt'],
