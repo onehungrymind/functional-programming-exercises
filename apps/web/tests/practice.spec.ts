@@ -8,6 +8,47 @@ const SNAPSHOT = JSON.parse(
 ) as { terms: { id: string; title: string }[] };
 
 /**
+ * The generated manifest, parsed out of the module rather than imported.
+ *
+ * Playwright does not run these through the vite aliases, and hardcoding rung counts
+ * here means every honest content change breaks the suite for no reason. The counts
+ * come from the same file the app renders from.
+ */
+const MANIFEST = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL('../../../packages/exercises/src/manifest.ts', import.meta.url)),
+    'utf8',
+  ).match(/export const manifest: ManifestEntry\[\] = ([\s\S]*?);\n/)![1],
+) as { termId: string; rungs: { id: string; lang: 'js' | 'ts' }[] }[];
+
+const rungsOf = (termId: string) => MANIFEST.find((e) => e.termId === termId)!.rungs;
+const lapOneOf = (termId: string) => rungsOf(termId).filter((r) => r.lang !== 'ts');
+const total = (termId: string) => rungsOf(termId).length;
+
+/**
+ * Marks rungs done without solving them.
+ *
+ * For tests about what the UI does once a concept or a lap is clear, solving every rung by
+ * hand is slow and breaks whenever a rung is added. Grading itself is covered elsewhere.
+ */
+async function seedDone(page: Page, termId: string, rungIds: string[]) {
+  await page.addInitScript(
+    ([key, ids]: [string, string[]]) => {
+      try {
+        const now = new Date().toISOString();
+        const done: Record<string, string> = {};
+        for (const id of ids) done[id] = now;
+        localStorage.setItem(key, JSON.stringify({ version: 1, done, drafts: {}, choices: {} }));
+        sessionStorage.setItem('test-cleared', '1');
+      } catch {
+        /* private mode */
+      }
+    },
+    ['fpx-progress-v1', rungIds.map((id) => `${termId}/${id}`)] as [string, string[]],
+  );
+}
+
+/**
  * CodeMirror renders into a contenteditable, which `fill` does not touch.
  * Everything here types through the keyboard instead.
  */
@@ -74,7 +115,7 @@ test.describe('solving a rung', () => {
 
     // The stepper and the tab count both reflect it.
     await expect(page.locator('.step.done')).toHaveCount(1);
-    await expect(page.getByRole('tab', { name: /Practice/ })).toContainText('1/3');
+    await expect(page.getByRole('tab', { name: /Practice/ })).toContainText(`1/${total('currying')}`);
   });
 
   test('a wrong implementation explains itself with the actual value', async ({ page }) => {
@@ -116,7 +157,7 @@ test.describe('solving a rung', () => {
     await expect(page.locator('.cleared')).toBeVisible({ timeout: 10000 });
 
     await page.reload();
-    await expect(page.getByRole('tab', { name: /Practice/ })).toContainText('1/3', { timeout: 10000 });
+    await expect(page.getByRole('tab', { name: /Practice/ })).toContainText(`1/${total('currying')}`, { timeout: 10000 });
   });
 });
 
@@ -257,7 +298,7 @@ test.describe('the shell', () => {
 
     await page.getByRole('menuitem', { name: 'Reset progress' }).click();
     await page.getByRole('menuitem', { name: 'Really reset everything?' }).click();
-    await expect(page.getByRole('tab', { name: /Practice/ })).toContainText('0/3');
+    await expect(page.getByRole('tab', { name: /Practice/ })).toContainText(`0/${total('currying')}`);
   });
 });
 
@@ -300,6 +341,10 @@ test.describe('reduced motion', () => {
   test.use({ reducedMotion: 'reduce' });
 
   test('clearing a concept does not draw the celebration', async ({ page }) => {
+    const rest = rungsOf('pure-function')
+      .map((r) => r.id)
+      .filter((id) => id !== 'implement' && id !== 'recognize');
+    await seedDone(page, 'pure-function', rest);
     await page.goto('/#/term/pure-function/practice/recognize');
     await page.locator('.option').nth(2).click();
     await page.getByRole('button', { name: 'Check answer' }).click();
@@ -327,7 +372,7 @@ test.describe('progress import', () => {
     await page.getByTitle('Progress').click();
     await page.getByRole('menuitem', { name: 'Reset progress' }).click();
     await page.getByRole('menuitem', { name: 'Really reset everything?' }).click();
-    await expect(page.getByRole('tab', { name: /Practice/ })).toContainText('0/3');
+    await expect(page.getByRole('tab', { name: /Practice/ })).toContainText(`0/${total('currying')}`);
 
     await page.getByTitle('Progress').click();
     await page.setInputFiles('input[type=file]', {
@@ -335,7 +380,7 @@ test.describe('progress import', () => {
       mimeType: 'application/json',
       buffer: Buffer.from(saved!),
     });
-    await expect(page.getByRole('tab', { name: /Practice/ })).toContainText('1/3');
+    await expect(page.getByRole('tab', { name: /Practice/ })).toContainText(`1/${total('currying')}`);
   });
 
   test('a file that is not a progress export is rejected with a reason', async ({ page }) => {
@@ -369,6 +414,16 @@ test.describe('the curriculum path', () => {
 
   test('clearing a concept offers the next one in the curriculum', async ({ page }) => {
     // `function` is first. Clearing all of it should point at `arity`, the second.
+    // Seed only what this test does not solve for itself, or the rungs below arrive
+    // already answered and their options are disabled.
+    const solvedHere = ['recognize', 'diagnose', 'implement'];
+    await seedDone(
+      page,
+      'function',
+      rungsOf('function')
+        .map((r) => r.id)
+        .filter((id) => !solvedHere.includes(id)),
+    );
     await page.goto('/#/term/function/practice/recognize');
     await page.locator('.option').nth(2).click();
     await page.getByRole('button', { name: 'Check answer' }).click();
@@ -493,22 +548,28 @@ const Box = <A,>(value: A): Box<A> => ({
 });
 
 test.describe('the typed lap', () => {
+  /**
+   * Leaves lap 1 one rung short, then clears that one for real.
+   *
+   * The banner and the transition button only appear when a rung is cleared in this
+   * session, so the last one has to go through grading. The rest are seeded because
+   * solving them by hand is slow and breaks whenever a lap-1 rung is added.
+   */
   async function clearLapOne(page: Page) {
-    const set = async (code: string) => {
-      await page.waitForSelector('.cm-content', { timeout: 15000 });
-      await page.click('.cm-content');
-      await page.keyboard.press('ControlOrMeta+a');
-      await page.keyboard.insertText(code);
-      await expect(page.locator('.cleared')).toBeVisible({ timeout: 15000 });
-    };
-    await page.goto('/#/term/functor/practice/implement');
-    await set('const Box = (value) => ({\n  value,\n  map: (f) => Box(f(value)),\n  inspect: () => "Box"\n})\n');
-    await page.goto('/#/term/functor/practice/apply');
-    await set(
-      'const Maybe = (value) => ({\n  value,\n  isNothing: () => value === null || value === undefined,\n  map: (f) => (value === null || value === undefined ? Maybe(value) : Maybe(f(value))),\n  inspect: () => "Maybe"\n})\n',
+    await seedDone(
+      page,
+      'functor',
+      lapOneOf('functor')
+        .map((r) => r.id)
+        .filter((id) => id !== 'implement'),
     );
-    await page.goto('/#/term/functor/practice/break');
-    await set('let calls = 0\nconst BadBox = (value) => ({\n  value,\n  map: (f) => BadBox(f(value) + calls++),\n  inspect: () => "BadBox"\n})\n');
+    await page.goto('/#/term/functor/practice/implement');
+    await page.waitForSelector('.cm-content', { timeout: 15000 });
+    await page.click('.cm-content');
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.insertText(
+      'const Box = (value) => ({\n  value,\n  map: (f) => Box(f(value)),\n  inspect: () => "Box"\n})\n',
+    );
   }
 
   test('Learn marks where JavaScript ends and types begin', async ({ page }) => {
@@ -527,8 +588,12 @@ test.describe('the typed lap', () => {
 
   test('lap 2 reads as not yet reached, and says how far off it is', async ({ page }) => {
     await page.goto('/#/term/functor/practice');
-    await expect(page.locator('.lap-head.second .togo')).toContainText('3 rungs to go on lap 1');
-    await expect(page.locator('.step.not-yet')).toHaveCount(1);
+    await expect(page.locator('.lap-head.second .togo')).toContainText(
+      `${lapOneOf('functor').length} rungs to go on lap 1`,
+    );
+    await expect(page.locator('.step.not-yet')).toHaveCount(
+      rungsOf('functor').filter((r) => r.lang === 'ts').length,
+    );
   });
 
   test('lap 2 is reachable anyway, so a deep link still works', async ({ page }) => {
@@ -539,7 +604,7 @@ test.describe('the typed lap', () => {
 
   test('clearing lap 1 opens lap 2 and says so', async ({ page }) => {
     await clearLapOne(page);
-    await expect(page.locator('.cleared')).toContainText('Lap 1 cleared');
+    await expect(page.locator('.cleared')).toContainText('Lap 1 cleared', { timeout: 15000 });
     await expect(page.getByRole('button', { name: 'Start lap 2, with types' })).toBeVisible();
     await expect(page.locator('.step.not-yet')).toHaveCount(0);
     await expect(page.locator('.lap-head.second .togo')).toHaveCount(0);
