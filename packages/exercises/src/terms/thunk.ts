@@ -246,5 +246,147 @@ const lazy = (fn) => {
         });
       },
     },
+
+    {
+      id: 'once',
+      kind: 'code',
+      role: 'apply',
+      covers: ['what-it-is', 'recompute-vs-cache'],
+      title: "A thunk recomputes, unless you make it not",
+      prompt:
+        "A thunk is a function of no arguments standing in for a value that has not been produced yet. Write `delay`, which makes one, and `once`, which makes one that only ever does the work a single time.",
+      hints: [
+        "`delay` wraps the work and does nothing until it is called.",
+        "`once` has to remember whether it has run, not just whether the answer is truthy.",
+        "A thunk that produced `undefined` has still run.",
+      ],
+      exports: ['delay', 'once'],
+      starter: `// delay :: (() -> a) -> (() -> a)
+const delay = (work) => work
+
+// once :: (() -> a) -> (() -> a)
+const once = (work) => work
+`,
+      solution: `// delay :: (() -> a) -> (() -> a)
+const delay = (work) => () => work()
+
+// once :: (() -> a) -> (() -> a)
+const once = (work) => {
+  let done = false
+  let value
+  return () => {
+    if (!done) {
+      value = work()
+      done = true
+    }
+    return value
+  }
+}
+`,
+      broken: [
+        `const delay = (work) => work()
+const once = (work) => {
+  let done = false
+  let value
+  return () => {
+    if (!done) { value = work(); done = true }
+    return value
+  }
+}
+`,
+        `const delay = (work) => () => work()
+const once = (work) => {
+  let value
+  return () => {
+    if (value === undefined) value = work()
+    return value
+  }
+}
+`,
+        `const delay = (work) => () => work()
+const once = (work) => () => work()
+`,
+      ],
+      checks: (T, exp) => {
+        const { delay, once } = exp;
+
+        T.check('delay does nothing until it is called', () => {
+          let ran = false;
+          delay(() => {
+            ran = true;
+            return 1;
+          });
+          return !ran || 'The work ran while the thunk was being made. Standing in for a value means not being it yet.';
+        });
+
+        T.check('Calling it does the work', () => {
+          const t = delay(() => 42);
+          return t() === 42 || `The thunk gave ${T.fmt(t())}.`;
+        });
+
+        T.check('A plain thunk recomputes every time', () => {
+          let calls = 0;
+          const t = delay(() => {
+            calls += 1;
+            return calls;
+          });
+          t();
+          t();
+          return calls === 2 || `Two calls ran the work ${calls} time${calls === 1 ? '' : 's'}. A thunk is not a cache.`;
+        });
+
+        T.check('once does the work a single time', () => {
+          let calls = 0;
+          const t = once(() => {
+            calls += 1;
+            return calls;
+          });
+          const a = t();
+          const b = t();
+          const c = t();
+          return (calls === 1 && a === 1 && b === 1 && c === 1) || `It ran ${calls} times and gave ${T.fmt([a, b, c])}.`;
+        });
+
+        T.check('once is still lazy', () => {
+          let ran = false;
+          once(() => {
+            ran = true;
+            return 1;
+          });
+          return !ran || 'once ran the work immediately. Caching the answer does not mean producing it early.';
+        });
+
+        T.check('A thunk that produced undefined has still run', () => {
+          let calls = 0;
+          const t = once(() => {
+            calls += 1;
+            return undefined;
+          });
+          t();
+          t();
+          return (
+            calls === 1 ||
+            `It ran ${calls} times for a thunk returning undefined. Remembering whether it has run is not the same as checking whether the answer looks empty.`
+          );
+        });
+
+        T.check('once caches a falsy answer too', () => {
+          let calls = 0;
+          const t = once(() => {
+            calls += 1;
+            return 0;
+          });
+          t();
+          t();
+          return (calls === 1 && t() === 0) || `It ran ${calls} times and gave ${T.fmt(t())}.`;
+        });
+
+        T.check('Two thunks do not share a cache', () => {
+          const a = once(() => 1);
+          const b = once(() => 2);
+          return (a() === 1 && b() === 2) || `They gave ${T.fmt(a())} and ${T.fmt(b())}.`;
+        });
+      },
+    },
   ],
 };

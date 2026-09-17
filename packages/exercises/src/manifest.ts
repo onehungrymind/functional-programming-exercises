@@ -124,6 +124,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Write once",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "both-shapes",
+        "role": "apply",
+        "title": "Take one, return one, and do both at once",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -169,6 +176,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Build a filter from the pieces",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "combine",
+        "role": "apply",
+        "title": "Combine predicates into a spec",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -212,6 +226,13 @@ export const manifest: ManifestEntry[] = [
         "id": "apply",
         "role": "apply",
         "title": "Compute it at most once",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "once",
+        "role": "apply",
+        "title": "A thunk recomputes, unless you make it not",
         "kind": "code",
         "lang": "js"
       }
@@ -304,6 +325,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Build fivePlus",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "versus",
+        "role": "apply",
+        "title": "Partial application against currying, side by side",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -373,6 +401,13 @@ export const manifest: ManifestEntry[] = [
         "id": "apply",
         "role": "apply",
         "title": "Read a name out of a record",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "laws",
+        "role": "apply",
+        "title": "compose, pipe, and the laws that hold between them",
         "kind": "code",
         "lang": "js"
       }
@@ -612,6 +647,13 @@ export const manifest: ManifestEntry[] = [
         "id": "apply",
         "role": "apply",
         "title": "Use it to blank a list",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "use-it",
+        "role": "apply",
+        "title": "Where a function that ignores its argument earns its keep",
         "kind": "code",
         "lang": "js"
       }

@@ -275,5 +275,138 @@ const once = (fn) => {
         });
       },
     },
+
+    {
+      id: 'both-shapes',
+      kind: 'code',
+      role: 'apply',
+      covers: ['two-shapes', 'takes-one', 'wrapping'],
+      title: "Take one, return one, and do both at once",
+      prompt:
+        "A higher-order function takes a function, returns one, or both. Write `applyN`, which takes one, `always`, which returns one, and `withRetry`, which does both.",
+      hints: [
+        "`applyN` applies `f` to `x` exactly `n` times. Zero times means the value comes back untouched.",
+        "`always` is handed a value and gives back a function ignoring whatever it is called with.",
+        "`withRetry` wraps a function and hands back one with the same shape, so callers cannot tell.",
+      ],
+      exports: ['applyN', 'always', 'withRetry'],
+      starter: `// applyN :: ((a -> a), Number, a) -> a
+const applyN = (f, n, x) => x
+
+// always :: a -> (b -> a)
+const always = (x) => x
+
+// withRetry :: ((a -> b), Number) -> (a -> b)
+const withRetry = (f, attempts) => f
+`,
+      solution: `// applyN :: ((a -> a), Number, a) -> a
+const applyN = (f, n, x) => (n <= 0 ? x : applyN(f, n - 1, f(x)))
+
+// always :: a -> (b -> a)
+const always = (x) => () => x
+
+// withRetry :: ((a -> b), Number) -> (a -> b)
+const withRetry = (f, attempts) => (arg) => {
+  let last
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return f(arg)
+    } catch (e) {
+      last = e
+    }
+  }
+  throw last
+}
+`,
+      broken: [
+        `const applyN = (f, n, x) => f(x)
+const always = (x) => () => x
+const withRetry = (f, attempts) => (arg) => {
+  let last
+  for (let i = 0; i < attempts; i += 1) {
+    try { return f(arg) } catch (e) { last = e }
+  }
+  throw last
+}
+`,
+        `const applyN = (f, n, x) => (n <= 0 ? x : applyN(f, n - 1, f(x)))
+const always = (x) => x
+const withRetry = (f, attempts) => (arg) => {
+  let last
+  for (let i = 0; i < attempts; i += 1) {
+    try { return f(arg) } catch (e) { last = e }
+  }
+  throw last
+}
+`,
+        `const applyN = (f, n, x) => (n <= 0 ? x : applyN(f, n - 1, f(x)))
+const always = (x) => () => x
+const withRetry = (f, attempts) => f
+`,
+      ],
+      checks: (T, exp) => {
+        const { applyN, always, withRetry } = exp;
+
+        T.check('applyN applies the function n times', () => {
+          const r = applyN((n: number) => n * 2, 3, 1);
+          return r === 8 || `Doubling 1 three times gave ${T.fmt(r)}, expected 8.`;
+        });
+
+        T.check('Zero times leaves the value alone', () => {
+          const r = applyN((n: number) => n * 2, 0, 5);
+          return r === 5 || `applyN(double, 0, 5) gave ${T.fmt(r)}.`;
+        });
+
+        T.check('always gives back a function', () => {
+          const f = always(7);
+          return typeof f === 'function' || `always(7) gave ${T.fmt(f)}. Returning a function is the other shape a higher-order function takes.`;
+        });
+
+        T.check('That function ignores what it is called with', () => {
+          const f = always(7);
+          return (f(1) === 7 && f('x') === 7) || `It gave ${T.fmt(f(1))} and ${T.fmt(f('x'))}.`;
+        });
+
+        T.check('withRetry gives back something with the same shape', () => {
+          const wrapped = withRetry((n: number) => n + 1, 3);
+          return (typeof wrapped === 'function' && wrapped(1) === 2) || `The wrapped function gave ${T.fmt(wrapped)}.`;
+        });
+
+        T.check('It retries until one attempt works', () => {
+          let calls = 0;
+          const flaky = (n: number) => {
+            calls += 1;
+            if (calls < 3) throw new Error('not yet');
+            return n * 10;
+          };
+          const r = withRetry(flaky, 5)(4);
+          return (r === 40 && calls === 3) || `It gave ${T.fmt(r)} after ${calls} attempts.`;
+        });
+
+        T.check('It gives up after the attempts run out', () => {
+          let calls = 0;
+          const always = () => {
+            calls += 1;
+            throw new Error('always fails');
+          };
+          let threw = false;
+          try {
+            withRetry(always, 2)(1);
+          } catch {
+            threw = true;
+          }
+          return (threw && calls === 2) || `It threw: ${threw}, after ${calls} attempts, expected 2.`;
+        });
+
+        T.check('A function that works first time is called once', () => {
+          let calls = 0;
+          withRetry((n: number) => {
+            calls += 1;
+            return n;
+          }, 5)(1);
+          return calls === 1 || `It called the function ${calls} times when the first attempt already worked.`;
+        });
+      },
+    },
   ],
 };

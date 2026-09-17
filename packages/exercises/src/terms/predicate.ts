@@ -266,5 +266,126 @@ const wanted = both(inStock, both(isCheap, isOnSale))
         T.check('Built from the combinators, not written out by hand', () => T.shape.isPointFree('wanted'));
       },
     },
+
+    {
+      id: 'combine',
+      kind: 'code',
+      role: 'apply',
+      covers: ['what-it-is', 'compose-to-spec'],
+      title: "Combine predicates into a spec",
+      prompt:
+        "A predicate is a function to a boolean, which is what makes them combinable. Write `and`, `or` and `not`, then build `wanted` out of them without writing a single new condition.",
+      hints: [
+        "Each one takes predicates and returns a predicate, so the result can be combined again.",
+        "`and` is true when both are. Use the pieces rather than reaching into the objects.",
+        "`wanted` is in stock and either cheap or on sale. Build it from the three combinators.",
+      ],
+      exports: ['and', 'or', 'not', 'wanted'],
+      starter: `const inStock = (item) => item.stock > 0
+const isCheap = (item) => item.price < 10
+const isOnSale = (item) => item.sale === true
+
+// and :: ((a -> Boolean), (a -> Boolean)) -> (a -> Boolean)
+const and = (p, q) => p
+
+// or :: ((a -> Boolean), (a -> Boolean)) -> (a -> Boolean)
+const or = (p, q) => p
+
+// not :: (a -> Boolean) -> (a -> Boolean)
+const not = (p) => p
+
+// wanted :: Item -> Boolean   in stock, and cheap or on sale
+const wanted = (item) => false
+`,
+      solution: `const inStock = (item) => item.stock > 0
+const isCheap = (item) => item.price < 10
+const isOnSale = (item) => item.sale === true
+
+// and :: ((a -> Boolean), (a -> Boolean)) -> (a -> Boolean)
+const and = (p, q) => (x) => p(x) && q(x)
+
+// or :: ((a -> Boolean), (a -> Boolean)) -> (a -> Boolean)
+const or = (p, q) => (x) => p(x) || q(x)
+
+// not :: (a -> Boolean) -> (a -> Boolean)
+const not = (p) => (x) => !p(x)
+
+// wanted :: Item -> Boolean   in stock, and cheap or on sale
+const wanted = and(inStock, or(isCheap, isOnSale))
+`,
+      broken: [
+        `const inStock = (item) => item.stock > 0
+const isCheap = (item) => item.price < 10
+const isOnSale = (item) => item.sale === true
+const and = (p, q) => (x) => p(x) && q(x)
+const or = (p, q) => (x) => p(x) || q(x)
+const not = (p) => (x) => !p(x)
+const wanted = or(inStock, and(isCheap, isOnSale))
+`,
+        `const inStock = (item) => item.stock > 0
+const isCheap = (item) => item.price < 10
+const isOnSale = (item) => item.sale === true
+const and = (p, q) => (x) => p(x) || q(x)
+const or = (p, q) => (x) => p(x) || q(x)
+const not = (p) => (x) => !p(x)
+const wanted = and(inStock, or(isCheap, isOnSale))
+`,
+        `const inStock = (item) => item.stock > 0
+const isCheap = (item) => item.price < 10
+const isOnSale = (item) => item.sale === true
+const and = (p, q) => (x) => p(x) && q(x)
+const or = (p, q) => (x) => p(x) || q(x)
+const not = (p) => (x) => p(x)
+const wanted = and(inStock, or(isCheap, isOnSale))
+`,
+      ],
+      checks: (T, exp) => {
+        const { and, or, not, wanted } = exp;
+        const gt = (n: number) => (x: number) => x > n;
+        const lt = (n: number) => (x: number) => x < n;
+
+        T.check('and is true only when both are', () => {
+          const p = and(gt(0), lt(10));
+          const got = [p(5), p(-1), p(20)];
+          return T.eq(got, [true, false, false]) || `It gave ${T.fmt(got)} for 5, -1 and 20.`;
+        });
+
+        T.check('or is true when either is', () => {
+          const p = or(lt(0), gt(10));
+          const got = [p(-1), p(20), p(5)];
+          return T.eq(got, [true, true, false]) || `It gave ${T.fmt(got)}.`;
+        });
+
+        T.check('not flips the answer', () => {
+          const p = not(gt(0));
+          return (p(-1) === true && p(1) === false) || `not(gt(0)) gave ${T.fmt(p(-1))} and ${T.fmt(p(1))}.`;
+        });
+
+        T.check('The result is a predicate, so it combines again', () => {
+          const p = and(and(gt(0), lt(10)), not(gt(5)));
+          return (p(3) === true && p(7) === false) || `Nesting them gave ${T.fmt(p(3))} and ${T.fmt(p(7))}.`;
+        });
+
+        T.check('wanted needs the item in stock', () => {
+          const r = wanted({ stock: 0, price: 1, sale: true });
+          return r === false || `An item out of stock but cheap and on sale was reported as ${T.fmt(r)}. Stock is required, not one option among three.`;
+        });
+
+        T.check('wanted accepts cheap, and accepts on sale', () => {
+          const cheap = wanted({ stock: 5, price: 1, sale: false });
+          const onSale = wanted({ stock: 5, price: 100, sale: true });
+          return (cheap === true && onSale === true) || `Cheap gave ${T.fmt(cheap)} and on sale gave ${T.fmt(onSale)}.`;
+        });
+
+        T.check('wanted rejects expensive and not on sale', () => {
+          const r = wanted({ stock: 5, price: 100, sale: false });
+          return r === false || `In stock but neither cheap nor on sale was reported as ${T.fmt(r)}.`;
+        });
+
+        T.check('wanted was built from the combinators', () => {
+          return T.shape.isPointFree('wanted');
+        });
+      },
+    },
   ],
 };

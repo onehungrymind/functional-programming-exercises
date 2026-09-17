@@ -233,5 +233,132 @@ const shout = pipe(prop('name'), upper, exclaim)
         T.check('It is built from the pieces, not written out by hand', () => T.shape.isPointFree('shout'));
       },
     },
+
+    {
+      id: 'laws',
+      kind: 'code',
+      role: 'apply',
+      covers: ['both-directions', 'laws', 'build-a-pipeline'],
+      title: "compose, pipe, and the laws that hold between them",
+      prompt:
+        "Write `compose`, which runs right to left, and `pipe`, which runs left to right, then `slug`, a pipeline built from the given pieces. The two directions are the same operation read from opposite ends.",
+      hints: [
+        "`compose(f, g)(x)` is `f(g(x))`. `pipe(f, g)(x)` is `g(f(x))`.",
+        "Both take any number of functions. `reduce` and `reduceRight` differ by exactly the direction.",
+        "`slug` trims, lowercases, then replaces spaces. Build it from the helpers rather than writing the steps out.",
+      ],
+      exports: ['compose', 'pipe', 'slug', 'identity'],
+      starter: `const trim = (s) => s.trim()
+const lower = (s) => s.toLowerCase()
+const dashes = (s) => s.split(' ').join('-')
+
+// identity :: a -> a
+const identity = (x) => null
+
+// compose :: (...(a -> a)) -> (a -> a)   right to left
+const compose = (...fns) => identity
+
+// pipe :: (...(a -> a)) -> (a -> a)   left to right
+const pipe = (...fns) => identity
+
+// slug :: String -> String
+const slug = (s) => s
+`,
+      solution: `const trim = (s) => s.trim()
+const lower = (s) => s.toLowerCase()
+const dashes = (s) => s.split(' ').join('-')
+
+// identity :: a -> a
+const identity = (x) => x
+
+// compose :: (...(a -> a)) -> (a -> a)   right to left
+const compose = (...fns) => (x) => fns.reduceRight((acc, f) => f(acc), x)
+
+// pipe :: (...(a -> a)) -> (a -> a)   left to right
+const pipe = (...fns) => (x) => fns.reduce((acc, f) => f(acc), x)
+
+// slug :: String -> String
+const slug = pipe(trim, lower, dashes)
+`,
+      broken: [
+        `const trim = (s) => s.trim()
+const lower = (s) => s.toLowerCase()
+const dashes = (s) => s.split(' ').join('-')
+const identity = (x) => x
+const compose = (...fns) => (x) => fns.reduce((acc, f) => f(acc), x)
+const pipe = (...fns) => (x) => fns.reduce((acc, f) => f(acc), x)
+const slug = pipe(trim, lower, dashes)
+`,
+        `const trim = (s) => s.trim()
+const lower = (s) => s.toLowerCase()
+const dashes = (s) => s.split(' ').join('-')
+const identity = (x) => x
+const compose = (...fns) => (x) => fns.reduceRight((acc, f) => f(acc), x)
+const pipe = (...fns) => (x) => fns.reduce((acc, f) => f(acc), x)
+const slug = pipe(dashes, lower, trim)
+`,
+        `const trim = (s) => s.trim()
+const lower = (s) => s.toLowerCase()
+const dashes = (s) => s.split(' ').join('-')
+const identity = (x) => ''
+const compose = (...fns) => (x) => fns.reduceRight((acc, f) => f(acc), x)
+const pipe = (...fns) => (x) => fns.reduce((acc, f) => f(acc), x)
+const slug = pipe(trim, lower, dashes)
+`,
+      ],
+      checks: (T, exp) => {
+        const { compose, pipe, slug, identity } = exp;
+        const inc = (n: number) => n + 1;
+        const dbl = (n: number) => n * 2;
+
+        T.check('compose runs right to left', () => {
+          const r = compose(inc, dbl)(5);
+          return r === 11 || `compose(inc, dbl)(5) gave ${T.fmt(r)}. Doubling happens first, then the increment.`;
+        });
+
+        T.check('pipe runs left to right', () => {
+          const r = pipe(inc, dbl)(5);
+          return r === 12 || `pipe(inc, dbl)(5) gave ${T.fmt(r)}. The increment happens first.`;
+        });
+
+        T.check('The two directions really differ', () => {
+          return compose(inc, dbl)(5) !== pipe(inc, dbl)(5) || 'Both gave the same answer for a pair that is not commutative.';
+        });
+
+        T.law('Reversing the arguments turns one into the other', 60, (G) => {
+          const f = G.fn(), g = G.fn(), h = G.fn();
+          const n = G.int();
+          const a = compose(f.f, g.f, h.f)(n);
+          const b = pipe(h.f, g.f, f.f)(n);
+          return a === b || `At ${n}: compose gave ${T.fmt(a)} and the reversed pipe gave ${T.fmt(b)}.`;
+        });
+
+        T.law('Identity composes away on either side', 60, (G) => {
+          const f = G.fn();
+          const n = G.int();
+          const got = [compose(f.f, identity)(n), compose(identity, f.f)(n), f.f(n)];
+          return (got[0] === got[2] && got[1] === got[2]) || `At ${n}: ${T.fmt(got)}. The identity has to vanish from both sides.`;
+        });
+
+        T.law('Composition is associative', 60, (G) => {
+          const f = G.fn(), g = G.fn(), h = G.fn();
+          const n = G.int();
+          const a = compose(compose(f.f, g.f), h.f)(n);
+          const b = compose(f.f, compose(g.f, h.f))(n);
+          return a === b || `At ${n}: ${T.fmt(a)} against ${T.fmt(b)}.`;
+        });
+
+        T.check('Composing nothing is the identity', () => {
+          return (compose()(7) === 7 && pipe()(7) === 7) || `Empty compose gave ${T.fmt(compose()(7))} and empty pipe gave ${T.fmt(pipe()(7))}.`;
+        });
+
+        T.check('slug does the three steps in the right order', () => {
+          const r = slug('  Hello World  ');
+          return r === 'hello-world' || `slug('  Hello World  ') gave ${T.fmt(r)}. Dashing before trimming leaves the spaces as dashes.`;
+        });
+
+        T.check('slug names no argument', () => T.shape.isPointFree('slug'));
+      },
+    },
   ],
 };

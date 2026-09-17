@@ -168,5 +168,114 @@ const allZero = map(constant(1))
         T.check('It is built from map and constant', () => T.shape.isPointFree('allZero'));
       },
     },
+
+    {
+      id: 'use-it',
+      kind: 'code',
+      role: 'apply',
+      covers: ['ignores-argument', 'use-it'],
+      title: "Where a function that ignores its argument earns its keep",
+      prompt:
+        "`always` looks useless until something demands a function where you have a value. Write it, then use it three times: as a default, as a map that flattens everything, and as the branch of a fold that discards.",
+      hints: [
+        "`always(x)` returns a function that gives back `x` whatever it is called with.",
+        "`fillWith` maps every element to the same thing. Pass a function built with `always` rather than writing a lambda.",
+        "`countOf` folds, and the step ignores the element entirely.",
+      ],
+      exports: ['always', 'fillWith', 'countOf', 'defaulted'],
+      starter: `// always :: a -> (b -> a)
+const always = (x) => x
+
+// fillWith :: (a, [b]) -> [a]
+const fillWith = (x, xs) => xs
+
+// countOf :: [a] -> Number   folded, ignoring every element
+const countOf = (xs) => 0
+
+// defaulted :: (a | undefined, a) -> a   using a thunk, not a value
+const defaulted = (maybe, fallback) => fallback
+`,
+      solution: `// always :: a -> (b -> a)
+const always = (x) => () => x
+
+// fillWith :: (a, [b]) -> [a]
+const fillWith = (x, xs) => xs.map(always(x))
+
+// countOf :: [a] -> Number   folded, ignoring every element
+const countOf = (xs) => xs.reduce((n) => n + 1, 0)
+
+// defaulted :: (a | undefined, a) -> a   using a thunk, not a value
+const defaulted = (maybe, fallback) =>
+  maybe === undefined ? always(fallback)() : maybe
+`,
+      broken: [
+        `const always = (x) => x
+const fillWith = (x, xs) => xs.map(() => x)
+const countOf = (xs) => xs.reduce((n) => n + 1, 0)
+const defaulted = (maybe, fallback) => (maybe === undefined ? fallback : maybe)
+`,
+        `const always = (x) => () => x
+const fillWith = (x, xs) => xs.map((y) => y)
+const countOf = (xs) => xs.reduce((n) => n + 1, 0)
+const defaulted = (maybe, fallback) => (maybe === undefined ? always(fallback)() : maybe)
+`,
+        `const always = (x) => () => x
+const fillWith = (x, xs) => xs.map(always(x))
+const countOf = (xs) => xs.reduce((n, y) => n + y, 0)
+const defaulted = (maybe, fallback) => (maybe === undefined ? always(fallback)() : maybe)
+`,
+      ],
+      checks: (T, exp) => {
+        const { always, fillWith, countOf, defaulted } = exp;
+
+        T.check('always gives back a function', () => {
+          return typeof always(1) === 'function' || `always(1) gave ${T.fmt(always(1))}, and it should be waiting to be called.`;
+        });
+
+        T.check('That function ignores everything it is handed', () => {
+          const f = always('k');
+          return (f() === 'k' && f(1) === 'k' && f(1, 2, 3) === 'k') || `It gave ${T.fmt([f(), f(1), f(1, 2, 3)])}.`;
+        });
+
+        T.check('fillWith replaces every element', () => {
+          const r = fillWith(0, [1, 2, 3]);
+          return T.eq(r, [0, 0, 0]) || `fillWith(0, [1, 2, 3]) gave ${T.fmt(r)}.`;
+        });
+
+        T.check('fillWith ignores what was there', () => {
+          const r = fillWith('x', ['a', 'b']);
+          return T.eq(r, ['x', 'x']) || `fillWith('x', ['a', 'b']) gave ${T.fmt(r)}.`;
+        });
+
+        T.check('fillWith leaves the list it was given alone', () => {
+          const xs = T.freeze([1, 2]);
+          fillWith(0, xs);
+          return T.eq(xs, [1, 2]) || `The original reads ${T.fmt(xs)}.`;
+        });
+
+        T.check('countOf counts without looking at the elements', () => {
+          const got = [countOf([]), countOf([9, 9, 9]), countOf(['a', null, undefined])];
+          return T.eq(got, [0, 3, 3]) || `It counted ${T.fmt(got)}. The step ignores the element, which is why it works for any of them.`;
+        });
+
+        T.check('defaulted supplies the fallback when there is nothing', () => {
+          return defaulted(undefined, 'fb') === 'fb' || `It gave ${T.fmt(defaulted(undefined, 'fb'))}.`;
+        });
+
+        T.check('defaulted keeps a falsy value that is really there', () => {
+          const got = [defaulted(0, 9), defaulted('', 'fb'), defaulted(false, true)];
+          return T.eq(got, [0, '', false]) || `It gave ${T.fmt(got)}. Only undefined is missing.`;
+        });
+
+        T.check('fillWith uses always rather than writing a lambda', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('const fillWith'), src.indexOf('const countOf'));
+          return (
+            /always\s*\(/.test(body) ||
+            'fillWith writes its own throwaway lambda. That lambda IS a constant function, and having one already named is the whole convenience.'
+          );
+        });
+      },
+    },
   ],
 };

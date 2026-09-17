@@ -190,5 +190,122 @@ const fivePlus = partial(add, 4)
         T.check('Built by partially applying add, not written out again', () => T.shape.isPointFree('fivePlus'));
       },
     },
+
+    {
+      id: 'versus',
+      kind: 'code',
+      role: 'apply',
+      covers: ['vs-currying', 'reuse'],
+      title: "Partial application against currying, side by side",
+      prompt:
+        "Both fix arguments for later, and they differ in how many you may supply at a time. Write `partial` and `curry3`, then build the same specialised function with each.",
+      hints: [
+        "`partial` takes as many as you hand it, in one go, and waits for the rest.",
+        "`curry3` takes exactly one at a time, three times.",
+        "Both `volFixed` definitions should give the same answers, which is the point of putting them next to each other.",
+      ],
+      exports: ['partial', 'curry3', 'viaPartial', 'viaCurry'],
+      starter: `const vol = (l, w, h) => l * w * h
+
+// partial :: ((...a) -> r, ...a) -> ((...rest) -> r)
+const partial = (fn, ...fixed) => fn
+
+// curry3 :: ((a, b, c) -> r) -> (a -> b -> c -> r)
+const curry3 = (fn) => fn
+
+// viaPartial :: Number -> Number   length 2 and width 3 fixed, in one call
+const viaPartial = (h) => vol(2, 3, h)
+
+// viaCurry :: Number -> Number   same, one argument at a time
+const viaCurry = (h) => vol(2, 3, h)
+`,
+      solution: `const vol = (l, w, h) => l * w * h
+
+// partial :: ((...a) -> r, ...a) -> ((...rest) -> r)
+const partial = (fn, ...fixed) => (...rest) => fn(...fixed, ...rest)
+
+// curry3 :: ((a, b, c) -> r) -> (a -> b -> c -> r)
+const curry3 = (fn) => (a) => (b) => (c) => fn(a, b, c)
+
+// viaPartial :: Number -> Number   length 2 and width 3 fixed, in one call
+const viaPartial = partial(vol, 2, 3)
+
+// viaCurry :: Number -> Number   same, one argument at a time
+const viaCurry = curry3(vol)(2)(3)
+`,
+      broken: [
+        `const vol = (l, w, h) => l * w * h
+const partial = (fn, ...fixed) => (...rest) => fn(...rest, ...fixed)
+const curry3 = (fn) => (a) => (b) => (c) => fn(a, b, c)
+const viaPartial = partial(vol, 2, 3)
+const viaCurry = curry3(vol)(2)(3)
+`,
+        `const vol = (l, w, h) => l * w * h
+const partial = (fn, ...fixed) => (...rest) => fn(...fixed, ...rest)
+const curry3 = (fn) => (a, b, c) => fn(a, b, c)
+const viaPartial = partial(vol, 2, 3)
+const viaCurry = (h) => vol(2, 3, h)
+`,
+        `const vol = (l, w, h) => l * w * h
+const partial = (fn, first) => (...rest) => fn(first, ...rest)
+const curry3 = (fn) => (a) => (b) => (c) => fn(a, b, c)
+const viaPartial = partial(vol, 2, 3)
+const viaCurry = curry3(vol)(2)(3)
+`,
+      ],
+      checks: (T, exp) => {
+        const { partial, curry3, viaPartial, viaCurry } = exp;
+        const vol = (l: number, w: number, h: number) => l * w * h;
+
+        T.check('partial takes several arguments at once', () => {
+          const r = partial(vol, 2, 3)(4);
+          return r === 24 || `partial(vol, 2, 3)(4) gave ${T.fmt(r)}. Fixing two in one call is the thing partial can do.`;
+        });
+
+        T.check('The fixed arguments stay on the left', () => {
+          const sub = (a: number, b: number) => a - b;
+          const r = partial(sub, 10)(3);
+          return r === 7 || `partial(sub, 10)(3) gave ${T.fmt(r)}, expected 7.`;
+        });
+
+        T.check('curry3 takes exactly one at a time', () => {
+          const step = curry3(vol)(2);
+          return typeof step === 'function' && typeof step(3) === 'function' || 'curry3(vol)(2)(3) should still be waiting for the third argument.';
+        });
+
+        T.check('curry3 reaches the answer after three', () => {
+          const r = curry3(vol)(2)(3)(4);
+          return r === 24 || `curry3(vol)(2)(3)(4) gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The two specialised functions agree', () => {
+          const a = viaPartial(4);
+          const b = viaCurry(4);
+          return (a === 24 && b === 24) || `partial gave ${T.fmt(a)} and curry gave ${T.fmt(b)}, and both should be 24.`;
+        });
+
+        T.law('They agree at every height', 60, (G) => {
+          const h = G.int();
+          return viaPartial(h) === viaCurry(h) || `At height ${h}: ${T.fmt(viaPartial(h))} against ${T.fmt(viaCurry(h))}.`;
+        });
+
+        T.check('Both are reusable', () => {
+          return (viaPartial(1) === 6 && viaPartial(5) === 30) || `Reusing it gave ${T.fmt(viaPartial(1))} then ${T.fmt(viaPartial(5))}.`;
+        });
+
+        T.check('Neither names the remaining argument', () => {
+          const a = T.shape.isPointFree('viaPartial');
+          if (a !== true) return `viaPartial: ${a}`;
+          return T.shape.isPointFree('viaCurry');
+        });
+
+        T.check('Nothing runs until the last argument arrives', () => {
+          const spy = T.spyFn((a: number, b: number, c: number) => a + b + c);
+          partial(spy, 1, 2);
+          curry3(spy)(1)(2);
+          return spy.calls.length === 0 || `The function ran early, with ${T.fmt(spy.calls[0])}.`;
+        });
+      },
+    },
   ],
 };
