@@ -61,11 +61,17 @@
 }
 
 html.light {
-  /* The warm architectural paper. */
+  /*
+   * The warm architectural paper.
+   *
+   * These read as an elevation ladder rather than four shades of the same grey: the panel
+   * recedes behind the page, and a card comes forward toward white. `--card` is the editor
+   * surface, and at four steps from `--panel` it did not read as a surface at all.
+   */
   --bg: #eaeae8;
-  --panel: #e2e2df;
-  --card: #e6e6e3;
-  --card2: #d8d8d5;
+  --panel: #dededb;
+  --card: #f5f5f3;
+  --card2: #e7e7e4;
   --line: rgba(26, 26, 25, 0.12);
   --line2: rgba(26, 26, 25, 0.28);
 

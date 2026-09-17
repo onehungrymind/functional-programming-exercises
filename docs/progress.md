@@ -285,13 +285,23 @@ What it would involve when that happens, roughly in order of value:
 - CodeMirror ships reasonable defaults, but the lint annotations and the run shortcut want
   checking rather than assuming.
 
-### Performance
+### Performance, measured
 
-The sub-700ms keystroke-to-results target in the plan was never measured. It feels fine on
-this machine, which is not evidence. Worth an actual measurement before it is claimed
-anywhere.
+The plan set a sub-700ms keystroke-to-results target and nobody had ever checked it. Measured
+now, headless Chromium against the dev server on an M-series Mac:
 
-### Light mode
+| | median | worst of 8 |
+|---|---|---|
+| currying/implement, warm worker | 35ms | 36ms |
+| functor/implement, warm worker | 34ms | 38ms |
+| first run after a cold page load | 8ms | 8ms |
 
-`--card` and `--panel` are close enough in light mode that the editor barely reads as its own
-surface. Dark mode is the default and is fine.
+Twenty times inside the budget. Two caveats worth keeping with the number. This is a
+development build on a fast machine, and the warm figures include a React re-render before the
+tally text changes, which is why they read higher than the cold one. Nothing here measures a
+slow machine, a large rung, or a law that runs 80 cases against a slow implementation, and
+those are the cases that would move it.
+
+The target is not in danger. It is also not the interesting number any more: grading is fast
+because it happens in a worker on a few hundred bytes of code. If this ever gets slow it will
+be the editor or the graph, not the checks.
