@@ -263,3 +263,35 @@ Back to 174KB gzip initial, with the content a separate 75KB chunk and the edito
 146KB one. Opening Learn downloads neither.
 
 ## Phase 8 (stretch): TypeScript rungs — not started
+
+## Deferred, on purpose
+
+Things that are genuinely not done, kept here rather than in a comment nobody reads. None of
+these are blocking while this is a single-person tool.
+
+### Accessibility
+
+Never tested, at all. Decided against spending on it while nobody else is using this, and to
+do it when it goes somewhere.
+
+What it would involve when that happens, roughly in order of value:
+
+- `@axe-core/playwright` against the existing e2e suite, over the graph, the drawer, and both
+  tabs. Catches contrast, missing labels, roles, and focus traps, and becomes a gate.
+- The canvas graph has no accessible representation at all. It is the largest gap: a keyboard
+  user gets the concept list, and a screen reader gets nothing from the canvas itself.
+- Grading results appear asynchronously, so passes and failures need a live region or they
+  are silent. Same for a rung clearing and for the lap transition.
+- CodeMirror ships reasonable defaults, but the lint annotations and the run shortcut want
+  checking rather than assuming.
+
+### Performance
+
+The sub-700ms keystroke-to-results target in the plan was never measured. It feels fine on
+this machine, which is not evidence. Worth an actual measurement before it is claimed
+anywhere.
+
+### Light mode
+
+`--card` and `--panel` are close enough in light mode that the editor barely reads as its own
+surface. Dark mode is the default and is fine.
