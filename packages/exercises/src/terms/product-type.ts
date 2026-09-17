@@ -188,5 +188,114 @@ const inhabitants = (fields) =>
         });
       },
     },
+
+    {
+      id: 'enumerate',
+      kind: 'code',
+      role: 'apply',
+      covers: ['all-at-once', 'enumerate', 'zero-field'],
+      title: "List every value a product can take",
+      prompt:
+        "A product holds all of its fields at once, so its values are every combination. Write `enumerate`, which takes a field name and its possible values for each field and produces every record. Then check the count against multiplying the sizes.",
+      hints: [
+        "Build it up one field at a time: start with a single empty record and, for each field, replace what you have with one copy per possible value.",
+        "`reduce` over the fields, with `[{}]` as the seed.",
+        "No fields means one record, the empty one. That is what the multiplication starting at 1 is telling you.",
+      ],
+      exports: ['enumerate', 'sizeFromFields'],
+      starter: `// enumerate :: [[String, [a]]] -> [Object]
+// [['size', ['s', 'm']], ['hot', [true, false]]]  ->  4 records
+const enumerate = (fields) => []
+
+// sizeFromFields :: [[String, [a]]] -> Number
+const sizeFromFields = (fields) => 0
+`,
+      solution: `// enumerate :: [[String, [a]]] -> [Object]
+// [['size', ['s', 'm']], ['hot', [true, false]]]  ->  4 records
+const enumerate = (fields) =>
+  fields.reduce(
+    (acc, [name, values]) => acc.flatMap((row) => values.map((v) => ({ ...row, [name]: v }))),
+    [{}]
+  )
+
+// sizeFromFields :: [[String, [a]]] -> Number
+const sizeFromFields = (fields) => fields.reduce((n, [, values]) => n * values.length, 1)
+`,
+      broken: [
+        `const enumerate = (fields) =>
+  fields.reduce(
+    (acc, [name, values]) => acc.flatMap((row) => values.map((v) => ({ ...row, [name]: v }))),
+    []
+  )
+const sizeFromFields = (fields) => fields.reduce((n, [, values]) => n * values.length, 1)
+`,
+        `const enumerate = (fields) =>
+  fields.flatMap(([name, values]) => values.map((v) => ({ [name]: v })))
+const sizeFromFields = (fields) => fields.reduce((n, [, values]) => n * values.length, 1)
+`,
+        `const enumerate = (fields) =>
+  fields.reduce(
+    (acc, [name, values]) => acc.flatMap((row) => values.map((v) => ({ ...row, [name]: v }))),
+    [{}]
+  )
+const sizeFromFields = (fields) => fields.reduce((n, [, values]) => n + values.length, 0)
+`,
+      ],
+      checks: (T, exp) => {
+        const { enumerate, sizeFromFields } = exp;
+        const fields = () => [['size', ['s', 'm']], ['hot', [true, false]]] as [string, unknown[]][];
+
+        T.check('Two fields of two values give four records', () => {
+          const r = enumerate(fields());
+          return (Array.isArray(r) && r.length === 4) || `enumerate gave ${T.fmt(r)}, expected four records.`;
+        });
+
+        T.check('Every record carries all of the fields', () => {
+          const r = enumerate(fields());
+          const bad = r.find((row: Record<string, unknown>) => !('size' in row) || !('hot' in row));
+          return (
+            !bad ||
+            `One record came out as ${T.fmt(bad)}. A product holds every field at once, so a record missing one is not a value of the type.`
+          );
+        });
+
+        T.check('Every combination appears exactly once', () => {
+          const r = enumerate(fields()).map((x: unknown) => JSON.stringify(x)).sort();
+          const want = [
+            { size: 's', hot: true }, { size: 's', hot: false },
+            { size: 'm', hot: true }, { size: 'm', hot: false },
+          ].map((x) => JSON.stringify(x)).sort();
+          return T.eq(r, want) || `The combinations came out as ${T.fmt(r)}.`;
+        });
+
+        T.check('No fields gives one record, not none', () => {
+          const r = enumerate([]);
+          return (
+            T.eq(r, [{}]) ||
+            `enumerate([]) gave ${T.fmt(r)}, expected [{}]. There is exactly one way to hold nothing, which is why the empty record is a type with a value in it.`
+          );
+        });
+
+        T.check('Three fields multiply out', () => {
+          const r = enumerate([['a', [1, 2, 3]], ['b', [1, 2]], ['c', [1]]]);
+          return r.length === 6 || `Sizes 3, 2 and 1 gave ${r.length} records, expected 6.`;
+        });
+
+        T.check('A field with no values leaves nothing', () => {
+          const r = enumerate([['a', [1, 2]], ['b', []]]);
+          return T.eq(r, []) || `A field with no possible values gave ${T.fmt(r)}. If one field cannot be filled, no record can be built.`;
+        });
+
+        T.law('The count always matches multiplying the sizes', 60, (G) => {
+          const spec = [
+            ['a', Array.from({ length: G.nat() % 4 }, (_, i) => i)],
+            ['b', Array.from({ length: (G.nat() % 3) + 1 }, (_, i) => i)],
+          ] as [string, unknown[]][];
+          const listed = enumerate(spec).length;
+          const counted = sizeFromFields(spec);
+          return listed === counted || `Listing gave ${listed} and counting gave ${counted} for sizes ${T.fmt(spec.map((f) => f[1].length))}.`;
+        });
+      },
+    },
   ],
 };

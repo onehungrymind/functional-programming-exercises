@@ -156,5 +156,130 @@ const coordsToPair = (coords) => [coords.x, coords.y]
         },
       ],
     },
+
+    {
+      id: 'check-it',
+      kind: 'code',
+      role: 'apply',
+      covers: ['both-ways', 'pair-of-arrows', 'same-information'],
+      title: "Write the check that both ways hold",
+      prompt:
+        "Two functions between two types are not an isomorphism until both round trips come back where they started. Write `isIso`, then use it to show that a lossy pair passes one direction and fails the other.",
+      hints: [
+        "There are two laws, not one. Going out and back, and going back and out.",
+        "You need samples from both sides, because each round trip starts somewhere different.",
+        "`lossy` should be a pair where one direction throws information away. Rounding is the easiest.",
+      ],
+      exports: ['isIso', 'roundTrips', 'lossy'],
+      starter: `const snapshot = (v) => JSON.stringify(v)
+
+// roundTrips :: ((a -> b), (b -> a), [a]) -> Boolean   one direction only
+const roundTrips = (to, from, samples) => true
+
+// isIso :: ((a -> b), (b -> a), [a], [b]) -> Boolean   both directions
+const isIso = (to, from, as, bs) => true
+
+// lossy :: { to, from }   passes one way, fails the other
+const lossy = { to: (x) => x, from: (x) => x }
+`,
+      solution: `const snapshot = (v) => JSON.stringify(v)
+
+// roundTrips :: ((a -> b), (b -> a), [a]) -> Boolean   one direction only
+const roundTrips = (to, from, samples) =>
+  samples.every((a) => snapshot(from(to(a))) === snapshot(a))
+
+// isIso :: ((a -> b), (b -> a), [a], [b]) -> Boolean   both directions
+const isIso = (to, from, as, bs) =>
+  roundTrips(to, from, as) && roundTrips(from, to, bs)
+
+// lossy :: { to, from }   passes one way, fails the other
+const lossy = {
+  to: (n) => Math.round(n),
+  from: (n) => n
+}
+`,
+      broken: [
+        `const snapshot = (v) => JSON.stringify(v)
+const roundTrips = (to, from, samples) =>
+  samples.every((a) => snapshot(from(to(a))) === snapshot(a))
+const isIso = (to, from, as, bs) => roundTrips(to, from, as)
+const lossy = { to: (n) => Math.round(n), from: (n) => n }
+`,
+        `const snapshot = (v) => JSON.stringify(v)
+const roundTrips = (to, from, samples) =>
+  samples.some((a) => snapshot(from(to(a))) === snapshot(a))
+const isIso = (to, from, as, bs) => roundTrips(to, from, as) && roundTrips(from, to, bs)
+const lossy = { to: (n) => Math.round(n), from: (n) => n }
+`,
+        `const snapshot = (v) => JSON.stringify(v)
+const roundTrips = (to, from, samples) =>
+  samples.every((a) => snapshot(from(to(a))) === snapshot(a))
+const isIso = (to, from, as, bs) => roundTrips(to, from, as) && roundTrips(from, to, bs)
+const lossy = { to: (n) => n, from: (n) => n }
+`,
+      ],
+      checks: (T, exp) => {
+        const { isIso, roundTrips, lossy } = exp;
+        const toPair = (o: { x: number; y: number }) => [o.x, o.y];
+        const toObj = (p: number[]) => ({ x: p[0], y: p[1] });
+        const objs = [{ x: 1, y: 2 }, { x: 0, y: 0 }];
+        const pairs = [[1, 2], [3, 4]];
+
+        T.check('A real isomorphism passes', () => {
+          const r = isIso(toPair, toObj, objs, pairs);
+          return r === true || `A point and a pair carry the same information, and it was reported as ${T.fmt(r)}.`;
+        });
+
+        T.check('It compares by contents, not identity', () => {
+          const r = roundTrips(toPair, toObj, objs);
+          return r === true || `Going out and back gave ${T.fmt(r)}. The object that comes back is a new one, so === would always say no.`;
+        });
+
+        T.check('A swapped pair fails', () => {
+          const r = isIso(toPair, (p: number[]) => ({ x: p[1], y: p[0] }), objs, pairs);
+          return r === false || `A pair that crosses the fields was reported as ${T.fmt(r)}.`;
+        });
+
+        T.check('One sample failing is enough to fail', () => {
+          const r = roundTrips((n: number) => (n === 0 ? 99 : n), (n: number) => n, [0, 1, 2]);
+          return r === false || `A function that only misbehaves at zero was reported as ${T.fmt(r)}.`;
+        });
+
+        T.check('The lossy pair does pass one direction', () => {
+          const ints = [1, 2, 3];
+          const r = roundTrips(lossy.to, lossy.from, ints);
+          return (
+            r === true ||
+            `Starting from whole numbers, rounding and coming back should be exact, and it gave ${T.fmt(r)}. Half of an isomorphism can hold perfectly well.`
+          );
+        });
+
+        T.check('The lossy pair fails the other direction', () => {
+          const r = roundTrips(lossy.from, lossy.to, [1.5, 2.25]);
+          return (
+            r === false ||
+            `Starting from a number with a fraction, it reported ${T.fmt(r)}. That is the direction where the information is thrown away.`
+          );
+        });
+
+        T.check('isIso rejects the lossy pair outright', () => {
+          const r = isIso(lossy.to, lossy.from, [1, 2, 3], [1.5, 2.25]);
+          return (
+            r === false ||
+            `isIso reported ${T.fmt(r)}. If it only checks one direction, every lossy pair looks like an isomorphism from the side that happens to work.`
+          );
+        });
+
+        T.check('isIso checks both sets of samples', () => {
+          let touched = 0;
+          const spy = (n: number) => {
+            touched += 1;
+            return n;
+          };
+          isIso(spy, spy, [1], [2]);
+          return touched >= 4 || `The functions ran ${touched} times. Two round trips over one sample each is four calls.`;
+        });
+      },
+    },
   ],
 };

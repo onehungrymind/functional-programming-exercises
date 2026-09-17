@@ -227,5 +227,136 @@ const toInt = (n) => n((k) => k + 1)(0)
         },
       ],
     },
+
+    {
+      id: 'three-rules',
+      kind: 'code',
+      role: 'implement',
+      covers: ['three-rules', 'escape-hatch'],
+      title: "Name the three forms, then find the free variables",
+      prompt:
+        "Everything in the lambda calculus is a variable, an abstraction, or an application. Write `kindOf`, which says which, and `freeVars`, which collects the variables nothing has bound. There is no fourth case to fall back on.",
+      hints: [
+        "A variable is `{ v: 'x' }`. An abstraction is `{ param, body }`. An application is `{ fn, arg }`.",
+        "`freeVars` on a variable is just that name. On an application it is both sides together.",
+        "An abstraction binds its parameter, so remove that name from whatever its body reported.",
+      ],
+      exports: ['kindOf', 'freeVars'],
+      starter: `// Term :: { v } | { param, body } | { fn, arg }
+
+// kindOf :: Term -> String   'variable' | 'abstraction' | 'application'
+const kindOf = (t) => 'variable'
+
+// freeVars :: Term -> [String]   sorted, no duplicates
+const freeVars = (t) => []
+`,
+      solution: `// Term :: { v } | { param, body } | { fn, arg }
+
+// kindOf :: Term -> String   'variable' | 'abstraction' | 'application'
+const kindOf = (t) =>
+  t.v !== undefined ? 'variable' : t.param !== undefined ? 'abstraction' : 'application'
+
+// freeVars :: Term -> [String]   sorted, no duplicates
+const freeVars = (t) => {
+  const walk = (node) => {
+    const kind = kindOf(node)
+    if (kind === 'variable') return [node.v]
+    if (kind === 'abstraction') return walk(node.body).filter((n) => n !== node.param)
+    return [...walk(node.fn), ...walk(node.arg)]
+  }
+  return [...new Set(walk(t))].sort()
+}
+`,
+      broken: [
+        `const kindOf = (t) =>
+  t.v !== undefined ? 'variable' : t.param !== undefined ? 'abstraction' : 'application'
+const freeVars = (t) => {
+  const walk = (node) => {
+    const kind = kindOf(node)
+    if (kind === 'variable') return [node.v]
+    if (kind === 'abstraction') return walk(node.body)
+    return [...walk(node.fn), ...walk(node.arg)]
+  }
+  return [...new Set(walk(t))].sort()
+}
+`,
+        `const kindOf = (t) =>
+  t.v !== undefined ? 'variable' : t.fn !== undefined ? 'abstraction' : 'application'
+const freeVars = (t) => {
+  const walk = (node) => {
+    if (node.v !== undefined) return [node.v]
+    if (node.param !== undefined) return walk(node.body).filter((n) => n !== node.param)
+    return [...walk(node.fn), ...walk(node.arg)]
+  }
+  return [...new Set(walk(t))].sort()
+}
+`,
+        `const kindOf = (t) =>
+  t.v !== undefined ? 'variable' : t.param !== undefined ? 'abstraction' : 'application'
+const freeVars = (t) => {
+  const walk = (node) => {
+    const kind = kindOf(node)
+    if (kind === 'variable') return [node.v]
+    if (kind === 'abstraction') return walk(node.body).filter((n) => n !== node.param)
+    return walk(node.fn)
+  }
+  return [...new Set(walk(t))].sort()
+}
+`,
+      ],
+      checks: (T, exp) => {
+        const { kindOf, freeVars } = exp;
+        const v = (name: string) => ({ v: name });
+        const lam = (param: string, body: unknown) => ({ param, body });
+        const app = (fn: unknown, arg: unknown) => ({ fn, arg });
+
+        T.check('It names all three forms', () => {
+          const got = [kindOf(v('x')), kindOf(lam('x', v('x'))), kindOf(app(v('f'), v('x')))];
+          return (
+            T.eq(got, ['variable', 'abstraction', 'application']) ||
+            `It gave ${T.fmt(got)}. Those three are everything there is, which is the point of the rung.`
+          );
+        });
+
+        T.check('An abstraction is not mistaken for an application', () => {
+          return (
+            kindOf(lam('x', v('y'))) === 'abstraction' ||
+            `A lambda came back as ${T.fmt(kindOf(lam('x', v('y'))))}. It has a body, not an argument.`
+          );
+        });
+
+        T.check('A lone variable is free', () => {
+          return T.eq(freeVars(v('x')), ['x']) || `freeVars of a bare x gave ${T.fmt(freeVars(v('x')))}.`;
+        });
+
+        T.check('A parameter binds its own name', () => {
+          const r = freeVars(lam('x', v('x')));
+          return T.eq(r, []) || `The identity function reported ${T.fmt(r)} free. Its x is bound by its own parameter.`;
+        });
+
+        T.check('A name the lambda does not bind is still free', () => {
+          const r = freeVars(lam('x', v('y')));
+          return T.eq(r, ['y']) || `\`λx. y\` reported ${T.fmt(r)}, expected ['y'].`;
+        });
+
+        T.check('Both sides of an application are looked at', () => {
+          const r = freeVars(app(v('f'), v('x')));
+          return T.eq(r, ['f', 'x']) || `\`f x\` reported ${T.fmt(r)}. The function side counts too.`;
+        });
+
+        T.check('Binding reaches all the way down', () => {
+          const r = freeVars(lam('x', app(v('x'), lam('y', app(v('x'), v('z'))))));
+          return (
+            T.eq(r, ['z']) ||
+            `A nested term reported ${T.fmt(r)}, expected ['z']. Both of the inner x uses are under the outer parameter.`
+          );
+        });
+
+        T.check('A name is reported once, however often it appears', () => {
+          const r = freeVars(app(v('x'), app(v('x'), v('x'))));
+          return T.eq(r, ['x']) || `Three uses of x reported ${T.fmt(r)}.`;
+        });
+      },
+    },
   ],
 };

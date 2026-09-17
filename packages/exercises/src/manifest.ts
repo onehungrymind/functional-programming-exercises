@@ -801,6 +801,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Build every inhabitant",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "enumerate",
+        "role": "apply",
+        "title": "List every value a product can take",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -819,6 +826,13 @@ export const manifest: ManifestEntry[] = [
         "role": "recognize",
         "title": "Which of these are sum types?",
         "kind": "choice",
+        "lang": "js"
+      },
+      {
+        "id": "from-flags",
+        "role": "apply",
+        "title": "Replace a bag of flags with a sum",
+        "kind": "code",
         "lang": "js"
       },
       {
@@ -1001,6 +1015,13 @@ export const manifest: ManifestEntry[] = [
         "role": "recognize",
         "title": "What is the lambda calculus made of?",
         "kind": "choice",
+        "lang": "js"
+      },
+      {
+        "id": "three-rules",
+        "role": "implement",
+        "title": "Name the three forms, then find the free variables",
+        "kind": "code",
         "lang": "js"
       }
     ]
@@ -1584,6 +1605,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Endomorphisms form a monoid",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "fold-them",
+        "role": "apply",
+        "title": "Fold a list of endomorphisms into one",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -1603,6 +1631,13 @@ export const manifest: ManifestEntry[] = [
         "title": "What makes it an isomorphism rather than two functions?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "check-it",
+        "role": "apply",
+        "title": "Write the check that both ways hold",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -1621,6 +1656,13 @@ export const manifest: ManifestEntry[] = [
         "role": "recognize",
         "title": "Which of these are homomorphisms?",
         "kind": "choice",
+        "lang": "js"
+      },
+      {
+        "id": "check-it",
+        "role": "apply",
+        "title": "Write the structure-preserving check",
+        "kind": "code",
         "lang": "js"
       }
     ]

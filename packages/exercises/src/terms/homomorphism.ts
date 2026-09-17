@@ -198,5 +198,106 @@ const combineLengths = (a, b) => a + b
         },
       ],
     },
+
+    {
+      id: 'check-it',
+      kind: 'code',
+      role: 'apply',
+      covers: ['identify', 'identity-maps-to-identity'],
+      title: "Write the structure-preserving check",
+      prompt:
+        "A homomorphism is a map that respects an operation: doing the work then mapping gives the same answer as mapping then doing the work. Write `preserves`, and find the function that looks like one and is not.",
+      hints: [
+        "The law is `f(a op b)` equals `f(a) op2 f(b)`. Two operations, one on each side.",
+        "`length` from strings under concatenation to numbers under addition is the classic one that works.",
+        "A homomorphism also has to send the identity to the identity. Check that separately, because a map can respect the operation everywhere else and still miss it.",
+      ],
+      exports: ['preserves', 'sendsIdentity'],
+      starter: `// preserves :: ((a -> b), ((a, a) -> a), ((b, b) -> b), [a]) -> Boolean
+const preserves = (f, opA, opB, samples) => true
+
+// sendsIdentity :: ((a -> b), a, b) -> Boolean
+const sendsIdentity = (f, emptyA, emptyB) => true
+`,
+      solution: `// preserves :: ((a -> b), ((a, a) -> a), ((b, b) -> b), [a]) -> Boolean
+const preserves = (f, opA, opB, samples) =>
+  samples.every((a) => samples.every((b) => f(opA(a, b)) === opB(f(a), f(b))))
+
+// sendsIdentity :: ((a -> b), a, b) -> Boolean
+const sendsIdentity = (f, emptyA, emptyB) => f(emptyA) === emptyB
+`,
+      broken: [
+        `const preserves = (f, opA, opB, samples) =>
+  samples.every((a) => f(opA(a, a)) === opB(f(a), f(a)))
+const sendsIdentity = (f, emptyA, emptyB) => f(emptyA) === emptyB
+`,
+        `const preserves = (f, opA, opB, samples) =>
+  samples.some((a) => samples.some((b) => f(opA(a, b)) === opB(f(a), f(b))))
+const sendsIdentity = (f, emptyA, emptyB) => f(emptyA) === emptyB
+`,
+        `const preserves = (f, opA, opB, samples) =>
+  samples.every((a) => samples.every((b) => f(opA(a, b)) === opB(f(a), f(b))))
+const sendsIdentity = (f, emptyA, emptyB) => true
+`,
+      ],
+      checks: (T, exp) => {
+        const { preserves, sendsIdentity } = exp;
+        const cat = (a: string, b: string) => a + b;
+        const add = (a: number, b: number) => a + b;
+        const mul = (a: number, b: number) => a * b;
+
+        T.check('length from concatenation to addition is a homomorphism', () => {
+          const r = preserves((s: string) => s.length, cat, add, ['', 'a', 'bc']);
+          return r === true || `Length was reported as ${T.fmt(r)}. Joining then measuring is measuring then adding.`;
+        });
+
+        T.check('length from concatenation to multiplication is not', () => {
+          const r = preserves((s: string) => s.length, cat, mul, ['a', 'bc']);
+          return r === false || `Measuring into multiplication was reported as ${T.fmt(r)}. The operation on the far side has to be the matching one.`;
+        });
+
+        T.check('It checks pairs, not just a value against itself', () => {
+          const odd = (s: string) => (s.length % 2 === 0 ? 0 : s.length);
+          const r = preserves(odd, cat, add, ['a', 'bc', 'def']);
+          return (
+            r === false ||
+            `A map that happens to work when both sides are equal was reported as ${T.fmt(r)}. Every pair has to hold, including the mixed ones.`
+          );
+        });
+
+        T.check('Upper-casing preserves concatenation', () => {
+          const r = preserves((s: string) => s.toUpperCase(), cat, cat, ['a', 'bc']);
+          return r === true || `Upper-casing was reported as ${T.fmt(r)}.`;
+        });
+
+        T.check('Reversing a string does not preserve concatenation', () => {
+          const rev = (s: string) => [...s].reverse().join('');
+          const r = preserves(rev, cat, cat, ['ab', 'cd']);
+          return (
+            r === false ||
+            `Reversing was reported as ${T.fmt(r)}. Reversing 'abcd' gives 'dcba', and reversing each half then joining gives 'badc'.`
+          );
+        });
+
+        T.check('The empty string maps to zero', () => {
+          const r = sendsIdentity((s: string) => s.length, '', 0);
+          return r === true || `It reported ${T.fmt(r)}. The empty string is the identity of concatenation and zero is the identity of addition.`;
+        });
+
+        T.check('A map that adds one misses the identity', () => {
+          const r = sendsIdentity((s: string) => s.length + 1, '', 0);
+          return (
+            r === false ||
+            `It reported ${T.fmt(r)}. A map can respect the operation and still send the identity somewhere else, which is why this is checked on its own.`
+          );
+        });
+
+        T.check('An empty sample list does not make everything true by accident', () => {
+          const r = sendsIdentity((s: string) => s.length + 1, '', 0);
+          const s = preserves((x: string) => x.length, cat, add, ['a', 'b']);
+          return (r === false && s === true) || 'The two checks are not answering independently.';
+        });
+      },
+    },
   ],
 };

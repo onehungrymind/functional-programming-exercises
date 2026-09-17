@@ -301,6 +301,129 @@ const match = (state, handlers) => {
     },
 
     {
+      id: 'from-flags',
+      kind: 'code',
+      role: 'apply',
+      covers: ['recognize', 'one-of-several'],
+      title: "Replace a bag of flags with a sum",
+      prompt:
+        "`Flags` is the shape people reach for first, and it permits states that cannot happen. Write `toStatus`, which turns a sensible `Flags` into a tagged union, and `impossible`, which lists the `Flags` values the union has no room for.",
+      hints: [
+        "The union has three cases. `Flags` has a boolean and two optional fields, so it has more combinations than that.",
+        "`impossible` gets a list of `Flags` and keeps the ones that are not any of the three real states.",
+        "Loading while also holding data is one of them. So is having neither data nor an error while not loading.",
+      ],
+      exports: ['toStatus', 'impossible'],
+      starter: `// Flags :: { loading: Boolean, data?: String, error?: String }
+// Status :: { tag: 'loading' } | { tag: 'ok', data } | { tag: 'failed', reason }
+
+// toStatus :: Flags -> Status
+const toStatus = (flags) => ({ tag: 'loading' })
+
+// impossible :: [Flags] -> [Flags]
+const impossible = (all) => []
+`,
+      solution: `// Flags :: { loading: Boolean, data?: String, error?: String }
+// Status :: { tag: 'loading' } | { tag: 'ok', data } | { tag: 'failed', reason }
+
+const isReal = (f) => {
+  if (f.loading) return f.data === undefined && f.error === undefined
+  if (f.error !== undefined) return f.data === undefined
+  return f.data !== undefined
+}
+
+// toStatus :: Flags -> Status
+const toStatus = (flags) => {
+  if (flags.loading) return { tag: 'loading' }
+  if (flags.error !== undefined) return { tag: 'failed', reason: flags.error }
+  return { tag: 'ok', data: flags.data }
+}
+
+// impossible :: [Flags] -> [Flags]
+const impossible = (all) => all.filter((f) => !isReal(f))
+`,
+      broken: [
+        `const toStatus = (flags) => {
+  if (flags.loading) return { tag: 'loading' }
+  if (flags.error !== undefined) return { tag: 'failed', reason: flags.error }
+  return { tag: 'ok', data: flags.data }
+}
+const impossible = (all) => []
+`,
+        `const toStatus = (flags) => {
+  if (flags.error !== undefined) return { tag: 'failed', reason: flags.error }
+  if (flags.loading) return { tag: 'loading' }
+  return { tag: 'ok', data: flags.data }
+}
+const impossible = (all) =>
+  all.filter((f) => (f.loading ? f.data !== undefined || f.error !== undefined : false))
+`,
+        `const isReal = (f) => {
+  if (f.loading) return f.data === undefined && f.error === undefined
+  if (f.error !== undefined) return f.data === undefined
+  return f.data !== undefined
+}
+const toStatus = (flags) => ({ tag: 'ok', data: flags.data })
+const impossible = (all) => all.filter((f) => !isReal(f))
+`,
+      ],
+      checks: (T, exp) => {
+        const { toStatus, impossible } = exp;
+
+        T.check('Loading becomes the loading case', () => {
+          const r = toStatus({ loading: true });
+          return (r && r.tag === 'loading') || `A loading flag gave ${T.fmt(r)}.`;
+        });
+
+        T.check('Data becomes the ok case, carrying the data', () => {
+          const r = toStatus({ loading: false, data: 'payload' });
+          return T.eq(r, { tag: 'ok', data: 'payload' }) || `Data gave ${T.fmt(r)}.`;
+        });
+
+        T.check('An error becomes the failed case, carrying the reason', () => {
+          const r = toStatus({ loading: false, error: 'timeout' });
+          return T.eq(r, { tag: 'failed', reason: 'timeout' }) || `An error gave ${T.fmt(r)}.`;
+        });
+
+        T.check('Empty data is still data', () => {
+          const r = toStatus({ loading: false, data: '' });
+          return (
+            T.eq(r, { tag: 'ok', data: '' }) ||
+            `An empty string gave ${T.fmt(r)}. Testing the field for truthiness is exactly the bug the union removes.`
+          );
+        });
+
+        T.check('Loading with data is a state the union has no room for', () => {
+          const r = impossible([{ loading: true, data: 'x' }]);
+          return (
+            r.length === 1 ||
+            `It found ${r.length}. Loading while already holding data is a combination Flags permits and the three cases do not.`
+          );
+        });
+
+        T.check('Neither loading, nor data, nor error is impossible too', () => {
+          const r = impossible([{ loading: false }]);
+          return r.length === 1 || `It found ${r.length} for a Flags with nothing set at all.`;
+        });
+
+        T.check('Both data and an error at once is impossible', () => {
+          const r = impossible([{ loading: false, data: 'x', error: 'y' }]);
+          return r.length === 1 || `It found ${r.length} for a Flags holding a result and a failure together.`;
+        });
+
+        T.check('The three real states are not flagged', () => {
+          const real = [
+            { loading: true },
+            { loading: false, data: 'x' },
+            { loading: false, error: 'y' },
+          ];
+          const r = impossible(real);
+          return T.eq(r, []) || `It flagged ${T.fmt(r)}, and all three of those are states that really happen.`;
+        });
+      },
+    },
+
+    {
       id: 'typed',
       kind: 'code',
       role: 'implement',

@@ -196,5 +196,106 @@ Endo.empty = () => Endo((x) => x)
         });
       },
     },
+
+    {
+      id: 'fold-them',
+      kind: 'code',
+      role: 'apply',
+      covers: ['same-type-both-ends', 'monoid-under-composition', 'fold-a-pipeline'],
+      title: "Fold a list of endomorphisms into one",
+      prompt:
+        "An endomorphism has the same type at both ends, which is exactly what makes a list of them collapsible. Write `isEndo`, then `pipe`, which folds any number of them into a single function, and say what the empty fold gives you.",
+      hints: [
+        "`isEndo` applies the function and checks the result is the same kind of thing it was given. `typeof` is enough here.",
+        "`pipe` folds with composition. Because both ends match, the result of one is a legal input to the next.",
+        "Folding needs a starting value, and the only function that leaves a composition alone is the identity.",
+      ],
+      exports: ['isEndo', 'pipe', 'empty'],
+      starter: `// isEndo :: ((a -> b), [a]) -> Boolean
+const isEndo = (f, samples) => true
+
+// empty :: a -> a   the identity of composition
+const empty = (x) => null
+
+// pipe :: [a -> a] -> (a -> a)
+const pipe = (fns) => empty
+`,
+      solution: `// isEndo :: ((a -> b), [a]) -> Boolean
+const isEndo = (f, samples) => samples.every((x) => typeof f(x) === typeof x)
+
+// empty :: a -> a   the identity of composition
+const empty = (x) => x
+
+// pipe :: [a -> a] -> (a -> a)
+const pipe = (fns) => fns.reduce((acc, f) => (x) => f(acc(x)), empty)
+`,
+      broken: [
+        `const isEndo = (f, samples) => samples.some((x) => typeof f(x) === typeof x)
+const empty = (x) => x
+const pipe = (fns) => fns.reduce((acc, f) => (x) => f(acc(x)), empty)
+`,
+        `const isEndo = (f, samples) => samples.every((x) => typeof f(x) === typeof x)
+const empty = (x) => x
+const pipe = (fns) => fns.reduceRight((acc, f) => (x) => f(acc(x)), empty)
+`,
+        `const isEndo = (f, samples) => samples.every((x) => typeof f(x) === typeof x)
+const empty = (x) => 0
+const pipe = (fns) => fns.reduce((acc, f) => (x) => f(acc(x)), empty)
+`,
+      ],
+      checks: (T, exp) => {
+        const { isEndo, pipe, empty } = exp;
+
+        T.check('Doubling a number is an endomorphism', () => {
+          return isEndo((n: number) => n * 2, [1, 2]) === true || 'Number in, number out, and it was reported otherwise.';
+        });
+
+        T.check('Measuring a string is not', () => {
+          const r = isEndo((s: string) => s.length, ['a', 'bc']);
+          return r === false || `String to number was reported as ${T.fmt(r)}. The two ends have to match.`;
+        });
+
+        T.check('One matching sample is not enough', () => {
+          const r = isEndo((n: number) => (n === 0 ? 0 : String(n)), [0, 1]);
+          return r === false || `A function that only matches at zero was reported as ${T.fmt(r)}.`;
+        });
+
+        T.check('pipe runs them left to right', () => {
+          const r = pipe([(n: number) => n + 1, (n: number) => n * 2])(3);
+          return r === 8 || `Adding one then doubling 3 should give 8. It gave ${T.fmt(r)}.`;
+        });
+
+        T.check('pipe takes as many as you give it', () => {
+          const r = pipe([(n: number) => n + 1, (n: number) => n * 2, (n: number) => n - 3])(3);
+          return r === 5 || `Three steps over 3 gave ${T.fmt(r)}, expected 5.`;
+        });
+
+        T.check('The empty fold is the identity', () => {
+          const r = pipe([])(7);
+          return (
+            r === 7 ||
+            `pipe([])(7) gave ${T.fmt(r)}. Folding needs a starting value, and the only function that changes nothing under composition is the one that hands its argument back.`
+          );
+        });
+
+        T.law('empty on its own leaves a value alone', 60, (G) => {
+          const n = G.int();
+          return empty(n) === n || `empty(${n}) gave ${T.fmt(empty(n))}.`;
+        });
+
+        T.law('Folding is associative, so grouping does not matter', 60, (G) => {
+          const f = G.fn(), g = G.fn(), h = G.fn();
+          const n = G.int();
+          const a = pipe([f.f, g.f, h.f])(n);
+          const b = pipe([pipe([f.f, g.f]), h.f])(n);
+          return a === b || `With ${f.name}, ${g.name} and ${h.name} at ${n}: ${T.fmt(a)} against ${T.fmt(b)}.`;
+        });
+
+        T.check('Endomorphisms over strings fold too', () => {
+          const r = pipe([(s: string) => s + '!', (s: string) => s.toUpperCase()])('hi');
+          return r === 'HI!' || `Over strings it gave ${T.fmt(r)}.`;
+        });
+      },
+    },
   ],
 };
