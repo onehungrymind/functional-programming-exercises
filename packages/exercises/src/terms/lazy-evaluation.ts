@@ -344,5 +344,181 @@ const firstSquaresOver = (floor, count) => {
         });
       },
     },
+
+    {
+      id: 'pull',
+      kind: 'code',
+      role: 'apply',
+      covers: ['pull-not-push', 'filter-lazily'],
+      title: "Only do the work that is asked for",
+      prompt:
+        "Lazy means the consumer pulls, so nothing past what was asked for ever runs. Write `lazyMap`, `lazyFilter` and `take` over generators, then show the work count stays small.",
+      hints: [
+        "Each one is a generator that yields as it goes, rather than building an array.",
+        "`take` stops after n, and stopping is what keeps the source from being drained.",
+        "The source here is endless. If your pipeline tries to finish it, nothing will come back.",
+      ],
+      exports: ['lazyMap', 'lazyFilter', 'take'],
+      starter: `// naturals :: () -> Generator   endless
+function* naturals() {
+  let n = 0
+  while (true) {
+    yield n
+    n += 1
+  }
+}
+
+// lazyMap :: ((a -> b), Iterable a) -> Generator b
+function* lazyMap(f, xs) {
+}
+
+// lazyFilter :: ((a -> Boolean), Iterable a) -> Generator a
+function* lazyFilter(p, xs) {
+}
+
+// take :: (Number, Iterable a) -> [a]
+const take = (n, xs) => []
+`,
+      solution: `// naturals :: () -> Generator   endless
+function* naturals() {
+  let n = 0
+  while (true) {
+    yield n
+    n += 1
+  }
+}
+
+// lazyMap :: ((a -> b), Iterable a) -> Generator b
+function* lazyMap(f, xs) {
+  for (const x of xs) yield f(x)
+}
+
+// lazyFilter :: ((a -> Boolean), Iterable a) -> Generator a
+function* lazyFilter(p, xs) {
+  for (const x of xs) if (p(x)) yield x
+}
+
+// take :: (Number, Iterable a) -> [a]
+const take = (n, xs) => {
+  const out = []
+  if (n <= 0) return out
+  for (const x of xs) {
+    out.push(x)
+    if (out.length === n) break
+  }
+  return out
+}
+`,
+      broken: [
+        `function* naturals() { let n = 0; while (true) { yield n; n += 1 } }
+function* lazyMap(f, xs) { for (const x of xs) yield f(x) }
+function* lazyFilter(p, xs) { for (const x of xs) if (p(x)) yield x }
+const take = (n, xs) => {
+  const out = []
+  for (const x of xs) out.push(x)
+  return out.slice(0, n)
+}
+`,
+        `function* naturals() { let n = 0; while (true) { yield n; n += 1 } }
+function* lazyMap(f, xs) { for (const x of xs) yield x }
+function* lazyFilter(p, xs) { for (const x of xs) if (p(x)) yield x }
+const take = (n, xs) => {
+  const out = []
+  if (n <= 0) return out
+  for (const x of xs) { out.push(x); if (out.length === n) break }
+  return out
+}
+`,
+        `function* naturals() { let n = 0; while (true) { yield n; n += 1 } }
+function* lazyMap(f, xs) { for (const x of xs) yield f(x) }
+function* lazyFilter(p, xs) { for (const x of xs) yield x }
+const take = (n, xs) => {
+  const out = []
+  if (n <= 0) return out
+  for (const x of xs) { out.push(x); if (out.length === n) break }
+  return out
+}
+`,
+      ],
+      checks: (T, exp) => {
+        const { lazyMap, lazyFilter, take } = exp;
+        const upto = function* (n: number) {
+          for (let i = 0; i < n; i += 1) yield i;
+        };
+
+        T.check('take stops at n', () => {
+          const r = take(3, upto(100));
+          return T.eq(r, [0, 1, 2]) || `take(3, 0..99) gave ${T.fmt(r)}.`;
+        });
+
+        T.check('take of nothing is nothing', () => {
+          return T.eq(take(0, upto(10)), []) || `take(0, ...) gave ${T.fmt(take(0, upto(10)))}.`;
+        });
+
+        T.check('take of more than there is gives what there is', () => {
+          return T.eq(take(10, upto(3)), [0, 1, 2]) || `It gave ${T.fmt(take(10, upto(3)))}.`;
+        });
+
+        T.check('lazyMap applies the function', () => {
+          const r = take(3, lazyMap((n: number) => n * 2, upto(10)));
+          return T.eq(r, [0, 2, 4]) || `Doubling then taking three gave ${T.fmt(r)}.`;
+        });
+
+        T.check('lazyFilter keeps only what passes', () => {
+          const r = take(3, lazyFilter((n: number) => n % 2 === 0, upto(20)));
+          return T.eq(r, [0, 2, 4]) || `Filtering to evens then taking three gave ${T.fmt(r)}.`;
+        });
+
+        T.check('Only the work that was asked for happens', () => {
+          let calls = 0;
+          const counted = (n: number) => {
+            calls += 1;
+            return n * 2;
+          };
+          take(3, lazyMap(counted, upto(1000)));
+          return (
+            calls <= 4 ||
+            `The function ran ${calls} times to produce three answers. Pulling means the consumer decides how far the source is drained, so nothing past what was asked for should run.`
+          );
+        });
+
+        T.check('A filtered pipeline only pulls as far as it must', () => {
+          let seen = 0;
+          const source = function* () {
+            for (let i = 0; i < 1000; i += 1) {
+              seen += 1;
+              yield i;
+            }
+          };
+          take(2, lazyFilter((n: number) => n % 3 === 0, source()));
+          return seen <= 5 || `The source produced ${seen} values to yield two multiples of three. Expected to stop around the fourth.`;
+        });
+
+        T.check('A source with no natural end is fine, because nothing tries to finish it', () => {
+          // Deliberately NOT endless. A `take` that drains its source first is the likely
+          // wrong answer here, and handing that an infinite generator hangs the tab rather
+          // than failing the rung. This one gives up loudly instead.
+          const LIMIT = 10_000;
+          let pulled = 0;
+          const naturals = function* () {
+            let n = 0;
+            while (true) {
+              pulled += 1;
+              if (pulled > LIMIT) throw new Error('drained');
+              yield n;
+              n += 1;
+            }
+          };
+          let r;
+          try {
+            r = take(4, lazyMap((n: number) => n * n, lazyFilter((n: number) => n % 2 === 1, naturals())));
+          } catch {
+            return `The pipeline pulled more than ${LIMIT} values to produce four. A source with no natural end only works if the consumer stops, so something downstream is draining it before taking its four.`;
+          }
+          if (!T.eq(r, [1, 9, 25, 49])) return `The pipeline gave ${T.fmt(r)}, expected [1, 9, 25, 49].`;
+          return pulled <= 10 || `It pulled ${pulled} values to produce four.`;
+        });
+      },
+    },
   ],
 };

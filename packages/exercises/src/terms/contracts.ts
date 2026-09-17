@@ -234,5 +234,156 @@ const withContract = (inputChecks, outputCheck, fn) => (...args) => {
         },
       ],
     },
+
+    {
+      id: 'both-ends',
+      kind: 'code',
+      role: 'apply',
+      covers: ['both-sides', 'useful-message'],
+      title: "Guard both ends, and say what went wrong",
+      prompt:
+        "A contract checks what comes in and what goes out, and a failure that does not say which is barely worth having. Write `contract`, which wraps a function with both guards and messages that name the offending value.",
+      hints: [
+        "The precondition runs before the call and the postcondition after it.",
+        "The message has to say which side failed and what the value was, or the guard is just a crash with extra steps.",
+        "A function that satisfies both should be indistinguishable from the unwrapped one.",
+      ],
+      exports: ['contract'],
+      starter: `// contract :: ({ pre, post, name }, (a -> b)) -> (a -> b)
+const contract = ({ pre, post, name }, fn) => fn
+`,
+      solution: `// contract :: ({ pre, post, name }, (a -> b)) -> (a -> b)
+const contract = ({ pre, post, name }, fn) => (arg) => {
+  if (!pre(arg)) {
+    throw new TypeError(name + ': precondition failed for ' + JSON.stringify(arg))
+  }
+  const result = fn(arg)
+  if (!post(result)) {
+    throw new TypeError(name + ': postcondition failed for ' + JSON.stringify(result))
+  }
+  return result
+}
+`,
+      broken: [
+        `const contract = ({ pre, post, name }, fn) => (arg) => {
+  if (!pre(arg)) throw new TypeError(name + ': precondition failed for ' + JSON.stringify(arg))
+  return fn(arg)
+}
+`,
+        `const contract = ({ pre, post, name }, fn) => (arg) => {
+  const result = fn(arg)
+  if (!post(result)) throw new TypeError(name + ': postcondition failed for ' + JSON.stringify(result))
+  return result
+}
+`,
+        `const contract = ({ pre, post, name }, fn) => (arg) => {
+  if (!pre(arg)) throw new TypeError('failed')
+  const result = fn(arg)
+  if (!post(result)) throw new TypeError('failed')
+  return result
+}
+`,
+      ],
+      checks: (T, exp) => {
+        const contract = exp.contract;
+        const spec = {
+          name: 'sqrt',
+          pre: (n: number) => typeof n === 'number' && n >= 0,
+          post: (n: number) => typeof n === 'number' && !Number.isNaN(n),
+        };
+        const guarded = contract(spec, Math.sqrt);
+
+        T.check('A good call passes straight through', () => {
+          return guarded(9) === 3 || `guarded(9) gave ${T.fmt(guarded(9))}.`;
+        });
+
+        T.check('A bad input is stopped', () => {
+          let threw = false;
+          try {
+            guarded(-1);
+          } catch {
+            threw = true;
+          }
+          return threw || 'A negative input was allowed through. That is the precondition.';
+        });
+
+        T.check('A bad input is stopped before the function runs', () => {
+          let ran = false;
+          const g = contract(spec, (n: number) => {
+            ran = true;
+            return n;
+          });
+          try {
+            g(-1);
+          } catch {
+            /* expected */
+          }
+          return !ran || 'The function ran despite the precondition failing. Checking after the fact is not a guard.';
+        });
+
+        T.check('A bad output is stopped too', () => {
+          const g = contract(spec, () => NaN);
+          let threw = false;
+          try {
+            g(4);
+          } catch {
+            threw = true;
+          }
+          return threw || 'A NaN result came back without complaint. Both ends are guarded, not just the one going in.';
+        });
+
+        T.check('The message says which side failed', () => {
+          let msg = '';
+          try {
+            guarded(-1);
+          } catch (e) {
+            msg = (e as Error).message;
+          }
+          return /pre/i.test(msg) || `The message was ${T.fmt(msg)}, and it should say the precondition is what failed.`;
+        });
+
+        T.check('The message names the offending value', () => {
+          let msg = '';
+          try {
+            guarded(-1);
+          } catch (e) {
+            msg = (e as Error).message;
+          }
+          return /-1/.test(msg) || `The message was ${T.fmt(msg)}. Without the value it is a crash with extra steps.`;
+        });
+
+        T.check('The postcondition message is distinguishable from the precondition one', () => {
+          const g = contract(spec, () => NaN);
+          let pre = '';
+          let post = '';
+          try {
+            g(-1);
+          } catch (e) {
+            pre = (e as Error).message;
+          }
+          try {
+            g(4);
+          } catch (e) {
+            post = (e as Error).message;
+          }
+          return pre !== post || `Both failures said ${T.fmt(pre)}. Which end broke is the first thing you want to know.`;
+        });
+
+        T.check('The contract names itself', () => {
+          let msg = '';
+          try {
+            guarded(-1);
+          } catch (e) {
+            msg = (e as Error).message;
+          }
+          return /sqrt/.test(msg) || `The message was ${T.fmt(msg)} and does not say which contract it was.`;
+        });
+
+        T.law('A satisfied contract is invisible', 60, (G) => {
+          const n = Math.abs(G.int());
+          return guarded(n) === Math.sqrt(n) || `At ${n}: ${T.fmt(guarded(n))} against ${T.fmt(Math.sqrt(n))}.`;
+        });
+      },
+    },
   ],
 };

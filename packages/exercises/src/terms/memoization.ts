@@ -263,5 +263,155 @@ const nextId = (prefix) => {
         });
       },
     },
+
+    {
+      id: 'cache',
+      kind: 'code',
+      role: 'apply',
+      covers: ['cache-per-argument', 'falsy-results', 'needs-purity'],
+      title: "Cache per argument, including the falsy answers",
+      prompt:
+        "Write `memoize`. It has to key on the argument, hold on to a result of `0` or `undefined` as firmly as any other, and you should be able to show why it is wrong to reach for on an impure function.",
+      hints: [
+        "A `Map` keys on the value and distinguishes `0` from `'0'`, which an object used as a dictionary does not.",
+        "`has` is the question to ask, not whether the cached value looks empty.",
+        "`stale` should demonstrate memoizing something that reads the clock, and report that the second answer is the first one.",
+      ],
+      exports: ['memoize', 'stale'],
+      starter: `// memoize :: (a -> b) -> (a -> b)
+const memoize = (fn) => fn
+
+// stale :: () -> Boolean   did memoizing an impure function freeze its answer?
+const stale = () => false
+`,
+      solution: `// memoize :: (a -> b) -> (a -> b)
+const memoize = (fn) => {
+  const cache = new Map()
+  return (arg) => {
+    if (!cache.has(arg)) cache.set(arg, fn(arg))
+    return cache.get(arg)
+  }
+}
+
+// stale :: () -> Boolean   did memoizing an impure function freeze its answer?
+const stale = () => {
+  let n = 0
+  const next = memoize(() => {
+    n += 1
+    return n
+  })
+  return next('same') === next('same')
+}
+`,
+      broken: [
+        `const memoize = (fn) => {
+  const cache = new Map()
+  return (arg) => {
+    if (!cache.get(arg)) cache.set(arg, fn(arg))
+    return cache.get(arg)
+  }
+}
+const stale = () => {
+  let n = 0
+  const next = memoize(() => { n += 1; return n })
+  return next('same') === next('same')
+}
+`,
+        `const memoize = (fn) => {
+  let last
+  let seen = false
+  return (arg) => {
+    if (!seen) { last = fn(arg); seen = true }
+    return last
+  }
+}
+const stale = () => {
+  let n = 0
+  const next = memoize(() => { n += 1; return n })
+  return next('same') === next('same')
+}
+`,
+        `const memoize = (fn) => {
+  const cache = new Map()
+  return (arg) => {
+    if (!cache.has(arg)) cache.set(arg, fn(arg))
+    return cache.get(arg)
+  }
+}
+const stale = () => false
+`,
+      ],
+      checks: (T, exp) => {
+        const { memoize, stale } = exp;
+
+        T.check('It gives the right answer', () => {
+          const double = memoize((n: number) => n * 2);
+          return double(21) === 42 || `It gave ${T.fmt(double(21))}.`;
+        });
+
+        T.check('The work happens once per argument', () => {
+          let calls = 0;
+          const f = memoize((n: number) => {
+            calls += 1;
+            return n * 2;
+          });
+          f(1);
+          f(1);
+          f(1);
+          return calls === 1 || `Three calls with the same argument ran the work ${calls} times.`;
+        });
+
+        T.check('Different arguments get different answers', () => {
+          const f = memoize((n: number) => n * 2);
+          const got = [f(1), f(2), f(3), f(1)];
+          return T.eq(got, [2, 4, 6, 2]) || `It gave ${T.fmt(got)}. One cache slot is not enough.`;
+        });
+
+        T.check('A cached zero is not recomputed', () => {
+          let calls = 0;
+          const f = memoize((n: number) => {
+            calls += 1;
+            return 0;
+          });
+          f(1);
+          f(1);
+          return (
+            calls === 1 ||
+            `It ran ${calls} times for a function returning 0. Asking whether the cached value is truthy treats every falsy answer as a miss.`
+          );
+        });
+
+        T.check('A cached undefined is not recomputed either', () => {
+          let calls = 0;
+          const f = memoize(() => {
+            calls += 1;
+            return undefined;
+          });
+          f('k');
+          f('k');
+          return calls === 1 || `It ran ${calls} times for a function returning undefined.`;
+        });
+
+        T.check('The key is the value, not its text', () => {
+          const f = memoize((x: unknown) => typeof x);
+          const got = [f(0), f('0')];
+          return T.eq(got, ['number', 'string']) || `It gave ${T.fmt(got)}. 0 and '0' are different arguments.`;
+        });
+
+        T.check('Two memoized functions do not share a cache', () => {
+          const a = memoize((n: number) => n + 1);
+          const b = memoize((n: number) => n + 100);
+          return (a(1) === 2 && b(1) === 101) || `They gave ${T.fmt(a(1))} and ${T.fmt(b(1))}.`;
+        });
+
+        T.check('Memoizing an impure function freezes its answer', () => {
+          const r = stale();
+          return (
+            r === true ||
+            `stale reported ${T.fmt(r)}. Memoizing something whose answer changes means the first answer is the only one anybody ever sees again, which is why this only makes sense for pure functions.`
+          );
+        });
+      },
+    },
   ],
 };

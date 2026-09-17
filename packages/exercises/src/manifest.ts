@@ -280,6 +280,13 @@ export const manifest: ManifestEntry[] = [
         "title": "What should the empty case give?",
         "kind": "expr",
         "lang": "js"
+      },
+      {
+        "id": "prove-it",
+        "role": "apply",
+        "title": "Prove totality across a domain",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -507,6 +514,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Filter an endless list",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "pull",
+        "role": "apply",
+        "title": "Only do the work that is asked for",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -524,6 +538,13 @@ export const manifest: ManifestEntry[] = [
         "id": "apply",
         "role": "apply",
         "title": "Describe a program without running it",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "reuse",
+        "role": "apply",
+        "title": "Build the effect once, run it as often as you like",
         "kind": "code",
         "lang": "js"
       }
@@ -753,6 +774,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Watch memoization lie",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "cache",
+        "role": "apply",
+        "title": "Cache per argument, including the falsy answers",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -771,6 +799,13 @@ export const manifest: ManifestEntry[] = [
         "role": "recognize",
         "title": "What is a contract for?",
         "kind": "choice",
+        "lang": "js"
+      },
+      {
+        "id": "both-ends",
+        "role": "apply",
+        "title": "Guard both ends, and say what went wrong",
+        "kind": "code",
         "lang": "js"
       }
     ]
@@ -1804,6 +1839,13 @@ export const manifest: ManifestEntry[] = [
         "role": "recognize",
         "title": "Semigroupoid or category?",
         "kind": "choice",
+        "lang": "js"
+      },
+      {
+        "id": "no-identity",
+        "role": "break",
+        "title": "Compose without an identity to fall back on",
+        "kind": "code",
         "lang": "js"
       }
     ]

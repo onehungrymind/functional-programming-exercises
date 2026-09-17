@@ -175,5 +175,104 @@ const Morphism = (f) => ({
         },
       ],
     },
+
+    {
+      id: 'no-identity',
+      kind: 'code',
+      role: 'break',
+      covers: ['compose-stays-inside', 'direction'],
+      title: "Compose without an identity to fall back on",
+      prompt:
+        "A semigroupoid has composition and nothing else, which is fine until you need a starting value. Write `composeAll` for a non-empty list, and show what has to happen when the list is empty.",
+      hints: [
+        "Composition runs right to left, so the last function in the list goes first.",
+        "With no identity there is nothing to seed a fold with, so reduce without a seed.",
+        "`emptyFails` should report what reducing an empty list with no seed does.",
+      ],
+      exports: ['composeAll', 'emptyFails'],
+      starter: `// composeAll :: [b -> c] -> (a -> c)   right to left, non-empty only
+const composeAll = (fns) => (x) => x
+
+// emptyFails :: () -> String   the error name from composing nothing
+const emptyFails = () => 'none'
+`,
+      solution: `// composeAll :: [b -> c] -> (a -> c)   right to left, non-empty only
+const composeAll = (fns) => fns.reduce((f, g) => (x) => f(g(x)))
+
+// emptyFails :: () -> String   the error name from composing nothing
+const emptyFails = () => {
+  try {
+    composeAll([])
+    return 'none'
+  } catch (e) {
+    return e.name
+  }
+}
+`,
+      broken: [
+        `const composeAll = (fns) => fns.reduce((f, g) => (x) => f(g(x)), (x) => x)
+const emptyFails = () => {
+  try { composeAll([]); return 'none' } catch (e) { return e.name }
+}
+`,
+        `const composeAll = (fns) => fns.reduce((f, g) => (x) => g(f(x)))
+const emptyFails = () => {
+  try { composeAll([]); return 'none' } catch (e) { return e.name }
+}
+`,
+        `const composeAll = (fns) => fns.reduce((f, g) => (x) => f(g(x)))
+const emptyFails = () => 'none'
+`,
+      ],
+      checks: (T, exp) => {
+        const { composeAll, emptyFails } = exp;
+        const inc = (n: number) => n + 1;
+        const dbl = (n: number) => n * 2;
+
+        T.check('One function composes to itself', () => {
+          return composeAll([inc])(1) === 2 || `A single function gave ${T.fmt(composeAll([inc])(1))}.`;
+        });
+
+        T.check('Composition runs right to left', () => {
+          const r = composeAll([inc, dbl])(5);
+          return r === 11 || `composeAll([inc, dbl])(5) gave ${T.fmt(r)}. The one on the right goes first.`;
+        });
+
+        T.check('Three compose in the right order', () => {
+          const r = composeAll([(n: number) => n - 3, dbl, inc])(4);
+          return r === 7 || `It gave ${T.fmt(r)}. Add one to 4, double to 10, subtract three to 7.`;
+        });
+
+        T.check('The result stays inside the set', () => {
+          const r = composeAll([inc, dbl]);
+          return typeof r === 'function' || `It gave ${T.fmt(r)}. Composing two morphisms gives a morphism, which is what lets you keep going.`;
+        });
+
+        T.law('Composition is associative even with no identity', 60, (G) => {
+          const f = G.fn(), g = G.fn(), h = G.fn();
+          const n = G.int();
+          const a = composeAll([composeAll([f.f, g.f]), h.f])(n);
+          const b = composeAll([f.f, composeAll([g.f, h.f])])(n);
+          return a === b || `At ${n}: ${T.fmt(a)} against ${T.fmt(b)}.`;
+        });
+
+        T.check('Composing nothing has no answer to give', () => {
+          const r = emptyFails();
+          return (
+            r === 'TypeError' ||
+            `Composing an empty list reported ${T.fmt(r)}. With no identity there is no value of the right kind to hand back, which is exactly what a category adds.`
+          );
+        });
+
+        T.check('No identity was quietly supplied as a seed', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('const composeAll'), src.indexOf('const emptyFails'));
+          return (
+            !/reduce\s*\([\s\S]*?,\s*\(\s*x\s*\)\s*=>\s*x/.test(body) ||
+            'An identity was passed as the seed. That makes composing nothing work, and it also makes this a category rather than a semigroupoid.'
+          );
+        });
+      },
+    },
   ],
 };

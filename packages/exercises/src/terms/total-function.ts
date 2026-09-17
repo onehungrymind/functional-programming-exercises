@@ -207,5 +207,129 @@ const times = (n, s) => (n > 0 ? s.repeat(n) : '')
       ],
     },
 
+
+    {
+      id: 'prove-it',
+      kind: 'code',
+      role: 'apply',
+      covers: ['definition', 'widen-the-output'],
+      title: "Prove totality across a domain",
+      prompt:
+        "Total means defined for every input in the domain, which is a claim you can check. Write `isTotal`, then widen `at` so it becomes total over any index.",
+      hints: [
+        "A function is not defined at an input if it throws, or returns undefined, or returns NaN.",
+        "`isTotal` has to survive a throw, so guard each call on its own.",
+        "Widening means every index gets an answer, including the negative and the far-off ones.",
+      ],
+      exports: ['isTotal', 'at'],
+      starter: `// isTotal :: ((a -> b), [a]) -> Boolean
+const isTotal = (f, domain) => true
+
+// at :: ([a], Number) -> a | null
+const at = (xs, i) => xs[i]
+`,
+      solution: `// isTotal :: ((a -> b), [a]) -> Boolean
+const isTotal = (f, domain) =>
+  domain.every((x) => {
+    try {
+      const r = f(x)
+      return r !== undefined && !(typeof r === 'number' && Number.isNaN(r))
+    } catch {
+      return false
+    }
+  })
+
+// at :: ([a], Number) -> a | null
+const at = (xs, i) => (i >= 0 && i < xs.length ? xs[i] : null)
+`,
+      broken: [
+        `const isTotal = (f, domain) => {
+  try {
+    return domain.every((x) => f(x) !== undefined)
+  } catch {
+    return false
+  }
+}
+const at = (xs, i) => (i >= 0 && i < xs.length ? xs[i] : null)
+`,
+        `const isTotal = (f, domain) =>
+  domain.some((x) => {
+    try {
+      const r = f(x)
+      return r !== undefined && !(typeof r === 'number' && Number.isNaN(r))
+    } catch { return false }
+  })
+const at = (xs, i) => (i >= 0 && i < xs.length ? xs[i] : null)
+`,
+        `const isTotal = (f, domain) =>
+  domain.every((x) => {
+    try {
+      const r = f(x)
+      return r !== undefined && !(typeof r === 'number' && Number.isNaN(r))
+    } catch { return false }
+  })
+const at = (xs, i) => xs[i]
+`,
+      ],
+      checks: (T, exp) => {
+        const { isTotal, at } = exp;
+
+        T.check('A function defined everywhere is total', () => {
+          return isTotal((n: number) => n * 2, [-1, 0, 1]) === true || 'Doubling was reported as partial.';
+        });
+
+        T.check('A throw makes it partial', () => {
+          const f = (n: number) => {
+            if (n === 0) throw new Error('nope');
+            return n;
+          };
+          const r = isTotal(f, [-1, 0, 1]);
+          return r === false || `A function throwing at zero was reported as ${T.fmt(r)}.`;
+        });
+
+        T.check('isTotal survives the throw rather than dying on it', () => {
+          const f = (n: number) => {
+            if (n < 2) throw new Error('nope');
+            return n;
+          };
+          let crashed = false;
+          try {
+            isTotal(f, [0, 1, 2]);
+          } catch {
+            crashed = true;
+          }
+          return !crashed || 'The throw escaped. Each input needs its own guard, or the survey dies on the first gap.';
+        });
+
+        T.check('A silent undefined makes it partial too', () => {
+          const half = (n: number) => (n % 2 === 0 ? n / 2 : undefined);
+          return isTotal(half, [1, 2]) === false || `A function returning undefined for odds was reported as ${T.fmt(isTotal(half, [1, 2]))}.`;
+        });
+
+        T.check('NaN counts as a gap', () => {
+          return isTotal((s: string) => Number(s), ['1', 'x']) === false || `Parsing was reported as total.`;
+        });
+
+        T.check('Every input has to hold, not just one', () => {
+          const f = (n: number) => (n === 0 ? 0 : undefined);
+          return isTotal(f, [0, 1, 2]) === false || 'A function defined only at zero was reported as total.';
+        });
+
+        T.check('at answers for an index that is there', () => {
+          return at([4, 5, 6], 1) === 5 || `at([4, 5, 6], 1) gave ${T.fmt(at([4, 5, 6], 1))}.`;
+        });
+
+        T.check('at answers for an index that is not', () => {
+          const got = [at([1], 5), at([1], -1)];
+          return T.eq(got, [null, null]) || `Out of range gave ${T.fmt(got)}. Widening the output is what makes every index answerable.`;
+        });
+
+        T.check('at is total over a wide domain', () => {
+          const domain = [-5, -1, 0, 1, 2, 99];
+          const r = isTotal((i: number) => at([1, 2, 3], i), domain);
+          return r === true || `Your own isTotal reports at as partial over ${T.fmt(domain)}.`;
+        });
+      },
+    },
   ],
 };

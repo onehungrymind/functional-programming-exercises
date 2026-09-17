@@ -284,5 +284,133 @@ const program = readName.map((n) => \`Hello, \${n}\`)
         });
       },
     },
+
+    {
+      id: 'reuse',
+      kind: 'code',
+      role: 'apply',
+      covers: ['map-and-chain', 'reusable'],
+      title: "Build the effect once, run it as often as you like",
+      prompt:
+        "An IO is a description, so making one does nothing and it can be run again. Write `io`, with `map` and `chain`, and confirm that building a pipeline performs none of it until `run` is called.",
+      hints: [
+        "`io(effect)` just holds the function. Nothing happens until `run`.",
+        "`map` wraps a new description that runs this one and applies `f` to the answer.",
+        "`chain`'s function returns another IO, so `run` it rather than wrapping it again.",
+      ],
+      exports: ['io'],
+      starter: `// io :: (() -> a) -> IO a
+const io = (effect) => ({
+  run: effect,
+  map: (f) => io(effect),
+  chain: (f) => io(effect)
+})
+`,
+      solution: `// io :: (() -> a) -> IO a
+const io = (effect) => ({
+  run: effect,
+  map: (f) => io(() => f(effect())),
+  chain: (f) => io(() => f(effect()).run())
+})
+`,
+      broken: [
+        `const io = (effect) => ({
+  run: effect,
+  map: (f) => io(f(effect())),
+  chain: (f) => io(() => f(effect()).run())
+})
+`,
+        `const io = (effect) => ({
+  run: effect,
+  map: (f) => io(() => f(effect())),
+  chain: (f) => io(() => f(effect()))
+})
+`,
+        `const io = (effect) => ({
+  run: effect,
+  map: (f) => io(() => effect()),
+  chain: (f) => io(() => f(effect()).run())
+})
+`,
+      ],
+      checks: (T, exp) => {
+        const io = exp.io;
+
+        T.check('Making an IO performs nothing', () => {
+          let ran = false;
+          io(() => {
+            ran = true;
+            return 1;
+          });
+          return !ran || 'The effect ran while the IO was being built. A description is not a performance.';
+        });
+
+        T.check('Running it performs the effect', () => {
+          const r = io(() => 42).run();
+          return r === 42 || `Running it gave ${T.fmt(r)}.`;
+        });
+
+        T.check('Mapping performs nothing either', () => {
+          let ran = false;
+          io(() => {
+            ran = true;
+            return 1;
+          }).map((n: number) => n + 1);
+          return !ran || 'The effect ran while a map was being attached. Building the pipeline is still just describing it.';
+        });
+
+        T.check('map transforms the answer when it finally runs', () => {
+          const r = io(() => 21).map((n: number) => n * 2).run();
+          return r === 42 || `Doubling a described 21 gave ${T.fmt(r)}.`;
+        });
+
+        T.check('Chaining performs nothing either', () => {
+          let ran = false;
+          io(() => {
+            ran = true;
+            return 1;
+          }).chain((n: number) => io(() => n + 1));
+          return !ran || 'The effect ran while a chain was being attached.';
+        });
+
+        T.check('chain does not leave an IO inside an IO', () => {
+          const r = io(() => 21).chain((n: number) => io(() => n * 2)).run();
+          return (
+            r === 42 ||
+            `Running the chain gave ${T.fmt(r)}. If it came back as an object, the inner description was wrapped again instead of being run.`
+          );
+        });
+
+        T.check('The same IO can be run more than once', () => {
+          let calls = 0;
+          const effect = io(() => {
+            calls += 1;
+            return calls;
+          });
+          const a = effect.run();
+          const b = effect.run();
+          return (a === 1 && b === 2 && calls === 2) || `Two runs gave ${T.fmt(a)} and ${T.fmt(b)} after ${calls} calls.`;
+        });
+
+        T.check('A built pipeline is reusable too', () => {
+          let calls = 0;
+          const pipeline = io(() => {
+            calls += 1;
+            return calls;
+          }).map((n: number) => n * 10);
+          const a = pipeline.run();
+          const b = pipeline.run();
+          return (a === 10 && b === 20) || `Two runs of the pipeline gave ${T.fmt(a)} and ${T.fmt(b)}.`;
+        });
+
+        T.check('Running it twice really performs it twice', () => {
+          const seen: number[] = [];
+          const effect = io(() => seen.push(1));
+          effect.run();
+          effect.run();
+          return seen.length === 2 || `The effect happened ${seen.length} times across two runs.`;
+        });
+      },
+    },
   ],
 };
