@@ -17,6 +17,14 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--mono);
+  /*
+   * JetBrains Mono ships programming ligatures and turns them on by default, so `!=` draws as
+   * a single crossed-out equals and `=>` as an arrow. In a tool that teaches the difference
+   * between `==` and `===`, and between `!=` and `!==`, that is actively harmful: the two
+   * glyphs are similar, and neither one looks like what the learner typed or has to type.
+   * Off everywhere, including the prose, because a code span in the notes has the same job.
+   */
+  font-variant-ligatures: none;
   font-size: 13px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;

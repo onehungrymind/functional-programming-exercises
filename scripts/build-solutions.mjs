@@ -255,6 +255,8 @@ const html = `<!doctype html>
 body {
   margin: 0; background: var(--bg); color: var(--text);
   font: 13px/1.65 var(--mono); -webkit-font-smoothing: antialiased;
+  /* JetBrains Mono draws != as one glyph and !== as a similar one. Not on a page of answers. */
+  font-variant-ligatures: none;
 }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }

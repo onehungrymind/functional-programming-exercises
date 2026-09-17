@@ -25,12 +25,16 @@ export const editorTheme = EditorView.theme({
   },
   '.cm-content': {
     fontFamily: 'var(--mono)',
+    // JetBrains Mono ligatures would draw `!=` as one crossed-out equals and `!==` as
+    // another that looks much like it. The editor is where that matters most.
+    fontVariantLigatures: 'none',
     padding: '10px 0',
     caretColor: 'var(--text)',
     lineHeight: '1.6',
   },
   '.cm-scroller': {
     fontFamily: 'var(--mono)',
+    fontVariantLigatures: 'none',
     lineHeight: '1.6',
   },
   '.cm-gutters': {

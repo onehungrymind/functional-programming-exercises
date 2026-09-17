@@ -79,6 +79,10 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
   `lucide-react`, rendered as `currentColor` line icons through the design tokens.
 - The whole UI is monospace. Design tokens live in `apps/web/src/styles/tokens.css` and every
   surface, including the CodeMirror theme, reads from them.
+- **Ligatures stay off.** JetBrains Mono turns them on by default, which draws `!=` as one
+  crossed-out equals and `!==` as a nearly identical one. This app teaches the difference
+  between those, so the code has to show the characters that were typed. Set on `body`, in the
+  CodeMirror theme, and in the generated solutions page.
 - No AI/Claude/Anthropic attribution in commits or PR bodies.
 
 ## Commands
