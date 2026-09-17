@@ -103,10 +103,21 @@ body {
 .brand h1 {
   margin: 0;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
+}
+/* The two halves of the wordmark sit together, so the flex gap only separates the badge. */
+.wordmark {
+  white-space: nowrap;
+}
+.wordmark-name {
+  font-weight: 700;
+}
+.wordmark-edition {
+  font-weight: 400;
+  color: var(--muted);
 }
 .brand p {
   margin: 0;

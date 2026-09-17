@@ -98,6 +98,27 @@ test.describe('opening a concept', () => {
   });
 });
 
+test.describe('the wordmark', () => {
+  test('reads FP Jargon: Applied Edition, with the edition set lighter', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('.wordmark-name')).toHaveText('FP Jargon:');
+    await expect(page.locator('.wordmark-edition')).toHaveText('Applied Edition');
+    const weights = await page.evaluate(() => [
+      getComputedStyle(document.querySelector('.wordmark-name')!).fontWeight,
+      getComputedStyle(document.querySelector('.wordmark-edition')!).fontWeight,
+    ]);
+    expect(Number(weights[0])).toBeGreaterThan(Number(weights[1]));
+  });
+
+  test('does not run into the header controls', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 700 });
+    await page.goto('/');
+    const mark = await page.locator('.wordmark').boundingBox();
+    const control = await page.locator('.ghost-btn').first().boundingBox();
+    expect(mark!.x + mark!.width).toBeLessThan(control!.x);
+  });
+});
+
 test.describe('sidequests', () => {
   test('a rung that leans on a later concept says so and links there', async ({ page }) => {
     await page.goto('/#/term/arity/practice/curry-by-length');

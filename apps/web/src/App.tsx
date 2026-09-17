@@ -91,7 +91,15 @@ export function App() {
           </span>
           <div>
             <h1>
-              {meta.title} <span className="badge">{graph.nodes.length} TERMS</span>
+              {/*
+                The upstream name comes from the snapshot; "Applied Edition" is ours, so it is
+                composed here rather than written into data/jargons.json, which sync overwrites.
+              */}
+              <span className="wordmark">
+                <span className="wordmark-name">{meta.title}:</span>{' '}
+                <span className="wordmark-edition">Applied Edition</span>
+              </span>
+              <span className="badge">{graph.nodes.length} TERMS</span>
             </h1>
             <p>
               {graph.nodes.length} concepts &middot; {graph.links.length} relationships
