@@ -219,5 +219,129 @@ const suffixes = para((acc, head, tail) => [...acc, tail])([])
         },
       ],
     },
+
+    {
+      id: 'use-it',
+      kind: 'code',
+      role: 'apply',
+      covers: ['excludes-current', 'use-it'],
+      title: "Fold with the rest of the list in hand",
+      prompt:
+        "A paramorphism is a fold whose step also sees what is left. Write `para`, then use it for `suffixes` and `dedupeAdjacent`, both of which need that extra argument.",
+      hints: [
+        "The step gets the current element, the rest of the list, and the accumulator so far.",
+        "`suffixes` is the clearest use: at each element, the rest is already the suffix you want.",
+        "`dedupeAdjacent` needs to peek at what comes next, which a plain fold cannot do.",
+      ],
+      exports: ['para', 'suffixes', 'dedupeAdjacent'],
+      starter: `// para :: (((a, [a], b) -> b), b, [a]) -> b
+const para = (f, seed, xs) => seed
+
+// suffixes :: [a] -> [[a]]
+const suffixes = (xs) => []
+
+// dedupeAdjacent :: [a] -> [a]
+const dedupeAdjacent = (xs) => xs
+`,
+      solution: `// para :: (((a, [a], b) -> b), b, [a]) -> b
+const para = (f, seed, xs) => {
+  let acc = seed
+  for (let i = xs.length - 1; i >= 0; i -= 1) {
+    acc = f(xs[i], xs.slice(i + 1), acc)
+  }
+  return acc
+}
+
+// suffixes :: [a] -> [[a]]
+const suffixes = (xs) => para((x, rest, acc) => [rest, ...acc], [], xs)
+
+// dedupeAdjacent :: [a] -> [a]
+const dedupeAdjacent = (xs) =>
+  para((x, rest, acc) => (rest.length && rest[0] === x ? acc : [x, ...acc]), [], xs)
+`,
+      broken: [
+        `const para = (f, seed, xs) => {
+  let acc = seed
+  for (let i = xs.length - 1; i >= 0; i -= 1) acc = f(xs[i], xs.slice(i), acc)
+  return acc
+}
+const suffixes = (xs) => para((x, rest, acc) => [rest, ...acc], [], xs)
+const dedupeAdjacent = (xs) =>
+  para((x, rest, acc) => (rest.length && rest[0] === x ? acc : [x, ...acc]), [], xs)
+`,
+        `const para = (f, seed, xs) => {
+  let acc = seed
+  for (let i = 0; i < xs.length; i += 1) acc = f(xs[i], xs.slice(i + 1), acc)
+  return acc
+}
+const suffixes = (xs) => para((x, rest, acc) => [rest, ...acc], [], xs)
+const dedupeAdjacent = (xs) =>
+  para((x, rest, acc) => (rest.length && rest[0] === x ? acc : [x, ...acc]), [], xs)
+`,
+        `const para = (f, seed, xs) => {
+  let acc = seed
+  for (let i = xs.length - 1; i >= 0; i -= 1) acc = f(xs[i], xs.slice(i + 1), acc)
+  return acc
+}
+const suffixes = (xs) => para((x, rest, acc) => [rest, ...acc], [], xs)
+const dedupeAdjacent = (xs) => para((x, rest, acc) => [x, ...acc], [], xs)
+`,
+      ],
+      checks: (T, exp) => {
+        const { para, suffixes, dedupeAdjacent } = exp;
+
+        T.check('para behaves like a fold when the rest is ignored', () => {
+          const r = para((x: number, rest: number[], acc: number) => x + acc, 0, [1, 2, 3]);
+          return r === 6 || `Summing with para gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The rest excludes the current element', () => {
+          const seen: number[][] = [];
+          para((x: number, rest: number[], acc: null) => {
+            seen.push(rest);
+            return acc;
+          }, null, [1, 2, 3]);
+          return (
+            T.eq(seen, [[], [3], [2, 3]]) ||
+            `The steps saw ${T.fmt(seen)}. At element 1 the rest is [2, 3], and the element itself is not in it.`
+          );
+        });
+
+        T.check('suffixes gives every tail', () => {
+          const r = suffixes([1, 2, 3]);
+          return T.eq(r, [[2, 3], [3], []]) || `suffixes([1, 2, 3]) gave ${T.fmt(r)}.`;
+        });
+
+        T.check('suffixes of an empty list is empty', () => {
+          return T.eq(suffixes([]), []) || `It gave ${T.fmt(suffixes([]))}.`;
+        });
+
+        T.check('dedupeAdjacent collapses runs', () => {
+          const r = dedupeAdjacent([1, 1, 2, 2, 2, 3, 1]);
+          return T.eq(r, [1, 2, 3, 1]) || `It gave ${T.fmt(r)}, expected [1, 2, 3, 1].`;
+        });
+
+        T.check('It only collapses neighbours, not duplicates anywhere', () => {
+          const r = dedupeAdjacent([1, 2, 1]);
+          return T.eq(r, [1, 2, 1]) || `[1, 2, 1] gave ${T.fmt(r)}. Only adjacent repeats go.`;
+        });
+
+        T.check('A list with nothing to collapse comes back as it was', () => {
+          const r = dedupeAdjacent([1, 2, 3]);
+          return T.eq(r, [1, 2, 3]) || `It gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The empty list survives both', () => {
+          return T.eq(dedupeAdjacent([]), []) || `dedupeAdjacent([]) gave ${T.fmt(dedupeAdjacent([]))}.`;
+        });
+
+        T.check('The list handed in is left alone', () => {
+          const xs = T.freeze([1, 1, 2]);
+          dedupeAdjacent(xs);
+          suffixes(xs);
+          return T.eq(xs, [1, 1, 2]) || `The original reads ${T.fmt(xs)}.`;
+        });
+      },
+    },
   ],
 };

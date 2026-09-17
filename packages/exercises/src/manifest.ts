@@ -2029,6 +2029,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Unfold the digits of a number",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "use-it",
+        "role": "apply",
+        "title": "Unfold a range and a number's digits",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -2074,6 +2081,13 @@ export const manifest: ManifestEntry[] = [
         "title": "What does para add?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "use-it",
+        "role": "apply",
+        "title": "Fold with the rest of the list in hand",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -2092,6 +2106,13 @@ export const manifest: ManifestEntry[] = [
         "role": "recognize",
         "title": "Which unfold is which?",
         "kind": "choice",
+        "lang": "js"
+      },
+      {
+        "id": "use-it",
+        "role": "apply",
+        "title": "Unfold that can hand back the rest and stop",
+        "kind": "code",
         "lang": "js"
       }
     ]

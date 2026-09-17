@@ -276,5 +276,220 @@ const insert = (x, sorted) =>
         },
       ],
     },
+
+    {
+      id: 'use-it',
+      kind: 'code',
+      role: 'apply',
+      covers: ['three-outcomes', 'use-it'],
+      title: "Unfold that can hand back the rest and stop",
+      prompt:
+        "An apomorphism has three outcomes at every step: stop, produce one and carry on, or produce one and finish with a list you already have. Write `apo`, then `insertSorted`, which needs all three.",
+      hints: [
+        "The step returns `null` to stop, `['yield', value, nextSeed]` to carry on, or `['done', value, rest]` to finish.",
+        "`insertSorted` walks until it finds the place, and once it has inserted there is nothing left to decide.",
+        "That third outcome is the point: the tail is already sorted, so re-walking it would be wasted.",
+      ],
+      exports: ['apo', 'insertSorted'],
+      starter: `// apo :: ((b -> null | ['yield', a, b] | ['done', a, [a]]), b) -> [a]
+const apo = (step, seed) => []
+
+// insertSorted :: (Number, [Number]) -> [Number]
+const insertSorted = (n, xs) => xs
+`,
+      solution: `// apo :: ((b -> null | ['yield', a, b] | ['done', a, [a]]), b) -> [a]
+const apo = (step, seed) => {
+  const out = []
+  let s = seed
+  for (;;) {
+    const next = step(s)
+    if (next === null) return out
+    if (next[0] === 'done') {
+      out.push(next[1])
+      return [...out, ...next[2]]
+    }
+    out.push(next[1])
+    s = next[2]
+  }
+}
+
+// insertSorted :: (Number, [Number]) -> [Number]
+const insertSorted = (n, xs) =>
+  apo((rest) => {
+    if (rest.length === 0) return ['done', n, []]
+    if (n <= rest[0]) return ['done', n, rest]
+    return ['yield', rest[0], rest.slice(1)]
+  }, xs)
+`,
+      broken: [
+        `const apo = (step, seed) => {
+  const out = []
+  let s = seed
+  for (;;) {
+    const next = step(s)
+    if (next === null) return out
+    if (next[0] === 'done') { out.push(next[1]); return out }
+    out.push(next[1])
+    s = next[2]
+  }
+}
+const insertSorted = (n, xs) =>
+  apo((rest) => {
+    if (rest.length === 0) return ['done', n, []]
+    if (n <= rest[0]) return ['done', n, rest]
+    return ['yield', rest[0], rest.slice(1)]
+  }, xs)
+`,
+        `const apo = (step, seed) => {
+  const out = []
+  let s = seed
+  for (;;) {
+    const next = step(s)
+    if (next === null) return out
+    if (next[0] === 'done') { out.push(next[1]); return [...out, ...next[2]] }
+    out.push(next[1])
+    s = next[2]
+  }
+}
+const insertSorted = (n, xs) =>
+  apo((rest) => {
+    if (rest.length === 0) return ['done', n, []]
+    if (n < rest[0]) return ['yield', n, rest.slice(1)]
+    return ['yield', rest[0], rest.slice(1)]
+  }, xs)
+`,
+        `const apo = (step, seed) => {
+  const out = []
+  let s = seed
+  for (;;) {
+    const next = step(s)
+    if (next === null) return out
+    if (next[0] === 'done') return [...out, ...next[2]]
+    out.push(next[1])
+    s = next[2]
+  }
+}
+const insertSorted = (n, xs) =>
+  apo((rest) => {
+    if (rest.length === 0) return ['done', n, []]
+    if (n <= rest[0]) return ['done', n, rest]
+    return ['yield', rest[0], rest.slice(1)]
+  }, xs)
+`,
+      ],
+      checks: (T, exp) => {
+        const { apo, insertSorted } = exp;
+
+        /**
+         * Caps how often a step may be asked.
+         *
+         * An apo that misreads the stopping outcome loops forever, which is the likeliest
+         * wrong answer here. Without this the rung takes the whole tab down instead of
+         * saying what went wrong.
+         */
+        const capped = <A, B>(step: (s: A) => B, limit = 500) => {
+          let n = 0;
+          return (s: A): B => {
+            n += 1;
+            if (n > limit) throw new Error('RUNAWAY');
+            return step(s);
+          };
+        };
+        const guarded = <A>(run: () => A): { ok: true; value: A } | { ok: false } => {
+          try {
+            return { ok: true, value: run() };
+          } catch (e) {
+            if ((e as Error).message === 'RUNAWAY') return { ok: false };
+            throw e;
+          }
+        };
+        const RUNAWAY =
+          'The step was asked more than 500 times, so nothing is stopping the unfold. Check that every outcome the step can return is one your apo knows how to finish on.';
+
+        T.check('Stopping immediately gives nothing', () => {
+          return T.eq(apo(() => null, 0), []) || `It gave ${T.fmt(apo(() => null, 0))}.`;
+        });
+
+        T.check('Carrying on builds one at a time', () => {
+          const run = guarded(() => apo(capped((n: number) => (n === 0 ? null : ['yield', n, n - 1])), 3));
+          if (!run.ok) return RUNAWAY;
+          return T.eq(run.value, [3, 2, 1]) || `It gave ${T.fmt(run.value)}, expected [3, 2, 1].`;
+        });
+
+        T.check('Finishing early appends the rest', () => {
+          const run = guarded(() =>
+            apo(capped((n: number) => (n === 2 ? ['done', n, [99, 98]] : ['yield', n, n - 1])), 4),
+          );
+          if (!run.ok) return RUNAWAY;
+          return (
+            T.eq(run.value, [4, 3, 2, 99, 98]) ||
+            `It gave ${T.fmt(run.value)}, expected [4, 3, 2, 99, 98]. The third outcome yields its value and then hands over a list wholesale.`
+          );
+        });
+
+        T.check('Finishing early really stops', () => {
+          let calls = 0;
+          const run = guarded(() =>
+            apo(
+              capped((n: number) => {
+                calls += 1;
+                return n === 2 ? ['done', n, [0]] : ['yield', n, n - 1];
+              }),
+              4,
+            ),
+          );
+          if (!run.ok) return RUNAWAY;
+          return calls === 3 || `The step ran ${calls} times, expected 3. Once it is done there is nothing left to ask it.`;
+        });
+
+        T.check('insertSorted puts it in the middle', () => {
+          const r = insertSorted(3, [1, 2, 4, 5]);
+          return T.eq(r, [1, 2, 3, 4, 5]) || `insertSorted(3, [1, 2, 4, 5]) gave ${T.fmt(r)}.`;
+        });
+
+        T.check('It goes at the front when it belongs there', () => {
+          return T.eq(insertSorted(0, [1, 2]), [0, 1, 2]) || `It gave ${T.fmt(insertSorted(0, [1, 2]))}.`;
+        });
+
+        T.check('It goes at the end when it belongs there', () => {
+          return T.eq(insertSorted(9, [1, 2]), [1, 2, 9]) || `It gave ${T.fmt(insertSorted(9, [1, 2]))}.`;
+        });
+
+        T.check('Inserting into an empty list works', () => {
+          return T.eq(insertSorted(1, []), [1]) || `It gave ${T.fmt(insertSorted(1, []))}.`;
+        });
+
+        T.check('The tail is handed over rather than walked again', () => {
+          let calls = 0;
+          const counted = (n: number, xs: number[]) => {
+            const step = (rest: number[]) => {
+              calls += 1;
+              const [head, ...tail] = rest;
+              if (head === undefined) return ['done', n, []];
+              if (n <= head) return ['done', n, rest];
+              return ['yield', head, tail];
+            };
+            return apo(capped(step), xs);
+          };
+          const run = guarded(() => counted(0, [1, 2, 3, 4, 5, 6, 7, 8]));
+          if (!run.ok) return RUNAWAY;
+          return (
+            calls <= 2 ||
+            `Inserting at the very front took ${calls} steps over an eight element list. Once the place is found the rest is already correct, which is what the third outcome is for.`
+          );
+        });
+
+        T.law('The result stays sorted', 60, (G) => {
+          const xs = G.ints().sort((a: number, b: number) => a - b);
+          const n = G.int();
+          const r = insertSorted(n, xs);
+          const sorted = r.every((v: number, i: number) => i === 0 || r[i - 1] <= v);
+          return (
+            (sorted && r.length === xs.length + 1) ||
+            `Inserting ${n} into ${T.fmt(xs)} gave ${T.fmt(r)}.`
+          );
+        });
+      },
+    },
   ],
 };

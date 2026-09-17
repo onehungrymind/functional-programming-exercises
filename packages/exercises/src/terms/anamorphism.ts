@@ -318,5 +318,134 @@ const digits = (n) => unfold((k) => (k > 0 ? [k % 10, Math.floor(k / 10)] : null
         });
       },
     },
+
+    {
+      id: 'use-it',
+      kind: 'code',
+      role: 'apply',
+      covers: ['build-from-a-seed', 'use-it'],
+      title: "Unfold a range and a number's digits",
+      prompt:
+        "An anamorphism grows a structure from a seed, stopping when the step says so. Write `unfold`, then build `range` and `digits` with it rather than with a loop.",
+      hints: [
+        "The step returns `[value, nextSeed]` to keep going, or `null` to stop.",
+        "`range` carries the current number as its seed and stops when it reaches the end.",
+        "`digits` peels the last digit each time, so the seed shrinks by a factor of ten and the answer comes out backwards.",
+      ],
+      exports: ['unfold', 'range', 'digits'],
+      starter: `// unfold :: ((b -> [a, b] | null), b) -> [a]
+const unfold = (step, seed) => []
+
+// range :: (Number, Number) -> [Number]   from inclusive, to exclusive
+const range = (from, to) => []
+
+// digits :: Number -> [Number]   most significant first
+const digits = (n) => []
+`,
+      solution: `// unfold :: ((b -> [a, b] | null), b) -> [a]
+const unfold = (step, seed) => {
+  const out = []
+  let s = seed
+  let next = step(s)
+  while (next !== null) {
+    out.push(next[0])
+    s = next[1]
+    next = step(s)
+  }
+  return out
+}
+
+// range :: (Number, Number) -> [Number]   from inclusive, to exclusive
+const range = (from, to) => unfold((n) => (n >= to ? null : [n, n + 1]), from)
+
+// digits :: Number -> [Number]   most significant first
+const digits = (n) =>
+  n === 0 ? [0] : unfold((m) => (m === 0 ? null : [m % 10, Math.floor(m / 10)]), n).reverse()
+`,
+      broken: [
+        `const unfold = (step, seed) => {
+  const out = []
+  const next = step(seed)
+  if (next !== null) out.push(next[0])
+  return out
+}
+const range = (from, to) => unfold((n) => (n >= to ? null : [n, n + 1]), from)
+const digits = (n) =>
+  n === 0 ? [0] : unfold((m) => (m === 0 ? null : [m % 10, Math.floor(m / 10)]), n).reverse()
+`,
+        `const unfold = (step, seed) => {
+  const out = []
+  let s = seed
+  let next = step(s)
+  while (next !== null) { out.push(next[0]); s = next[1]; next = step(s) }
+  return out
+}
+const range = (from, to) => unfold((n) => (n > to ? null : [n, n + 1]), from)
+const digits = (n) =>
+  n === 0 ? [0] : unfold((m) => (m === 0 ? null : [m % 10, Math.floor(m / 10)]), n).reverse()
+`,
+        `const unfold = (step, seed) => {
+  const out = []
+  let s = seed
+  let next = step(s)
+  while (next !== null) { out.push(next[0]); s = next[1]; next = step(s) }
+  return out
+}
+const range = (from, to) => unfold((n) => (n >= to ? null : [n, n + 1]), from)
+const digits = (n) =>
+  n === 0 ? [] : unfold((m) => (m === 0 ? null : [m % 10, Math.floor(m / 10)]), n).reverse()
+`,
+      ],
+      checks: (T, exp) => {
+        const { unfold, range, digits } = exp;
+
+        T.check('unfold keeps going until the step stops it', () => {
+          const r = unfold((n: number) => (n === 0 ? null : [n, n - 1]), 4);
+          return T.eq(r, [4, 3, 2, 1]) || `unfold gave ${T.fmt(r)}, expected [4, 3, 2, 1].`;
+        });
+
+        T.check('A seed that stops immediately grows nothing', () => {
+          return T.eq(unfold(() => null, 5), []) || `It gave ${T.fmt(unfold(() => null, 5))}.`;
+        });
+
+        T.check('range is half open', () => {
+          const r = range(0, 5);
+          return T.eq(r, [0, 1, 2, 3, 4]) || `range(0, 5) gave ${T.fmt(r)}. The end is exclusive.`;
+        });
+
+        T.check('An empty range is empty', () => {
+          return T.eq(range(3, 3), []) || `range(3, 3) gave ${T.fmt(range(3, 3))}.`;
+        });
+
+        T.check('range starts where it is told', () => {
+          return T.eq(range(2, 5), [2, 3, 4]) || `range(2, 5) gave ${T.fmt(range(2, 5))}.`;
+        });
+
+        T.check('digits comes out most significant first', () => {
+          const r = digits(2024);
+          return T.eq(r, [2, 0, 2, 4]) || `digits(2024) gave ${T.fmt(r)}.`;
+        });
+
+        T.check('Zero has one digit, not none', () => {
+          const r = digits(0);
+          return T.eq(r, [0]) || `digits(0) gave ${T.fmt(r)}. Peeling stops immediately at zero, so that case is its own.`;
+        });
+
+        T.law('The digits put back together give the number', 60, (G) => {
+          const n = Math.abs(G.int()) + 1;
+          const back = Number(digits(n).join(''));
+          return back === n || `${n} came apart as ${T.fmt(digits(n))} and back together as ${T.fmt(back)}.`;
+        });
+
+        T.check('Both are built with unfold rather than a loop', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('const range'));
+          return (
+            /unfold\s*\(/.test(body) && !/\bfor\s*\(|\bwhile\s*\(/.test(body) ||
+            'range or digits was written with a loop. The rung is about growing a structure from a seed, and the loop is what unfold already is.'
+          );
+        });
+      },
+    },
   ],
 };
