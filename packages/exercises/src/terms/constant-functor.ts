@@ -218,6 +218,178 @@ const Const = (value) => ({
     },
 
     {
+      id: 'build-view',
+      kind: 'code',
+      role: 'apply',
+      covers: ['what-it-is-for', 'map-does-nothing'],
+      title: "Build view out of over, using Const",
+      prompt:
+        "This is what Const is for. `over` walks a structure and writes the result back. Hand it `Const` instead of `Identity` and nothing gets written, so what falls out is the value it collected on the way past. Write both functors and derive `view` from `over`.",
+      hints: [
+        "`Identity` maps normally. `Const` holds a value and its map ignores the function entirely.",
+        "`over` is written for you. It calls the functor's `of`, maps the focus, and reads `.value` off the end.",
+        "`view` is `over` with `Const` as the functor and the identity as the function. Do not write a getter by hand.",
+      ],
+      exports: ['Identity', 'Const', 'view', 'set'],
+      starter: `// over :: (Functor, Lens, (a -> a), s) -> s   written for you
+const over = (F, lens, f, s) =>
+  lens.modify((a) => F.of(f(a)), s).value
+
+// a lens over one property, also written for you
+const lensProp = (key) => ({
+  modify: (toF, s) => {
+    const wrapped = toF(s[key])
+    return { value: wrapped.map((a) => ({ ...s, [key]: a })).value }
+  }
+})
+
+// Identity :: a -> { value, map }
+const Identity = { of: (a) => ({ value: a, map: (f) => Identity.of(a) }) }
+
+// Const :: a -> { value, map }
+const Const = { of: (a) => ({ value: a, map: (f) => Const.of(a) }) }
+
+// view :: (Lens, s) -> a
+const view = (lens, s) => s
+
+// set :: (Lens, a, s) -> s
+const set = (lens, value, s) => s
+`,
+      solution: `// over :: (Functor, Lens, (a -> a), s) -> s   written for you
+const over = (F, lens, f, s) =>
+  lens.modify((a) => F.of(f(a)), s).value
+
+// a lens over one property, also written for you
+const lensProp = (key) => ({
+  modify: (toF, s) => {
+    const wrapped = toF(s[key])
+    return { value: wrapped.map((a) => ({ ...s, [key]: a })).value }
+  }
+})
+
+// Identity :: a -> { value, map }
+const Identity = { of: (a) => ({ value: a, map: (f) => Identity.of(f(a)) }) }
+
+// Const :: a -> { value, map }
+const Const = { of: (a) => ({ value: a, map: (f) => Const.of(a) }) }
+
+// view :: (Lens, s) -> a
+const view = (lens, s) => over(Const, lens, (a) => a, s)
+
+// set :: (Lens, a, s) -> s
+const set = (lens, value, s) => over(Identity, lens, () => value, s)
+`,
+      broken: [
+        `const over = (F, lens, f, s) => lens.modify((a) => F.of(f(a)), s).value
+const lensProp = (key) => ({
+  modify: (toF, s) => {
+    const wrapped = toF(s[key])
+    return { value: wrapped.map((a) => ({ ...s, [key]: a })).value }
+  }
+})
+const Identity = { of: (a) => ({ value: a, map: (f) => Identity.of(f(a)) }) }
+const Const = { of: (a) => ({ value: a, map: (f) => Const.of(f(a)) }) }
+const view = (lens, s) => over(Const, lens, (a) => a, s)
+const set = (lens, value, s) => over(Identity, lens, () => value, s)
+`,
+        `const over = (F, lens, f, s) => lens.modify((a) => F.of(f(a)), s).value
+const lensProp = (key) => ({
+  modify: (toF, s) => {
+    const wrapped = toF(s[key])
+    return { value: wrapped.map((a) => ({ ...s, [key]: a })).value }
+  }
+})
+const Identity = { of: (a) => ({ value: a, map: (f) => Identity.of(f(a)) }) }
+const Const = { of: (a) => ({ value: a, map: (f) => Const.of(a) }) }
+const view = (lens, s) => s.name
+const set = (lens, value, s) => over(Identity, lens, () => value, s)
+`,
+        `const over = (F, lens, f, s) => lens.modify((a) => F.of(f(a)), s).value
+const lensProp = (key) => ({
+  modify: (toF, s) => {
+    const wrapped = toF(s[key])
+    return { value: wrapped.map((a) => ({ ...s, [key]: a })).value }
+  }
+})
+const Identity = { of: (a) => ({ value: a, map: (f) => Identity.of(a) }) }
+const Const = { of: (a) => ({ value: a, map: (f) => Const.of(a) }) }
+const view = (lens, s) => over(Const, lens, (a) => a, s)
+const set = (lens, value, s) => over(Identity, lens, () => value, s)
+`,
+      ],
+      checks: (T, exp) => {
+        const { Identity, Const, view, set } = exp;
+        const lensProp = (key: string) => ({
+          modify: (toF: (a: unknown) => { map: (f: (x: unknown) => unknown) => { value: unknown } }, s: Record<string, unknown>) => {
+            const wrapped = toF(s[key]);
+            return { value: wrapped.map((a: unknown) => ({ ...s, [key]: a })).value };
+          },
+        });
+        const name = lensProp('name');
+        const ada = () => ({ name: 'ada', age: 36 });
+
+        T.check('Identity maps for real', () => {
+          const r = Identity.of(3).map((n: number) => n * 2).value;
+          return r === 6 || `Identity mapped 3 by doubling and gave ${T.fmt(r)}. This is the functor that does write the result back.`;
+        });
+
+        T.check('Const refuses to map', () => {
+          const r = Const.of('kept').map(() => 'changed').value;
+          return (
+            r === 'kept' ||
+            `Const gave ${T.fmt(r)} after mapping. There is no second value in there for the function to be applied to, which is the whole property.`
+          );
+        });
+
+        T.check('Const never calls the function', () => {
+          let ran = false;
+          Const.of(1).map(() => {
+            ran = true;
+            return 2;
+          });
+          return !ran || 'The function ran. Const holds one value of a type the map has nothing to do with.';
+        });
+
+        T.check('view reads the focus back out', () => {
+          const r = view(name, ada());
+          return r === 'ada' || `view gave ${T.fmt(r)}, expected 'ada'.`;
+        });
+
+        T.check('view was built from over, not written as a getter', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const line = src.split('\n').find((l) => /const\s+view\s*=/.test(l)) ?? '';
+          return (
+            /over\s*\(/.test(line) && /Const/.test(line) ||
+            'view should be over with Const substituted in. Writing a getter by hand works and demonstrates nothing, because the point is that the same machinery reads when the functor refuses to write.'
+          );
+        });
+
+        T.check('set writes through the same machinery', () => {
+          const r = set(name, 'grace', ada());
+          return (
+            r && r.name === 'grace' && r.age === 36 ||
+            `set gave ${T.fmt(r)}. With Identity the mapped value does get written back, and the rest of the record comes along.`
+          );
+        });
+
+        T.check('The original is left alone', () => {
+          const a = ada();
+          set(name, 'grace', a);
+          return a.name === 'ada' || `The original now reads ${T.fmt(a.name)}.`;
+        });
+
+        T.check('The two differ only by which functor went in', () => {
+          const read = view(name, ada());
+          const written = set(name, 'grace', ada());
+          return (
+            read === 'ada' && written.name === 'grace' ||
+            `Reading gave ${T.fmt(read)} and writing gave ${T.fmt(written)}. One function, two functors, two behaviours.`
+          );
+        });
+      },
+    },
+
+    {
       id: 'typed',
       kind: 'code',
       role: 'implement',

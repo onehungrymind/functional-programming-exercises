@@ -1155,6 +1155,13 @@ export const manifest: ManifestEntry[] = [
         "lang": "js"
       },
       {
+        "id": "entry-point",
+        "role": "apply",
+        "title": "Write a pipeline that works for any pointed functor",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
         "id": "typed",
         "role": "implement",
         "title": "Satisfy Box<A>",
@@ -1178,6 +1185,13 @@ export const manifest: ManifestEntry[] = [
         "role": "recognize",
         "title": "What is Const good for?",
         "kind": "choice",
+        "lang": "js"
+      },
+      {
+        "id": "build-view",
+        "role": "apply",
+        "title": "Build view out of over, using Const",
+        "kind": "code",
         "lang": "js"
       },
       {
@@ -1354,6 +1368,13 @@ export const manifest: ManifestEntry[] = [
         "title": "What does \"free\" buy you?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "inspect",
+        "role": "apply",
+        "title": "Read a program without running it",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -1372,6 +1393,13 @@ export const manifest: ManifestEntry[] = [
         "role": "recognize",
         "title": "Why do transformers exist?",
         "kind": "choice",
+        "lang": "js"
+      },
+      {
+        "id": "why",
+        "role": "break",
+        "title": "Show that the nesting does not chain, then fix it",
+        "kind": "code",
         "lang": "js"
       }
     ]
@@ -1586,6 +1614,13 @@ export const manifest: ManifestEntry[] = [
         "title": "What makes a category?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "check-the-laws",
+        "role": "apply",
+        "title": "Write the check for what a category requires",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -1709,6 +1744,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Which direction?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "direction",
+        "role": "break",
+        "title": "Show that the direction matters",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -1746,6 +1788,13 @@ export const manifest: ManifestEntry[] = [
         "role": "recognize",
         "title": "Why name it at all?",
         "kind": "choice",
+        "lang": "js"
+      },
+      {
+        "id": "throwaway",
+        "role": "apply",
+        "title": "Count what the middle costs, then remove it",
+        "kind": "code",
         "lang": "js"
       }
     ]

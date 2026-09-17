@@ -242,5 +242,144 @@ const MaybeT = (inner) => ({
         },
       ],
     },
+
+    {
+      id: 'why',
+      kind: 'code',
+      role: 'break',
+      covers: ['monads-do-not-compose', 'one-chain'],
+      title: "Show that the nesting does not chain, then fix it",
+      prompt:
+        "Two monads stacked are not a monad. Write `nested`, which chains a Maybe inside a Result the naive way and ends up two layers deep, and `chainT`, which unwraps both. Seeing the extra layer is the point.",
+      hints: [
+        "`outer.chain(f)` peels one layer. The value inside is still a Maybe, so `f` receives a Maybe rather than a number.",
+        "`nested` should do the naive thing and hand back the doubly wrapped result. Do not fix it there.",
+        "`chainT` chains the outer, then chains the inner, then puts the outer back on.",
+      ],
+      exports: ['nested', 'chainT', 'layers'],
+      starter: `const Ok = (value) => ({ tag: 'ok', value, chain: (f) => f(value), map: (f) => Ok(f(value)) })
+const Err = (e) => ({ tag: 'err', e, chain: () => Err(e), map: () => Err(e) })
+const Just = (value) => ({ tag: 'just', value, chain: (f) => f(value), map: (f) => Just(f(value)) })
+const Nothing = () => ({ tag: 'nothing', chain: () => Nothing(), map: () => Nothing() })
+
+// layers :: a -> Number   how deep is the wrapping?
+const layers = (v) => 0
+
+// nested :: (Ok(Just(a)), (a -> Ok(Just(b)))) -> ???   the naive chain
+const nested = (stack, f) => stack
+
+// chainT :: (Ok(Just(a)), (a -> Ok(Just(b)))) -> Ok(Just(b))
+const chainT = (stack, f) => stack
+`,
+      solution: `const Ok = (value) => ({ tag: 'ok', value, chain: (f) => f(value), map: (f) => Ok(f(value)) })
+const Err = (e) => ({ tag: 'err', e, chain: () => Err(e), map: () => Err(e) })
+const Just = (value) => ({ tag: 'just', value, chain: (f) => f(value), map: (f) => Just(f(value)) })
+const Nothing = () => ({ tag: 'nothing', chain: () => Nothing(), map: () => Nothing() })
+
+// layers :: a -> Number   how deep is the wrapping?
+const layers = (v) =>
+  v && (v.tag === 'ok' || v.tag === 'just') ? 1 + layers(v.value) : 0
+
+// nested :: (Ok(Just(a)), (a -> Ok(Just(b)))) -> ???   the naive chain
+const nested = (stack, f) => stack.chain((inner) => inner.map(f))
+
+// chainT :: (Ok(Just(a)), (a -> Ok(Just(b)))) -> Ok(Just(b))
+const chainT = (stack, f) =>
+  stack.chain((inner) =>
+    inner.tag === 'nothing' ? Ok(Nothing()) : f(inner.value)
+  )
+`,
+      broken: [
+        `const Ok = (value) => ({ tag: 'ok', value, chain: (f) => f(value), map: (f) => Ok(f(value)) })
+const Err = (e) => ({ tag: 'err', e, chain: () => Err(e), map: () => Err(e) })
+const Just = (value) => ({ tag: 'just', value, chain: (f) => f(value), map: (f) => Just(f(value)) })
+const Nothing = () => ({ tag: 'nothing', chain: () => Nothing(), map: () => Nothing() })
+const layers = (v) => (v && (v.tag === 'ok' || v.tag === 'just') ? 1 + layers(v.value) : 0)
+const nested = (stack, f) => chainT(stack, f)
+const chainT = (stack, f) =>
+  stack.chain((inner) => (inner.tag === 'nothing' ? Ok(Nothing()) : f(inner.value)))
+`,
+        `const Ok = (value) => ({ tag: 'ok', value, chain: (f) => f(value), map: (f) => Ok(f(value)) })
+const Err = (e) => ({ tag: 'err', e, chain: () => Err(e), map: () => Err(e) })
+const Just = (value) => ({ tag: 'just', value, chain: (f) => f(value), map: (f) => Just(f(value)) })
+const Nothing = () => ({ tag: 'nothing', chain: () => Nothing(), map: () => Nothing() })
+const layers = (v) => (v && (v.tag === 'ok' || v.tag === 'just') ? 1 + layers(v.value) : 0)
+const nested = (stack, f) => stack.chain((inner) => inner.map(f))
+const chainT = (stack, f) => stack.chain((inner) => inner.map(f))
+`,
+        `const Ok = (value) => ({ tag: 'ok', value, chain: (f) => f(value), map: (f) => Ok(f(value)) })
+const Err = (e) => ({ tag: 'err', e, chain: () => Err(e), map: () => Err(e) })
+const Just = (value) => ({ tag: 'just', value, chain: (f) => f(value), map: (f) => Just(f(value)) })
+const Nothing = () => ({ tag: 'nothing', chain: () => Nothing(), map: () => Nothing() })
+const layers = (v) => 2
+const nested = (stack, f) => stack.chain((inner) => inner.map(f))
+const chainT = (stack, f) =>
+  stack.chain((inner) => (inner.tag === 'nothing' ? Ok(Nothing()) : f(inner.value)))
+`,
+      ],
+      checks: (T, exp) => {
+        const { nested, chainT, layers } = exp;
+        const Ok = (value: unknown): any => ({ tag: 'ok', value, chain: (f: (x: unknown) => unknown) => f(value), map: (f: (x: unknown) => unknown) => Ok(f(value)) });
+        const Just = (value: unknown): any => ({ tag: 'just', value, chain: (f: (x: unknown) => unknown) => f(value), map: (f: (x: unknown) => unknown) => Just(f(value)) });
+        const Nothing = (): any => ({ tag: 'nothing', chain: () => Nothing(), map: () => Nothing() });
+        const step = (n: number) => Ok(Just(n * 2));
+
+        T.check('layers counts the wrapping', () => {
+          const got = [layers(1), layers(Just(1)), layers(Ok(Just(1)))];
+          return T.eq(got, [0, 1, 2]) || `It counted ${T.fmt(got)} for a bare value, one wrap, and two.`;
+        });
+
+        T.check('The naive chain ends up a layer too deep', () => {
+          const r = nested(Ok(Just(21)), step);
+          const d = layers(r);
+          return (
+            d === 3 ||
+            `The naive chain came back ${d} layers deep, and this rung wants to see 3. Chaining the outer hands \`f\` the inner Maybe, and \`f\` wraps twice more on top.`
+          );
+        });
+
+        T.check('chainT comes back at the right depth', () => {
+          const r = chainT(Ok(Just(21)), step);
+          const d = layers(r);
+          return d === 2 || `chainT came back ${d} layers deep, expected 2: one Result holding one Maybe.`;
+        });
+
+        T.check('chainT produces the right value', () => {
+          const r = chainT(Ok(Just(21)), step);
+          return r.value && r.value.value === 42 || `chainT gave ${T.fmt(r)}, expected an Ok holding a Just holding 42.`;
+        });
+
+        T.check('The two really differ', () => {
+          const a = layers(nested(Ok(Just(1)), step));
+          const b = layers(chainT(Ok(Just(1)), step));
+          return (
+            a !== b ||
+            `Both came back ${a} layers deep. If the naive one already works, there is nothing for a transformer to be for.`
+          );
+        });
+
+        T.check('An empty inner short-circuits without losing the outer', () => {
+          const r = chainT(Ok(Nothing()), step);
+          return (
+            r && r.tag === 'ok' && r.value && r.value.tag === 'nothing' ||
+            `An Ok holding Nothing gave ${T.fmt(r)}. The inner failure has to stay inside the outer success, not replace it.`
+          );
+        });
+
+        T.check('chainT does not run the function on an empty inner', () => {
+          let ran = false;
+          chainT(Ok(Nothing()), (n: number) => {
+            ran = true;
+            return Ok(Just(n));
+          });
+          return !ran || 'The function ran even though the inner Maybe was empty.';
+        });
+
+        T.check('Two chainTs in a row stay at two layers', () => {
+          const r = chainT(chainT(Ok(Just(3)), step), step);
+          return layers(r) === 2 || `Two chains gave ${layers(r)} layers. Staying flat across a whole pipeline is the thing being bought.`;
+        });
+      },
+    },
   ],
 };

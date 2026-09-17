@@ -241,6 +241,131 @@ Box.of = (value) => (value && value.map ? value : Box(value))
     },
 
     {
+      id: 'entry-point',
+      kind: 'code',
+      role: 'apply',
+      covers: ['why-it-matters', 'of-lifts'],
+      title: "Write a pipeline that works for any pointed functor",
+      prompt:
+        "`of` is what lets generic code start from a bare value without knowing which container it is building. Write `runPipeline`, which takes a functor, a plain value and some functions, and works unchanged for two different containers.",
+      hints: [
+        "`runPipeline` lifts the value with `F.of`, then maps each function over it in turn.",
+        "It must never mention Box or Maybe by name. Everything it needs arrives in `F`.",
+        "`Logged.of` is the second container. If your pipeline works for Box and not for it, something is hardcoded.",
+      ],
+      exports: ['Box', 'Logged', 'runPipeline'],
+      starter: `// Box :: a -> { value, map }
+const Box = { of: (a) => ({ value: a, map: (f) => Box.of(a) }) }
+
+// Logged :: a -> { value, seen, map }   remembers every value it has held
+const Logged = {
+  of: (a, seen = [a]) => ({ value: a, seen, map: (f) => Logged.of(a, seen) })
+}
+
+// runPipeline :: (Pointed, a, [a -> a]) -> F a
+const runPipeline = (F, value, fns) => F.of(value)
+`,
+      solution: `// Box :: a -> { value, map }
+const Box = { of: (a) => ({ value: a, map: (f) => Box.of(f(a)) }) }
+
+// Logged :: a -> { value, seen, map }   remembers every value it has held
+const Logged = {
+  of: (a, seen = [a]) => ({
+    value: a,
+    seen,
+    map: (f) => Logged.of(f(a), [...seen, f(a)])
+  })
+}
+
+// runPipeline :: (Pointed, a, [a -> a]) -> F a
+const runPipeline = (F, value, fns) => fns.reduce((acc, f) => acc.map(f), F.of(value))
+`,
+      broken: [
+        `const Box = { of: (a) => ({ value: a, map: (f) => Box.of(f(a)) }) }
+const Logged = {
+  of: (a, seen = [a]) => ({ value: a, seen, map: (f) => Logged.of(f(a), [...seen, f(a)]) })
+}
+const runPipeline = (F, value, fns) => fns.reduce((acc, f) => Box.of(f(acc.value)), F.of(value))
+`,
+        `const Box = { of: (a) => ({ value: a, map: (f) => Box.of(f(a)) }) }
+const Logged = {
+  of: (a, seen = [a]) => ({ value: a, seen, map: (f) => Logged.of(f(a), [f(a)]) })
+}
+const runPipeline = (F, value, fns) => fns.reduce((acc, f) => acc.map(f), F.of(value))
+`,
+        `const Box = { of: (a) => ({ value: a, map: (f) => Box.of(a) }) }
+const Logged = {
+  of: (a, seen = [a]) => ({ value: a, seen, map: (f) => Logged.of(f(a), [...seen, f(a)]) })
+}
+const runPipeline = (F, value, fns) => fns.reduce((acc, f) => acc.map(f), F.of(value))
+`,
+        `const Box = { of: (a) => ({ value: a, map: (f) => Box.of(f(a)) }) }
+const Logged = {
+  of: (a, seen = [a]) => ({ value: a, seen, map: (f) => Logged.of(f(a), [...seen, f(a)]) })
+}
+const runPipeline = (F, value, fns) => fns.reduce((acc, f) => f(acc), value)
+`,
+      ],
+      checks: (T, exp) => {
+        const { Box, Logged, runPipeline } = exp;
+        const fns = [(n: number) => n + 1, (n: number) => n * 2];
+
+        T.check('It works for Box', () => {
+          const r = runPipeline(Box, 3, fns);
+          return r && r.value === 8 || `Over Box it gave ${T.fmt(r)}, expected a container holding 8.`;
+        });
+
+        T.check('The same code works for the other container', () => {
+          const r = runPipeline(Logged, 3, fns);
+          return r && r.value === 8 || `Over Logged it gave ${T.fmt(r)}, expected a container holding 8.`;
+        });
+
+        T.check('Each container keeps its own behaviour', () => {
+          const r = runPipeline(Logged, 3, fns);
+          return (
+            T.eq(r.seen, [3, 4, 8]) ||
+            `Logged remembered ${T.fmt(r.seen)}, expected [3, 4, 8]. The pipeline is the same; what the container does along the way is its business.`
+          );
+        });
+
+        T.check('The result stays in the container', () => {
+          const r = runPipeline(Box, 3, fns);
+          return typeof r.map === 'function' || `It gave ${T.fmt(r)}, which cannot be mapped again. of is the door in and map keeps you inside.`;
+        });
+
+        T.check('An empty pipeline is just the lift', () => {
+          const r = runPipeline(Box, 5, []);
+          return (
+            r && r.value === 5 ||
+            `With no functions it gave ${T.fmt(r)}. of has to be neutral, so lifting and doing nothing leaves the value exactly as it was.`
+          );
+        });
+
+        T.check('The pipeline names no container', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('const runPipeline'));
+          return (
+            !/\b(Box|Logged)\b/.test(body) ||
+            'runPipeline mentions a container by name. Everything it needs arrives in F, and that is the whole reason of exists as an interface rather than a constructor.'
+          );
+        });
+
+        T.law('Lifting then mapping agrees with lifting the answer', 60, (G) => {
+          const n = G.int();
+          const f = G.fn();
+          const a = runPipeline(Box, n, [f.f]).value;
+          const b = Box.of(f.f(n)).value;
+          return a === b || `With ${f.name} at ${n}: ${T.fmt(a)} against ${T.fmt(b)}. This is the law that fails first when of is not neutral.`;
+        });
+
+        T.check('Three steps run in order', () => {
+          const r = runPipeline(Logged, 1, [(n: number) => n + 1, (n: number) => n * 10, (n: number) => n - 5]);
+          return T.eq(r.seen, [1, 2, 20, 15]) || `Logged remembered ${T.fmt(r.seen)}.`;
+        });
+      },
+    },
+
+    {
       id: 'typed',
       kind: 'code',
       role: 'implement',

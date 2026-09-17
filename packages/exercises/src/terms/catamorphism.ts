@@ -217,5 +217,149 @@ const length = cata((a, b) => (b ? a + 1 : a))(0)
         },
       ],
     },
+
+    {
+      id: 'direction',
+      kind: 'code',
+      role: 'break',
+      covers: ['direction', 'fold-to-a-value', 'seed-is-the-identity'],
+      title: "Show that the direction matters",
+      prompt:
+        "Write `foldLeft` and `foldRight` yourself, then find the operation where they disagree. For an associative operation with the right seed they always agree, and that is why the difference is easy to forget until it bites.",
+      hints: [
+        "`foldLeft` starts from the seed and works along the list. `foldRight` starts from the far end and comes back.",
+        "Subtraction is not associative. That is the whole exercise.",
+        "`agree` runs both and compares, so it needs to call each one exactly once.",
+      ],
+      exports: ['foldLeft', 'foldRight', 'agree'],
+      starter: `// foldLeft :: (((b, a) -> b), b, [a]) -> b
+const foldLeft = (f, seed, xs) => seed
+
+// foldRight :: (((a, b) -> b), b, [a]) -> b
+const foldRight = (f, seed, xs) => seed
+
+// agree :: (((x, y) -> z), z, [a]) -> Boolean
+const agree = (f, seed, xs) => true
+`,
+      solution: `// foldLeft :: (((b, a) -> b), b, [a]) -> b
+const foldLeft = (f, seed, xs) => {
+  let acc = seed
+  for (const x of xs) acc = f(acc, x)
+  return acc
+}
+
+// foldRight :: (((a, b) -> b), b, [a]) -> b
+const foldRight = (f, seed, xs) => {
+  let acc = seed
+  for (let i = xs.length - 1; i >= 0; i -= 1) acc = f(xs[i], acc)
+  return acc
+}
+
+// agree :: (((x, y) -> z), z, [a]) -> Boolean
+const agree = (f, seed, xs) =>
+  JSON.stringify(foldLeft(f, seed, xs)) === JSON.stringify(foldRight(f, seed, xs))
+`,
+      broken: [
+        `const foldLeft = (f, seed, xs) => {
+  let acc = seed
+  for (const x of xs) acc = f(acc, x)
+  return acc
+}
+const foldRight = (f, seed, xs) => {
+  let acc = seed
+  for (const x of xs) acc = f(x, acc)
+  return acc
+}
+const agree = (f, seed, xs) =>
+  JSON.stringify(foldLeft(f, seed, xs)) === JSON.stringify(foldRight(f, seed, xs))
+`,
+        `const foldLeft = (f, seed, xs) => {
+  let acc = seed
+  for (let i = xs.length - 1; i >= 0; i -= 1) acc = f(acc, xs[i])
+  return acc
+}
+const foldRight = (f, seed, xs) => {
+  let acc = seed
+  for (let i = xs.length - 1; i >= 0; i -= 1) acc = f(xs[i], acc)
+  return acc
+}
+const agree = (f, seed, xs) =>
+  JSON.stringify(foldLeft(f, seed, xs)) === JSON.stringify(foldRight(f, seed, xs))
+`,
+        `const foldLeft = (f, seed, xs) => {
+  let acc = seed
+  for (const x of xs) acc = f(acc, x)
+  return acc
+}
+const foldRight = (f, seed, xs) => {
+  let acc = seed
+  for (let i = xs.length - 1; i >= 0; i -= 1) acc = f(xs[i], acc)
+  return acc
+}
+const agree = (f, seed, xs) => true
+`,
+      ],
+      checks: (T, exp) => {
+        const { foldLeft, foldRight, agree } = exp;
+        const sub = (a: number, b: number) => a - b;
+        const add = (a: number, b: number) => a + b;
+
+        T.check('Both fold a sum the same way', () => {
+          const a = foldLeft(add, 0, [1, 2, 3]);
+          const b = foldRight(add, 0, [1, 2, 3]);
+          return (a === 6 && b === 6) || `Left gave ${T.fmt(a)} and right gave ${T.fmt(b)}, and both should be 6.`;
+        });
+
+        T.check('foldLeft subtracts from the front', () => {
+          const r = foldLeft(sub, 0, [1, 2, 3]);
+          return r === -6 || `foldLeft(sub, 0, [1, 2, 3]) gave ${T.fmt(r)}. Working along the list gives ((0-1)-2)-3.`;
+        });
+
+        T.check('foldRight subtracts from the back', () => {
+          const r = foldRight(sub, 0, [1, 2, 3]);
+          return r === 2 || `foldRight(sub, 0, [1, 2, 3]) gave ${T.fmt(r)}. Coming back from the far end gives 1-(2-(3-0)).`;
+        });
+
+        T.check('The two really disagree on subtraction', () => {
+          const r = agree(sub, 0, [1, 2, 3]);
+          return (
+            r === false ||
+            `agree reported ${T.fmt(r)} for subtraction. If they match, one of the folds is going the wrong way.`
+          );
+        });
+
+        T.check('And they agree on addition', () => {
+          const r = agree(add, 0, [1, 2, 3, 4]);
+          return r === true || `agree reported ${T.fmt(r)} for addition, which is associative with 0 as its identity.`;
+        });
+
+        T.check('The argument order and the travel direction both differ', () => {
+          // Two elements, not one: with a single element a fold that walks the list
+          // backwards produces the same shape as one that walks it forwards.
+          const shape = (a: unknown, b: unknown) => '(' + a + ' ' + b + ')';
+          const l = foldLeft(shape, 'z', ['a', 'b']);
+          const r = foldRight(shape, 'z', ['a', 'b']);
+          if (l !== '((z a) b)') {
+            return `foldLeft gave ${T.fmt(l)}, expected '((z a) b)'. It starts at the seed, takes the first element, and works along.`;
+          }
+          return r === '(a (b z))' || `foldRight gave ${T.fmt(r)}, expected '(a (b z))'. It starts at the far end and comes back.`;
+        });
+
+        T.check('The empty list gives the seed back, both ways', () => {
+          const a = foldLeft(sub, 7, []);
+          const b = foldRight(sub, 7, []);
+          return (
+            a === 7 && b === 7 ||
+            `Left gave ${T.fmt(a)} and right gave ${T.fmt(b)}. With nothing to fold, the seed is the answer, which is why it has to be the identity for the two to line up.`
+          );
+        });
+
+        T.law('Rebuilding a list from the right gives it back', 60, (G) => {
+          const xs = G.ints();
+          const r = foldRight((x: number, acc: number[]) => [x, ...acc], [] as number[], xs);
+          return T.eq(r, xs) || `${T.fmt(xs)} rebuilt as ${T.fmt(r)}.`;
+        });
+      },
+    },
   ],
 };

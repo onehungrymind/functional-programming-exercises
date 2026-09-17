@@ -245,5 +245,204 @@ const runTest = (program) => program.filter((i) => i.type === 'write').map((i) =
         },
       ],
     },
+
+    {
+      id: 'inspect',
+      kind: 'code',
+      role: 'apply',
+      covers: ['program-as-data', 'many-interpreters'],
+      title: "Read a program without running it",
+      prompt:
+        "If the program is data, you can look at it before anything happens. Write `describe`, which lists the instructions a program will issue without performing any of them, and two interpreters that give the same program different behaviour.",
+      hints: [
+        "`describe` drives the program the way an interpreter does, but answers every request with a placeholder and records the type instead of acting.",
+        "A generator that has not been advanced has done nothing. Only `next` moves it.",
+        "The two interpreters differ only in what they answer, never in what they are handed.",
+      ],
+      exports: ['describe', 'runWith', 'loud', 'quiet', 'saveUser'],
+      starter: `// Do not change this.
+function* saveUser(name) {
+  const id = yield { type: 'insert', name }
+  yield { type: 'notify', id }
+  return id
+}
+
+// describe :: (() -> Generator) -> [String]   the instruction types, nothing performed
+const describe = (makeProgram) => []
+
+// runWith :: (Handlers, Generator) -> a
+const runWith = (handlers, gen) => undefined
+
+// loud :: Handlers    notify records something
+const loud = {}
+
+// quiet :: Handlers   notify records nothing
+const quiet = {}
+`,
+      solution: `// Do not change this.
+function* saveUser(name) {
+  const id = yield { type: 'insert', name }
+  yield { type: 'notify', id }
+  return id
+}
+
+// describe :: (() -> Generator) -> [String]   the instruction types, nothing performed
+const describe = (makeProgram) => {
+  const gen = makeProgram()
+  const types = []
+  let step = gen.next()
+  while (!step.done) {
+    types.push(step.value.type)
+    step = gen.next(null)
+  }
+  return types
+}
+
+// runWith :: (Handlers, Generator) -> a
+const runWith = (handlers, gen) => {
+  let step = gen.next()
+  while (!step.done) step = gen.next(handlers[step.value.type](step.value))
+  return step.value
+}
+
+// loud :: Handlers    notify records something
+const loud = {
+  sent: [],
+  insert: (req) => 'id-' + req.name,
+  notify: (req) => loud.sent.push(req.id)
+}
+
+// quiet :: Handlers   notify records nothing
+const quiet = {
+  sent: [],
+  insert: (req) => 'id-' + req.name,
+  notify: () => undefined
+}
+`,
+      broken: [
+        `function* saveUser(name) {
+  const id = yield { type: 'insert', name }
+  yield { type: 'notify', id }
+  return id
+}
+const describe = (makeProgram) => ['insert']
+const runWith = (handlers, gen) => {
+  let step = gen.next()
+  while (!step.done) step = gen.next(handlers[step.value.type](step.value))
+  return step.value
+}
+const loud = { sent: [], insert: (r) => 'id-' + r.name, notify: (r) => loud.sent.push(r.id) }
+const quiet = { sent: [], insert: (r) => 'id-' + r.name, notify: () => undefined }
+`,
+        `function* saveUser(name) {
+  const id = yield { type: 'insert', name }
+  yield { type: 'notify', id }
+  return id
+}
+const describe = (makeProgram) => {
+  const gen = makeProgram()
+  const types = []
+  let step = gen.next()
+  while (!step.done) {
+    types.push(step.value.type)
+    step = gen.next(null)
+  }
+  return types
+}
+const runWith = (handlers, gen) => {
+  let step = gen.next()
+  while (!step.done) step = gen.next(handlers[step.value.type](step.value))
+  return step.value
+}
+const loud = { sent: [], insert: (r) => 'id-' + r.name, notify: () => undefined }
+const quiet = { sent: [], insert: (r) => 'id-' + r.name, notify: () => undefined }
+`,
+        `function* saveUser(name) {
+  const id = yield { type: 'insert', name }
+  yield { type: 'notify', id }
+  return id
+}
+const describe = (makeProgram) => {
+  const gen = makeProgram()
+  const types = []
+  let step = gen.next()
+  while (!step.done) {
+    types.push(step.value.type)
+    step = gen.next(null)
+  }
+  return types
+}
+const runWith = (handlers, gen) => {
+  const step = gen.next()
+  return step.value
+}
+const loud = { sent: [], insert: (r) => 'id-' + r.name, notify: (r) => loud.sent.push(r.id) }
+const quiet = { sent: [], insert: (r) => 'id-' + r.name, notify: () => undefined }
+`,
+      ],
+      checks: (T, exp) => {
+        const { describe, runWith, loud, quiet } = exp;
+        const saveUser = exp.saveUser;
+
+        T.check('describe lists the instructions in order', () => {
+          const r = describe(() => saveUser('ada'));
+          return T.eq(r, ['insert', 'notify']) || `describe gave ${T.fmt(r)}, expected ['insert', 'notify'].`;
+        });
+
+        T.check('describe performs nothing', () => {
+          const before = loud.sent.length;
+          describe(() => saveUser('ada'));
+          return (
+            loud.sent.length === before ||
+            'Something was actually sent while describing. A program that is data can be read without being run, and that is the property being demonstrated.'
+          );
+        });
+
+        T.check('describe is not a hardcoded list', () => {
+          function* other() {
+            yield { type: 'notify', id: 1 };
+            yield { type: 'notify', id: 2 };
+            yield { type: 'insert', name: 'x' };
+          }
+          const r = describe(() => other());
+          return T.eq(r, ['notify', 'notify', 'insert']) || `A different program described as ${T.fmt(r)}.`;
+        });
+
+        T.check('Running it produces the result', () => {
+          const r = runWith(quiet, saveUser('ada'));
+          return r === 'id-ada' || `Running under quiet gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The loud interpreter records the notification', () => {
+          loud.sent.length = 0;
+          runWith(loud, saveUser('ada'));
+          return T.eq(loud.sent, ['id-ada']) || `loud.sent holds ${T.fmt(loud.sent)}, expected ['id-ada'].`;
+        });
+
+        T.check('The quiet interpreter does not', () => {
+          quiet.sent.length = 0;
+          runWith(quiet, saveUser('ada'));
+          return (
+            T.eq(quiet.sent, []) ||
+            `quiet.sent holds ${T.fmt(quiet.sent)}. The two interpreters are meant to differ, or there is only one of them.`
+          );
+        });
+
+        T.check('Both reach the same result despite behaving differently', () => {
+          const a = runWith(loud, saveUser('grace'));
+          const b = runWith(quiet, saveUser('grace'));
+          return a === b || `loud gave ${T.fmt(a)} and quiet gave ${T.fmt(b)}.`;
+        });
+
+        T.check('Every instruction is answered, not just the first', () => {
+          const seen: string[] = [];
+          runWith(
+            { insert: () => { seen.push('insert'); return 'id'; }, notify: () => { seen.push('notify'); } },
+            saveUser('x'),
+          );
+          return T.eq(seen, ['insert', 'notify']) || `The interpreter saw ${T.fmt(seen)}.`;
+        });
+      },
+    },
   ],
 };
