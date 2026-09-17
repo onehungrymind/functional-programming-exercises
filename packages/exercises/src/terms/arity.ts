@@ -277,39 +277,57 @@ const curriesBadly = (fn, wanted) => fn.length < wanted
       kind: 'code',
       role: 'break',
       covers: ['why-it-matters', 'declared-vs-call'],
-      title: "Watch machinery that reads fn.length get it wrong",
+      title: "Curry by reading fn.length, then find where that breaks",
       prompt:
-        "`curryByLength` decides when to call through by reading `fn.length`, which is what real auto-currying does. Write it and `curryN`, which is told the arity instead, then show the first one mishandling a defaulted function.",
+        "Three functions, in this order, because each one uses the one before it.\n\n1. `curryN(n, fn)` gathers arguments until it has `n` of them, then calls `fn` with all of them. Given fewer, it hands back a function waiting for the rest.\n\n2. `curryByLength(fn)` does the same job, except it is not told the arity. It reads `fn.length`. Build it out of `curryN`.\n\n3. `surprise()` returns `true` if `curryByLength` gets `volDefaulted` wrong, and `false` if it handles it correctly. \"Wrong\" here means something specific: hand it two of that function's three arguments and see whether it has already called through instead of waiting for the third.\n\nThe starter has a worked example against each one.",
       hints: [
-        "`curryByLength` collects arguments until it has `fn.length` of them.",
-        "`curryN` is the same thing with the count handed in rather than read off.",
-        "A parameter with a default is not counted, so a three-parameter function with one default reports two.",
+        "Start with `curryN`. Keep the arguments you have been given so far, and each time more arrive, decide whether you now have enough to call `fn` or whether to wait again.",
+        "`curryByLength` is one line once `curryN` works. The only thing it adds is where the count comes from.",
+        "For `surprise`, apply `curryByLength` to the defaulted function, give that two arguments, and look at what you are holding. A function means it is still waiting and nothing went wrong. A number means it finished a step early.",
       ],
       exports: ['curryByLength', 'curryN', 'surprise'],
-      starter: `// curryByLength :: ((...a) -> r) -> curried
-const curryByLength = (fn) => fn
+      starter: `// Two functions to try these on. Both multiply three numbers.
+const vol = (l, w, h) => l * w * h              // vol.length is 3
+const volDefaulted = (l, w, h = 1) => l * w * h // volDefaulted.length is 2, not 3
 
-// curryN :: (Number, (...a) -> r) -> curried
+// curryN :: (Number, Function) -> Function
+// Gathers n arguments, then calls fn with all of them.
+//   curryN(3, vol)(2)(3)(4)  ->  24
+//   curryN(3, vol)(2, 3)(4)  ->  24      grouping does not matter
+//   curryN(3, vol)(2)(3)     ->  a function, still waiting for the third
 const curryN = (n, fn) => fn
 
-// surprise :: () -> Boolean   does reading fn.length mishandle a defaulted function?
+// curryByLength :: Function -> Function
+// The same job, but it reads the arity off fn.length instead of being told.
+//   curryByLength(vol)(2)(3)(4)  ->  24
+const curryByLength = (fn) => fn
+
+// surprise :: () -> Boolean
+// true if curryByLength mishandles volDefaulted, false if it does not.
+// Give curryByLength two of volDefaulted's three arguments. If what you get back is
+// still a function, it is waiting properly and the answer is false. If it has already
+// produced a number, it stopped a step early and the answer is true.
 const surprise = () => false
 `,
-      solution: `// curryByLength :: ((...a) -> r) -> curried
-const curryByLength = (fn) => curryN(fn.length, fn)
+      solution: `const vol = (l, w, h) => l * w * h
+const volDefaulted = (l, w, h = 1) => l * w * h
 
-// curryN :: (Number, (...a) -> r) -> curried
+// curryN :: (Number, Function) -> Function
 const curryN = (n, fn) => {
   const collect = (got) =>
     got.length >= n ? fn(...got) : (...more) => collect([...got, ...more])
   return collect([])
 }
 
-// surprise :: () -> Boolean   does reading fn.length mishandle a defaulted function?
+// curryByLength :: Function -> Function
+const curryByLength = (fn) => curryN(fn.length, fn)
+
+// surprise :: () -> Boolean
 const surprise = () => {
-  const vol = (l, w, h = 1) => l * w * h
-  // Two of three arguments in, and it has already called through.
-  return typeof curryByLength(vol)(2)(3) !== 'function'
+  // volDefaulted.length is 2, so curryByLength calls through after two arguments
+  // and hands back a number where it should still be waiting for the third.
+  const afterTwo = curryByLength(volDefaulted)(2)(3)
+  return typeof afterTwo !== 'function'
 }
 `,
       broken: [

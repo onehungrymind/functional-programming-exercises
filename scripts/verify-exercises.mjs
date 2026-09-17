@@ -189,6 +189,34 @@ const note = (msg) => problems.push(msg);
     }
   }
 
+  // An export the learner has to invent, whose stub is a bare literal, and which neither the
+  // prompt nor a starter comment ever describes. That combination means they are guessing at
+  // what the thing is supposed to return, which no amount of reading the checks will fix.
+  {
+    const BARE = /=>\s*(false|true|0|1|-1|'[^']*'|"[^"]*"|\[\]|\{\}|null|undefined)\s*[;,]?\s*$/;
+    for (const set of Object.values(exerciseSets)) {
+      for (const rung of set.rungs) {
+        if (rung.kind !== 'code') continue;
+        const comments = rung.starter
+          .split('\n')
+          .filter((l) => l.trim().startsWith('//'))
+          .join(' ');
+        for (const name of rung.exports) {
+          const decl = rung.starter
+            .split('\n')
+            .find((l) => new RegExp(`^const ${name}\\s*=`).test(l.trim()));
+          if (!decl || !BARE.test(decl.trim())) continue;
+          if (!rung.prompt.includes(name) && !comments.includes(name)) {
+            note(
+              `${set.termId}/${rung.id}: \`${name}\` starts as a bare stub and neither the prompt ` +
+                `nor a starter comment says what it should return. The learner is guessing.`,
+            );
+          }
+        }
+      }
+    }
+  }
+
   // A hint names the shape or the stuck point. Quoting the answer turns the hint ladder into
   // a slower way of pressing the solution button, and somebody who reads every hint should
   // still have to write the line. Text already visible in the starter is fair game.

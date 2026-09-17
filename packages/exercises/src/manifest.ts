@@ -83,7 +83,7 @@ export const manifest: ManifestEntry[] = [
       {
         "id": "curry-by-length",
         "role": "break",
-        "title": "Watch machinery that reads fn.length get it wrong",
+        "title": "Curry by reading fn.length, then find where that breaks",
         "kind": "code",
         "lang": "js"
       }

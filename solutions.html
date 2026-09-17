@@ -267,7 +267,7 @@ ul.flat { list-style: none; margin: 0; padding: 0; }
 </article>
   
 </section>
-<section class="concept" id="arity" data-search="arity arity core functions what does fn.length report? name an arity predict where currying goes wrong watch machinery that reads fn.length get it wrong">
+<section class="concept" id="arity" data-search="arity arity core functions what does fn.length report? name an arity predict where currying goes wrong curry by reading fn.length, then find where that breaks">
   <header class="concept-head">
     <h2><a href="#arity">Arity</a></h2>
     <div class="meta">
@@ -344,32 +344,58 @@ ul.flat { list-style: none; margin: 0; padding: 0; }
 <i class="k">const</i> curriesBadly = (fn, wanted) =&gt; {
 }</code></pre></details><details><summary>3 variants that must fail</summary><pre class="code"><code><i class="k">const</i> curriesBadly = (fn, wanted) =&gt; fn.length &gt; wanted</code></pre><pre class="code"><code><i class="k">const</i> curriesBadly = (fn, wanted) =&gt; fn.length === <i class="n">0</i></code></pre><pre class="code"><code><i class="k">const</i> curriesBadly = (fn, wanted) =&gt; fn.length !== wanted</code></pre></details>
 </article><article class="rung" id="arity--rung-curry-by-length">
-  <header><h4>Watch machinery that reads fn.length get it wrong</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">break</span></div></header>
-  <p class="prompt"><code>curryByLength</code> decides when to call through by reading <code>fn.length</code>, which is what real auto-currying does. Write it and <code>curryN</code>, which is told the arity instead, then show the first one mishandling a defaulted function.</p>
-  <div class="covers">demonstrates <a class="pill" href="#arity--why-it-matters">why-it-matters</a><a class="pill" href="#arity--declared-vs-call">declared-vs-call</a></div>
-  <details class="hints"><summary>3 hints</summary><ol><li><code>curryByLength</code> collects arguments until it has <code>fn.length</code> of them.</li><li><code>curryN</code> is the same thing with the count handed in rather than read off.</li><li>A parameter with a default is not counted, so a three-parameter function with one default reports two.</li></ol></details>
-  <h5>Solution</h5><pre class="code"><code><i class="c">// curryByLength :: ((...a) -&gt; r) -&gt; curried</i>
-<i class="k">const</i> curryByLength = (fn) =&gt; curryN(fn.length, fn)
+  <header><h4>Curry by reading fn.length, then find where that breaks</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">break</span></div></header>
+  <p class="prompt">Three functions, in this order, because each one uses the one before it.
 
-<i class="c">// curryN :: (Number, (...a) -&gt; r) -&gt; curried</i>
+1. <code>curryN(n, fn)</code> gathers arguments until it has <code>n</code> of them, then calls <code>fn</code> with all of them. Given fewer, it hands back a function waiting for the rest.
+
+2. <code>curryByLength(fn)</code> does the same job, except it is not told the arity. It reads <code>fn.length</code>. Build it out of <code>curryN</code>.
+
+3. <code>surprise()</code> returns <code>true</code> if <code>curryByLength</code> gets <code>volDefaulted</code> wrong, and <code>false</code> if it handles it correctly. &quot;Wrong&quot; here means something specific: hand it two of that function's three arguments and see whether it has already called through instead of waiting for the third.
+
+The starter has a worked example against each one.</p>
+  <div class="covers">demonstrates <a class="pill" href="#arity--why-it-matters">why-it-matters</a><a class="pill" href="#arity--declared-vs-call">declared-vs-call</a></div>
+  <details class="hints"><summary>3 hints</summary><ol><li>Start with <code>curryN</code>. Keep the arguments you have been given so far, and each time more arrive, decide whether you now have enough to call <code>fn</code> or whether to wait again.</li><li><code>curryByLength</code> is one line once <code>curryN</code> works. The only thing it adds is where the count comes from.</li><li>For <code>surprise</code>, apply <code>curryByLength</code> to the defaulted function, give that two arguments, and look at what you are holding. A function means it is still waiting and nothing went wrong. A number means it finished a step early.</li></ol></details>
+  <h5>Solution</h5><pre class="code"><code><i class="k">const</i> vol = (l, w, h) =&gt; l * w * h
+<i class="k">const</i> volDefaulted = (l, w, h = <i class="n">1</i>) =&gt; l * w * h
+
+<i class="c">// curryN :: (Number, Function) -&gt; Function</i>
 <i class="k">const</i> curryN = (n, fn) =&gt; {
   <i class="k">const</i> collect = (got) =&gt;
     got.length &gt;= n ? fn(...got) : (...more) =&gt; collect([...got, ...more])
   <i class="k">return</i> collect([])
 }
 
-<i class="c">// surprise :: () -&gt; Boolean   does reading fn.length mishandle a defaulted function?</i>
-<i class="k">const</i> surprise = () =&gt; {
-  <i class="k">const</i> vol = (l, w, h = <i class="n">1</i>) =&gt; l * w * h
-  <i class="c">// Two of three arguments in, and it has already called through.</i>
-  <i class="k">return</i> <i class="k">typeof</i> curryByLength(vol)(<i class="n">2</i>)(<i class="n">3</i>) !== <i class="s">'function'</i>
-}</code></pre><details><summary>Starter &middot; 3 exports: <code>curryByLength</code>, <code>curryN</code>, <code>surprise</code></summary><pre class="code"><code><i class="c">// curryByLength :: ((...a) -&gt; r) -&gt; curried</i>
-<i class="k">const</i> curryByLength = (fn) =&gt; fn
+<i class="c">// curryByLength :: Function -&gt; Function</i>
+<i class="k">const</i> curryByLength = (fn) =&gt; curryN(fn.length, fn)
 
-<i class="c">// curryN :: (Number, (...a) -&gt; r) -&gt; curried</i>
+<i class="c">// surprise :: () -&gt; Boolean</i>
+<i class="k">const</i> surprise = () =&gt; {
+  <i class="c">// volDefaulted.length is 2, so curryByLength calls through after two arguments</i>
+  <i class="c">// and hands back a number where it should still be waiting for the third.</i>
+  <i class="k">const</i> afterTwo = curryByLength(volDefaulted)(<i class="n">2</i>)(<i class="n">3</i>)
+  <i class="k">return</i> <i class="k">typeof</i> afterTwo !== <i class="s">'function'</i>
+}</code></pre><details><summary>Starter &middot; 3 exports: <code>curryByLength</code>, <code>curryN</code>, <code>surprise</code></summary><pre class="code"><code><i class="c">// Two functions to try these on. Both multiply three numbers.</i>
+<i class="k">const</i> vol = (l, w, h) =&gt; l * w * h              <i class="c">// vol.length is 3</i>
+<i class="k">const</i> volDefaulted = (l, w, h = <i class="n">1</i>) =&gt; l * w * h <i class="c">// volDefaulted.length is 2, not 3</i>
+
+<i class="c">// curryN :: (Number, Function) -&gt; Function</i>
+<i class="c">// Gathers n arguments, then calls fn with all of them.</i>
+<i class="c">//   curryN(3, vol)(2)(3)(4)  -&gt;  24</i>
+<i class="c">//   curryN(3, vol)(2, 3)(4)  -&gt;  24      grouping does not matter</i>
+<i class="c">//   curryN(3, vol)(2)(3)     -&gt;  a function, still waiting for the third</i>
 <i class="k">const</i> curryN = (n, fn) =&gt; fn
 
-<i class="c">// surprise :: () -&gt; Boolean   does reading fn.length mishandle a defaulted function?</i>
+<i class="c">// curryByLength :: Function -&gt; Function</i>
+<i class="c">// The same job, but it reads the arity off fn.length instead of being told.</i>
+<i class="c">//   curryByLength(vol)(2)(3)(4)  -&gt;  24</i>
+<i class="k">const</i> curryByLength = (fn) =&gt; fn
+
+<i class="c">// surprise :: () -&gt; Boolean</i>
+<i class="c">// true if curryByLength mishandles volDefaulted, false if it does not.</i>
+<i class="c">// Give curryByLength two of volDefaulted's three arguments. If what you get back is</i>
+<i class="c">// still a function, it is waiting properly and the answer is false. If it has already</i>
+<i class="c">// produced a number, it stopped a step early and the answer is true.</i>
 <i class="k">const</i> surprise = () =&gt; <i class="k">false</i></code></pre></details><details><summary>3 variants that must fail</summary><pre class="code"><code><i class="k">const</i> curryByLength = (fn) =&gt; curryN(fn.length, fn)
 <i class="k">const</i> curryN = (n, fn) =&gt; {
   <i class="k">const</i> collect = (got) =&gt; (got.length &gt;= n ? fn(...got) : (...more) =&gt; collect([...got, ...more]))

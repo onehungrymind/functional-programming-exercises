@@ -44,6 +44,11 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
   learner's own annotations; that would mean shipping the TypeScript compiler, roughly 1.5MB
   gzip against sucrase's 61KB. Add one only where the signature carries the lesson, which is
   the generic containers and optics, not `(n: number) => string`.
+- **A prompt names every export and says what it returns.** Not "write it and the other one":
+  name each, in the order they depend on each other, and for anything that reports an
+  observation rather than computing a value, say exactly what makes it true. If a learner has
+  to read the checks to find out what a function is for, the rung is broken. Verify catches the
+  worst case, an export that is a bare stub and is described nowhere.
 - **A hint describes, it does not quote.** Someone who reads every hint should still have to
   write the line themselves; the solution button is what exists for giving up. Verify rejects a
   hint that quotes more than a fragment of its own solution, unless that text is already in the
