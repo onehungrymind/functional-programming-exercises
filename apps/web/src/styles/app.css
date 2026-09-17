@@ -1134,3 +1134,44 @@ kbd {
   width: 100%;
   list-style: none;
 }
+
+/* A signposted detour: the concept this rung leans on that the curriculum has not reached. */
+.sidequest {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin: 12px 0 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent-line);
+  border-radius: 5px;
+  background: var(--accent-bg);
+  font-size: 12px;
+}
+.sidequest > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.sidequest b {
+  display: block;
+  font-weight: 600;
+  color: var(--text);
+}
+.sidequest ul {
+  margin: 5px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sidequest li {
+  color: var(--muted);
+  padding: 2px 0;
+}
+.sidequest li a {
+  color: var(--accent);
+  text-transform: capitalize;
+  margin-right: 6px;
+}
+.sidequest li a::after {
+  content: ' \2192';
+}

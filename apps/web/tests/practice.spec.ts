@@ -98,6 +98,28 @@ test.describe('opening a concept', () => {
   });
 });
 
+test.describe('sidequests', () => {
+  test('a rung that leans on a later concept says so and links there', async ({ page }) => {
+    await page.goto('/#/term/arity/practice/curry-by-length');
+    const note = page.locator('.sidequest');
+    await expect(note).toBeVisible();
+    await expect(note).toContainText('leans on other concepts');
+    await expect(note.getByRole('link', { name: /currying/i }).first()).toBeVisible();
+  });
+
+  test('following one opens that concept on Learn', async ({ page }) => {
+    await page.goto('/#/term/arity/practice/curry-by-length');
+    await page.locator('.sidequest a').first().click();
+    await expect(page).toHaveURL(/#\/term\/currying$/);
+    await expect(page.getByRole('tab', { name: 'Learn' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('a rung without one shows no note', async ({ page }) => {
+    await page.goto('/#/term/currying/practice/implement');
+    await expect(page.locator('.sidequest')).toHaveCount(0);
+  });
+});
+
 test.describe('deep links', () => {
   test('a term hash opens the drawer on Learn', async ({ page }) => {
     await page.goto('/#/term/functor');

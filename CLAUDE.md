@@ -71,6 +71,12 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
   what it does, never as something to implement. Arity is concept 3 and Currying is 14, so an
   arity rung that wants an auto-curry built from scratch is a wall, not an exercise. The order
   is the registration order in `packages/exercises/src/index.ts`.
+- **When a rung leans forward, say so with a `sidequests` link.** The material is
+  interdependent and that is the point: arity only gets interesting once you are currying
+  something. Do not flatten it out. Name the concept, say in a sentence why it helps, and let
+  getting stuck read as a signposted detour rather than a wall. Verify checks the links
+  resolve. A sidequest is for the understanding; it does not license asking for code the
+  curriculum has not reached.
 - Learning order comes from `apps/web/src/curriculum.ts`, never from the graph. The graph's
   links say "related to", not "depends on", and their direction is whichever way the upstream
   README cross-referenced. Ask it for concepts with no prerequisites and it offers comonad and

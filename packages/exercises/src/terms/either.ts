@@ -134,6 +134,9 @@ common before it will let you leave.`,
         'Left is the failure. Mapping over it changes nothing and keeps the error intact.',
         '`fold(onLeft, onRight)` runs exactly one of the two, depending which side you are on.',
       ],
+      sidequests: [
+        { termId: 'monad', why: "Either's `chain` is the same operation again, on the Right only. The general shape is there." },
+      ],
       exports: ['Left', 'Right'],
       starter: `// Left :: e -> Either e a
 const Left = (error) => ({
@@ -292,6 +295,9 @@ const Right = (value) => ({
       hints: [
         'Wrap `JSON.parse` in a try/catch and turn the throw into a Left.',
         'Chain the three steps. The first Left ends it, and its message survives to the end.',
+      ],
+      sidequests: [
+        { termId: 'monad', why: "Threading several failures through one pipeline without nesting is what chain is for." },
       ],
       exports: ['parseAge'],
       starter: `const Left = (error) => ({

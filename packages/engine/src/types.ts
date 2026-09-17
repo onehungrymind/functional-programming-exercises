@@ -57,6 +57,24 @@ export interface BaseRung {
   prompt: string;
   /** Revealed one at a time, before the solution. */
   hints?: string[];
+  /**
+   * Concepts worth going and learning before finishing this one.
+   *
+   * The material is interdependent and that is not a defect: arity only becomes interesting
+   * once you are currying something, and currying is eleven concepts later. Rather than
+   * flatten that out, a rung says so and links, so getting stuck reads as a signposted
+   * detour rather than a wall.
+   *
+   * This is not a substitute for the rule that a rung may only ask you to WRITE what has
+   * already been taught. Machinery from a later concept still arrives finished. A sidequest
+   * is for the understanding, not the code.
+   */
+  sidequests?: {
+    /** Must exist in data/jargons.json. Enforced by `npm run verify`. */
+    termId: string;
+    /** Why this one, in a sentence. "How curryN collects its arguments is taught here." */
+    why: string;
+  }[];
 }
 
 export interface ChoiceOption {

@@ -136,6 +136,9 @@ narrowing. Everything downstream gets an \`A\` that really is an \`A\`.`,
         '`chain` is for a function that itself returns an Option, so do not wrap the result again.',
         '`getOrElse` is the only way out. It is where the default finally appears.',
       ],
+      sidequests: [
+        { termId: 'monad', why: "Option's `chain` is the same operation Maybe has. The laws it obeys are covered there." },
+      ],
       exports: ['Some', 'None'],
       starter: `// Some :: a -> Option a
 const Some = (value) => ({
@@ -405,6 +408,9 @@ const cityOf = (user) => prop('address')(user).map(prop('city')).getOrElse('unkn
         "Test `o.tag === 'some'` before touching `o.value`. In the other branch there is no value to touch.",
         "`map` returns `Option<B>`. On the empty case there is nothing to apply `f` to, so hand the empty case straight back.",
         "Only `null` and `undefined` count as absent. `0` and `''` are values.",
+      ],
+      sidequests: [
+        { termId: 'monad', why: "Chaining several lookups that can each come back empty is the pattern this is an instance of." },
       ],
       exports: ['fromNullable', 'map', 'getOrElse'],
       starter: `type Option<A> =

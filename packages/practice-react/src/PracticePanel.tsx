@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Circle, Lightbulb, Play, RotateCcw, Sparkles } from 'lucide-react';
+import { Check, Circle, Compass, Lightbulb, Play, RotateCcw, Sparkles } from 'lucide-react';
 // Imported by path rather than from the barrel: the barrel re-exports the shape rules and
 // the evaluator, which would drag acorn into the main bundle for no reason.
 import { CheckRunner } from '@fpx/engine/runner';
@@ -133,6 +133,30 @@ export function PracticePanel({
         <span className="role-label">{ROLE_LABEL[rung.role]}</span>
         <h3>{rung.title}</h3>
         <div className="prompt" dangerouslySetInnerHTML={{ __html: renderMarkdown(rung.prompt) }} />
+        {rung.sidequests?.length ? (
+          <aside className="sidequest">
+            <Compass size={13} aria-hidden />
+            <div>
+              <b>If you get stuck, this one leans on other concepts.</b>
+              <ul>
+                {rung.sidequests.map((s) => (
+                  <li key={s.termId}>
+                    <a
+                      href={`#/term/${s.termId}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onNavigate({ termId: s.termId, rungId: null });
+                      }}
+                    >
+                      {s.termId.replace(/-/g, ' ')}
+                    </a>
+                    <span dangerouslySetInnerHTML={{ __html: renderMarkdown(s.why) }} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </aside>
+        ) : null}
       </div>
 
       {rung.kind === 'choice' && (

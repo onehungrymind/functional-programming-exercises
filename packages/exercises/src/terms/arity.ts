@@ -185,6 +185,9 @@ const arityName = (fn) => {
         'curry compares the arguments it has collected against `fn.length`.',
         'A function whose declared arity is smaller than the number of arguments it really wants gets called too early.',
       ],
+      sidequests: [
+        { termId: 'currying', why: "Where the `curry` you are handed comes from, and how it collects arguments until it has enough." },
+      ],
       exports: ['curriesBadly'],
       starter: `// curry calls through once it has collected fn.length arguments.
 const curry = (fn) => {
@@ -284,6 +287,10 @@ const curriesBadly = (fn, wanted) => fn.length < wanted
         "`curryByLength` passes two things to `curryN`: how many arguments to wait for, and the function itself. Only one of those needs working out.",
         "Every function has a `.length`. Try `vol.length` and `volDefaulted.length` in your head before you write anything.",
         "A parameter with a default is not counted, and counting stops at the first one. So a three-parameter function with one default reports 2.",
+      ],
+      sidequests: [
+        { termId: 'currying', why: "How a function gets taken apart into one argument at a time. `curryN` is written for you here; this is where it is built." },
+        { termId: 'auto-currying', why: "Accepting the arguments in any grouping, which is what `curryN` is doing above." },
       ],
       exports: ['curryByLength', 'surprise'],
       starter: `// Two functions to try things on. Both multiply three numbers.

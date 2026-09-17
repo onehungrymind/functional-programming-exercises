@@ -240,6 +240,9 @@ const incrementAll = map(add(0))
         "`between(2)(8)` is already a predicate. `label('n')` is already a formatter.",
         "`describe` composes the two. If you write `(n) =>` anywhere, the currying bought you nothing.",
       ],
+      sidequests: [
+        { termId: 'function-composition', why: "`compose` is given here. It gets its own rung, with both directions and the laws between them." },
+      ],
       exports: ['curry3', 'between', 'label', 'describe'],
       starter: `const compose = (f, g) => (x) => f(g(x))
 

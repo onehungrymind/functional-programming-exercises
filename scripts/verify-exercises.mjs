@@ -189,6 +189,23 @@ const note = (msg) => problems.push(msg);
     }
   }
 
+  // A sidequest is a link a stuck learner will click, so a dead one is worse than none.
+  for (const set of Object.values(exerciseSets)) {
+    for (const rung of set.rungs) {
+      for (const quest of rung.sidequests ?? []) {
+        if (!termsById.has(quest.termId)) {
+          note(`${set.termId}/${rung.id}: sidequest points at "${quest.termId}", which is not a concept.`);
+        }
+        if (quest.termId === set.termId) {
+          note(`${set.termId}/${rung.id}: sidequest points at its own concept.`);
+        }
+        if (!quest.why?.trim()) {
+          note(`${set.termId}/${rung.id}: the sidequest to "${quest.termId}" does not say why.`);
+        }
+      }
+    }
+  }
+
   // The prompt has to name everything the learner is being asked to write. A starter comment
   // is not enough on its own: the prompt is what they read first, and "write it and the other
   // one" is how a rung ends up unreadable. Scaffolding handed over finished is exempt, since

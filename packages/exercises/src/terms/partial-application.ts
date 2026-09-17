@@ -204,6 +204,9 @@ const fivePlus = partial(add, 4)
         "`curry3` takes exactly one at a time, three times.",
         "Both `volFixed` definitions should give the same answers, which is the point of putting them next to each other.",
       ],
+      sidequests: [
+        { termId: 'currying', why: "`curry3` is handed over here so the rung can stay about the comparison. It is built from scratch there." },
+      ],
       exports: ['partial', 'curry3', 'viaPartial', 'viaCurry'],
       starter: `const vol = (l, w, h) => l * w * h
 

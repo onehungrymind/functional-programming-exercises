@@ -83,6 +83,9 @@ program.run()   // reads it again, freshly
         'The whole IO is a function waiting to be called. `map` returns a new IO that wraps the old one.',
         '`chain` is like map, except the function already returns an IO, so run that one rather than wrapping it again.',
       ],
+      sidequests: [
+        { termId: 'monad', why: "IO's `chain` is one instance of a general pattern. The pattern itself, and why chaining does not stack layers, is there." },
+      ],
       exports: ['IO'],
       starter: `// IO :: (() -> a) -> IO a
 const IO = (effect) => ({
@@ -297,6 +300,9 @@ const program = readName.map((n) => \`Hello, \${n}\`)
         "`io(effect)` just holds the function. Nothing happens until `run`.",
         "`map` wraps a new description that runs this one and applies `f` to the answer.",
         "`chain`'s function returns another IO, so `run` it rather than wrapping it again.",
+      ],
+      sidequests: [
+        { termId: 'monad', why: "The reason `chain` unwraps what its function returned instead of wrapping it again." },
       ],
       exports: ['io'],
       starter: `// io :: (() -> a) -> IO a
