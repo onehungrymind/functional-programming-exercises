@@ -263,5 +263,141 @@ const reporters = makeReporters()
       },
     },
 
+
+    {
+      id: 'instances',
+      kind: 'code',
+      role: 'apply',
+      covers: ['private-state', 'independent-instances'],
+      title: "Two accounts that cannot reach each other",
+      prompt:
+        "Every call to the enclosing function makes fresh bindings, which is what makes a closure a way to have private state rather than a shared one. Write `account`, and confirm two of them are genuinely separate.",
+      hints: [
+        "The balance lives in the enclosing scope, so nothing outside the returned object can name it.",
+        "Each call to `account` creates a new binding, so two accounts get two balances.",
+        "Do not attach the balance to the returned object, or it is not private any more.",
+      ],
+      exports: ['account'],
+      starter: `// account :: Number -> { deposit, withdraw, balance }
+const account = (opening) => {
+  return {
+    deposit: (n) => 0,
+    withdraw: (n) => 0,
+    balance: () => 0
+  }
+}
+`,
+      solution: `// account :: Number -> { deposit, withdraw, balance }
+const account = (opening) => {
+  let funds = opening
+  return {
+    deposit: (n) => {
+      funds += n
+      return funds
+    },
+    withdraw: (n) => {
+      if (n > funds) return funds
+      funds -= n
+      return funds
+    },
+    balance: () => funds
+  }
+}
+`,
+      broken: [
+        `let funds = 0
+const account = (opening) => {
+  funds = opening
+  return {
+    deposit: (n) => { funds += n; return funds },
+    withdraw: (n) => { if (n > funds) return funds; funds -= n; return funds },
+    balance: () => funds
+  }
+}
+`,
+        `const account = (opening) => {
+  const self = {
+    funds: opening,
+    deposit: (n) => { self.funds += n; return self.funds },
+    withdraw: (n) => { if (n > self.funds) return self.funds; self.funds -= n; return self.funds },
+    balance: () => self.funds
+  }
+  return self
+}
+`,
+        `const account = (opening) => {
+  let funds = opening
+  return {
+    deposit: (n) => { funds += n; return funds },
+    withdraw: (n) => { funds -= n; return funds },
+    balance: () => funds
+  }
+}
+`,
+      ],
+      checks: (T, exp) => {
+        const account = exp.account;
+
+        T.check('It opens with the amount it was given', () => {
+          return account(100).balance() === 100 || `It opened at ${T.fmt(account(100).balance())}.`;
+        });
+
+        T.check('Depositing moves the balance', () => {
+          const a = account(100);
+          a.deposit(50);
+          return a.balance() === 150 || `After depositing 50 it reads ${T.fmt(a.balance())}.`;
+        });
+
+        T.check('Withdrawing moves it back', () => {
+          const a = account(100);
+          a.withdraw(30);
+          return a.balance() === 70 || `After withdrawing 30 it reads ${T.fmt(a.balance())}.`;
+        });
+
+        T.check('Two accounts do not share a balance', () => {
+          const a = account(100);
+          const b = account(5);
+          a.deposit(50);
+          return (
+            (a.balance() === 150 && b.balance() === 5) ||
+            `After depositing into the first, they read ${T.fmt(a.balance())} and ${T.fmt(b.balance())}. Each call to the enclosing function makes its own binding.`
+          );
+        });
+
+        T.check('Opening a second account does not disturb the first', () => {
+          const a = account(100);
+          account(1);
+          return a.balance() === 100 || `The first account now reads ${T.fmt(a.balance())}. The state cannot live outside the function that makes it.`;
+        });
+
+        T.check('The balance is not reachable from outside', () => {
+          const a = account(100);
+          const reachable = Object.keys(a).filter((k) => typeof (a as Record<string, unknown>)[k] === 'number');
+          return (
+            reachable.length === 0 ||
+            `${T.fmt(reachable)} is sitting on the returned object, so anything holding it can write to the balance directly. Private means nothing outside can name it.`
+          );
+        });
+
+        T.check('Nothing outside can corrupt it', () => {
+          const a = account(100);
+          (a as Record<string, unknown>).funds = 99999;
+          return a.balance() === 100 || `Writing a \`funds\` property changed the balance to ${T.fmt(a.balance())}.`;
+        });
+
+        T.check('An overdraft is refused rather than going negative', () => {
+          const a = account(10);
+          a.withdraw(50);
+          return a.balance() === 10 || `Withdrawing 50 from 10 left ${T.fmt(a.balance())}.`;
+        });
+
+        T.check('Ten accounts stay independent', () => {
+          const all = Array.from({ length: 10 }, (_, i) => account(i));
+          all.forEach((acc, i) => acc.deposit(i));
+          const got = all.map((acc) => acc.balance());
+          return T.eq(got, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]) || `They read ${T.fmt(got)}.`;
+        });
+      },
+    },
   ],
 };

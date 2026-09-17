@@ -322,7 +322,7 @@ const pairs = (as, bs) => as.map((a, i) => [a, bs[i]])
       kind: 'code',
       role: 'implement',
       lang: 'ts',
-      covers: ['chain-does-not-rewrap', 'flatten-one-level', 'typed-signature'],
+      covers: ['chain-does-not-rewrap', 'flatten-one-level', 'typed-signature', 'three-laws'],
       title: "Satisfy Maybe<A>",
       prompt:
         "The interface is given. Write `just` and `nothing` so that `chain` returns one layer where `map` would have returned two.",

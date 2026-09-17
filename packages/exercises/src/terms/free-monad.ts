@@ -250,7 +250,7 @@ const runTest = (program) => program.filter((i) => i.type === 'write').map((i) =
       id: 'inspect',
       kind: 'code',
       role: 'apply',
-      covers: ['program-as-data', 'many-interpreters'],
+      covers: ['program-as-data', 'many-interpreters', 'instruction-carries'],
       title: "Read a program without running it",
       prompt:
         "If the program is data, you can look at it before anything happens. Write `describe`, which lists the instructions a program will issue without performing any of them, and two interpreters that give the same program different behaviour.",

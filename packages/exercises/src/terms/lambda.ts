@@ -175,7 +175,7 @@ const process = (ns) => ns.map(double).filter(isBig).map(label)
       id: 'apply',
       kind: 'code',
       role: 'apply',
-      covers: ['function-as-value', 'inline-it'],
+      covers: ['function-as-value', 'inline-it', 'name-is-a-choice'],
       title: "Pass functions around without naming them",
       prompt:
         "A lambda is a function used as a value. Build `pipeline` from a list of inline lambdas, and `twice`, which takes a function and applies it two times.",

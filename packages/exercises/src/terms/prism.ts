@@ -269,7 +269,7 @@ const review = (n) => \`#\${n}\`
       kind: 'code',
       role: 'implement',
       lang: 'ts',
-      covers: ['may-not-match', 'round-trip', 'typed-signature'],
+      covers: ['may-not-match', 'round-trip', 'typed-signature', 'guard-the-edges'],
       title: "Satisfy Prism<string, number>",
       prompt:
         "The interface is given. Fill in `numeric` so that `preview` finds a whole number inside a string when there is one, and `review` puts it back. Only a well-formed number counts: `'007'` is not one.",
@@ -410,7 +410,7 @@ const numeric: Prism<string, number> = {
       kind: 'expr',
       role: 'recognize',
       lang: 'ts',
-      covers: ['typed-signature', 'may-not-match'],
+      covers: ['typed-signature', 'may-not-match', 'guard-the-edges'],
       title: "Read where the Option is, and is not",
       prompt:
         "`preview` returns `Option<A>` and `review` returns `S` with no Option anywhere. Type the array of tags that `tags` produces for these four strings.",

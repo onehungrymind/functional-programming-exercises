@@ -260,7 +260,7 @@ const run = (gen, handlers) => {
       id: 'swap',
       kind: 'code',
       role: 'apply',
-      covers: ['ask-do-not-do', 'swap-handlers'],
+      covers: ['ask-do-not-do', 'swap-handlers', 'drive-it'],
       title: "One program, two handlers",
       prompt:
         "`greet` is written for you and you may not change it. Write two handler sets so the same program talks to a real environment under one and to a fixture under the other. If the program has to change, it knew too much.",

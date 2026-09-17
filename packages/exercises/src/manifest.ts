@@ -79,6 +79,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Predict where currying goes wrong",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "curry-by-length",
+        "role": "break",
+        "title": "Watch machinery that reads fn.length get it wrong",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -155,6 +162,13 @@ export const manifest: ManifestEntry[] = [
         "id": "break",
         "role": "break",
         "title": "Fix the loop that captured the wrong thing",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "instances",
+        "role": "apply",
+        "title": "Two accounts that cannot reach each other",
         "kind": "code",
         "lang": "js"
       }
@@ -363,6 +377,13 @@ export const manifest: ManifestEntry[] = [
         "id": "apply",
         "role": "apply",
         "title": "Go point-free",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "point-free-pipeline",
+        "role": "apply",
+        "title": "Curry three, then drop every argument",
         "kind": "code",
         "lang": "js"
       }
@@ -1387,6 +1408,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Show that it is not a lawful monad",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "which-laws",
+        "role": "break",
+        "title": "Two laws hold, one does not",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -1819,6 +1847,13 @@ export const manifest: ManifestEntry[] = [
         "id": "implement",
         "role": "implement",
         "title": "Classify the arrows",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "classify",
+        "role": "apply",
+        "title": "Sort functions into the named kinds",
         "kind": "code",
         "lang": "js"
       }

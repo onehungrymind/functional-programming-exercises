@@ -197,7 +197,7 @@ const sumSize = (sizes) => sizes.reduce((a, b) => a + b)
       id: 'arithmetic',
       kind: 'code',
       role: 'apply',
-      covers: ['sum-vs-product', 'counting'],
+      covers: ['sum-vs-product', 'counting', 'identities'],
       title: "Count the values, and watch the names make sense",
       prompt:
         "The names are arithmetic. Write `countProduct` and `countSum` over the sizes of the parts, then `sizeOf`, which handles a small description of either kind. The answers are why one is called a product and the other a sum.",

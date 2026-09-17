@@ -65,7 +65,7 @@ Any time declared arity is smaller than what the function really wants, machiner
       id: 'recognize',
       kind: 'expr',
       role: 'recognize',
-      covers: ['declared-vs-call'],
+      covers: ['declared-vs-call', 'name-it'],
       title: 'What does fn.length report?',
       prompt:
         'Every one of these declares its parameters differently. Write the array of what `fn.length` gives for each, in order.',
@@ -268,6 +268,131 @@ const curriesBadly = (fn, wanted) => fn.length < wanted
             curriesBadly(sum, 3) === calledEarly ||
             `curriesBadly said ${T.fmt(curriesBadly(sum, 3))}, but currying that function and passing one argument ${calledEarly ? 'did' : 'did not'} call through early.`
           );
+        });
+      },
+    },
+
+    {
+      id: 'curry-by-length',
+      kind: 'code',
+      role: 'break',
+      covers: ['why-it-matters', 'declared-vs-call'],
+      title: "Watch machinery that reads fn.length get it wrong",
+      prompt:
+        "`curryByLength` decides when to call through by reading `fn.length`, which is what real auto-currying does. Write it and `curryN`, which is told the arity instead, then show the first one mishandling a defaulted function.",
+      hints: [
+        "`curryByLength` collects arguments until it has `fn.length` of them.",
+        "`curryN` is the same thing with the count handed in rather than read off.",
+        "A parameter with a default is not counted, so a three-parameter function with one default reports two.",
+      ],
+      exports: ['curryByLength', 'curryN', 'surprise'],
+      starter: `// curryByLength :: ((...a) -> r) -> curried
+const curryByLength = (fn) => fn
+
+// curryN :: (Number, (...a) -> r) -> curried
+const curryN = (n, fn) => fn
+
+// surprise :: () -> Boolean   does reading fn.length mishandle a defaulted function?
+const surprise = () => false
+`,
+      solution: `// curryByLength :: ((...a) -> r) -> curried
+const curryByLength = (fn) => curryN(fn.length, fn)
+
+// curryN :: (Number, (...a) -> r) -> curried
+const curryN = (n, fn) => {
+  const collect = (got) =>
+    got.length >= n ? fn(...got) : (...more) => collect([...got, ...more])
+  return collect([])
+}
+
+// surprise :: () -> Boolean   does reading fn.length mishandle a defaulted function?
+const surprise = () => {
+  const vol = (l, w, h = 1) => l * w * h
+  // Two of three arguments in, and it has already called through.
+  return typeof curryByLength(vol)(2)(3) !== 'function'
+}
+`,
+      broken: [
+        `const curryByLength = (fn) => curryN(fn.length, fn)
+const curryN = (n, fn) => {
+  const collect = (got) => (got.length >= n ? fn(...got) : (...more) => collect([...got, ...more]))
+  return collect([])
+}
+const surprise = () => false
+`,
+        `const curryByLength = (fn) => curryN(fn.length + 1, fn)
+const curryN = (n, fn) => {
+  const collect = (got) => (got.length >= n ? fn(...got) : (...more) => collect([...got, ...more]))
+  return collect([])
+}
+const surprise = () => {
+  const vol = (l, w, h = 1) => l * w * h
+  // Two of three arguments in, and it has already called through.
+  return typeof curryByLength(vol)(2)(3) !== 'function'
+}
+`,
+        `const curryByLength = (fn) => curryN(fn.length, fn)
+const curryN = (n, fn) => {
+  const collect = (got) => (got.length > n ? fn(...got) : (...more) => collect([...got, ...more]))
+  return collect([])
+}
+const surprise = () => {
+  const vol = (l, w, h = 1) => l * w * h
+  // Two of three arguments in, and it has already called through.
+  return typeof curryByLength(vol)(2)(3) !== 'function'
+}
+`,
+      ],
+      checks: (T, exp) => {
+        const { curryByLength, curryN, surprise } = exp;
+        const vol = (l: number, w: number, h: number) => l * w * h;
+        const defaulted = (l: number, w: number, h = 1) => l * w * h;
+
+        T.check('It curries a plain three-parameter function', () => {
+          const r = curryByLength(vol)(2)(3)(4);
+          return r === 24 || `It gave ${T.fmt(r)}, expected 24.`;
+        });
+
+        T.check('It is still waiting after two of three', () => {
+          return typeof curryByLength(vol)(2)(3) === 'function' || 'Two of three arguments should not be enough to call through.';
+        });
+
+        T.check('curryN uses the count it was handed', () => {
+          const r = curryN(3, defaulted)(2)(3)(4);
+          return r === 24 || `curryN(3, defaulted)(2)(3)(4) gave ${T.fmt(r)}, expected 24.`;
+        });
+
+        T.check('Reading fn.length gets the defaulted function wrong', () => {
+          const r = curryByLength(defaulted)(2)(3);
+          return (
+            r === 6 ||
+            `It gave ${T.fmt(r)}. A defaulted parameter is not counted, so fn.length says 2 and the third argument is never waited for. That is the answer this rung wants to see.`
+          );
+        });
+
+        T.check('And surprise reports it', () => {
+          const r = surprise();
+          return (
+            r === true ||
+            `surprise reported ${T.fmt(r)}. Getting 6 instead of a function still waiting is the surprise, and the rung is about noticing it rather than avoiding it.`
+          );
+        });
+
+        T.check('curryN fixes the same case', () => {
+          const partial = curryN(3, defaulted)(2)(3);
+          return typeof partial === 'function' && partial(4) === 24 || `curryN still gave ${T.fmt(partial)} after two arguments.`;
+        });
+
+        T.check('A rest parameter reports nothing at all', () => {
+          const rested = (...xs: number[]) => xs.length;
+          const r = curryByLength(rested);
+          return r === 0 || `Currying a rest-only function by its length gave ${T.fmt(r)}. fn.length is 0, so it calls through immediately with nothing.`;
+        });
+
+        T.law('curryN agrees with calling directly', 60, (G) => {
+          const a = G.int(), b = G.int(), c = G.int();
+          const r = curryN(3, vol)(a)(b)(c);
+          return r === vol(a, b, c) || `At ${T.fmt([a, b, c])}: ${T.fmt(r)} against ${T.fmt(vol(a, b, c))}.`;
         });
       },
     },

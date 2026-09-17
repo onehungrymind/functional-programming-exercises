@@ -263,5 +263,140 @@ const f = (x) => Const('something')
         });
       },
     },
+
+    {
+      id: 'which-laws',
+      kind: 'code',
+      role: 'break',
+      covers: ['chain-keeps', 'two-laws-hold', 'left-identity-fails'],
+      title: "Two laws hold, one does not",
+      prompt:
+        "Const's chain keeps its own value and never runs the function, which satisfies two of the three monad laws and breaks the third. Write it, then report which one fails.",
+      hints: [
+        "`chain` has nothing of the right type to hand the function, so it returns itself.",
+        "Right identity and associativity both hold, because every side of them comes back to the same value.",
+        "Left identity says `of(x).chain(f)` equals `f(x)`. Try it with an `f` that returns a different Const.",
+      ],
+      exports: ['constant', 'leftIdentity', 'rightIdentity', 'associativity'],
+      starter: `// constant :: a -> Const a b
+const constant = (value) => ({
+  value,
+  map: (f) => constant(value),
+  chain: (f) => constant(value)
+})
+
+// of :: b -> Const b b
+const of = (x) => constant(x)
+
+// leftIdentity  :: (b, (b -> Const a b)) -> Boolean
+const leftIdentity = (x, f) => true
+
+// rightIdentity :: Const a b -> Boolean
+const rightIdentity = (m) => true
+
+// associativity :: (Const a b, f, g) -> Boolean
+const associativity = (m, f, g) => true
+`,
+      solution: `// constant :: a -> Const a b
+const constant = (value) => ({
+  value,
+  map: (f) => constant(value),
+  chain: (f) => constant(value)
+})
+
+// of :: b -> Const b b
+const of = (x) => constant(x)
+
+// leftIdentity  :: (b, (b -> Const a b)) -> Boolean
+const leftIdentity = (x, f) => of(x).chain(f).value === f(x).value
+
+// rightIdentity :: Const a b -> Boolean
+const rightIdentity = (m) => m.chain(of).value === m.value
+
+// associativity :: (Const a b, f, g) -> Boolean
+const associativity = (m, f, g) =>
+  m.chain(f).chain(g).value === m.chain((x) => f(x).chain(g)).value
+`,
+      broken: [
+        `const constant = (value) => ({ value, map: (f) => constant(value), chain: (f) => f(value) })
+const of = (x) => constant(x)
+const leftIdentity = (x, f) => of(x).chain(f).value === f(x).value
+const rightIdentity = (m) => m.chain(of).value === m.value
+const associativity = (m, f, g) =>
+  m.chain(f).chain(g).value === m.chain((x) => f(x).chain(g)).value
+`,
+        `const constant = (value) => ({ value, map: (f) => constant(value), chain: (f) => constant(value) })
+const of = (x) => constant(x)
+const leftIdentity = (x, f) => true
+const rightIdentity = (m) => m.chain(of).value === m.value
+const associativity = (m, f, g) =>
+  m.chain(f).chain(g).value === m.chain((x) => f(x).chain(g)).value
+`,
+        `const constant = (value) => ({ value, map: (f) => constant(value), chain: (f) => constant(value) })
+const of = (x) => constant(x)
+const leftIdentity = (x, f) => of(x).chain(f).value === f(x).value
+const rightIdentity = (m) => false
+const associativity = (m, f, g) => false
+`,
+      ],
+      checks: (T, exp) => {
+        const { constant, leftIdentity, rightIdentity, associativity } = exp;
+
+        T.check('chain never runs the function', () => {
+          let ran = false;
+          constant('kept').chain(() => {
+            ran = true;
+            return constant('other');
+          });
+          return !ran || 'The function ran. There is no value of the right type in a Const to hand it, which is why chain can only keep what it has.';
+        });
+
+        T.check('chain keeps the value it already had', () => {
+          const r = constant('kept').chain(() => constant('other'));
+          return r.value === 'kept' || `Chaining gave ${T.fmt(r.value)}.`;
+        });
+
+        T.check('chain gives back something chainable', () => {
+          const r = constant('kept').chain(() => constant('other'));
+          return typeof r.chain === 'function' || `Chaining gave ${T.fmt(r)}, which cannot be chained again.`;
+        });
+
+        T.check('Right identity holds', () => {
+          const r = rightIdentity(constant('kept'));
+          return r === true || `Right identity reported ${T.fmt(r)}. Chaining with the constructor cannot change a value that chain never touches.`;
+        });
+
+        T.check('Associativity holds', () => {
+          const f = (x: string) => constant(x + 'f');
+          const g = (x: string) => constant(x + 'g');
+          const r = associativity(constant('kept'), f, g);
+          return r === true || `Associativity reported ${T.fmt(r)}. Both bracketings come back to the same value, because neither one moves.`;
+        });
+
+        T.check('Left identity fails', () => {
+          const f = (x: string) => constant(x + '!');
+          const r = leftIdentity('seed', f);
+          return (
+            r === false ||
+            `Left identity reported ${T.fmt(r)}. of('seed').chain(f) keeps 'seed' while f('seed') gives 'seed!', and the rung wants that difference found rather than smoothed over.`
+          );
+        });
+
+        T.check('Left identity is not just always false', () => {
+          const identityF = (x: string) => constant(x);
+          const r = leftIdentity('seed', identityF);
+          return (
+            r === true ||
+            `With an f that changes nothing, left identity reported ${T.fmt(r)}. It should hold there, or the check is not measuring anything.`
+          );
+        });
+
+        T.law('The value survives any number of chains', 60, (G) => {
+          const v = G.str();
+          const r = constant(v).chain(() => constant('a')).chain(() => constant('b')).value;
+          return r === v || `${T.fmt(v)} came back as ${T.fmt(r)}.`;
+        });
+      },
+    },
   ],
 };

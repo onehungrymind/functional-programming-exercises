@@ -226,5 +226,120 @@ const incrementAll = map(add(0))
         T.check('The definition is point-free', () => T.shape.isPointFree('incrementAll'));
       },
     },
+
+    {
+      id: 'point-free-pipeline',
+      kind: 'code',
+      role: 'apply',
+      covers: ['write-it', 'enables-point-free'],
+      title: "Curry three, then drop every argument",
+      prompt:
+        "Currying is what makes point-free possible: a curried function partly applied is already the function you wanted. Write `curry3`, then build `describe` from the curried helpers without naming a single argument.",
+      hints: [
+        "`curry3` is three nested single-argument arrows, and nothing runs until the third arrives.",
+        "`between(2)(8)` is already a predicate. `label('n')` is already a formatter.",
+        "`describe` composes the two. If you write `(n) =>` anywhere, the currying bought you nothing.",
+      ],
+      exports: ['curry3', 'between', 'label', 'describe'],
+      starter: `const compose = (f, g) => (x) => f(g(x))
+
+// curry3 :: ((a, b, c) -> d) -> (a -> b -> c -> d)
+const curry3 = (fn) => fn
+
+// between :: Number -> Number -> Number -> Boolean
+const between = curry3((lo, hi, n) => n >= lo && n <= hi)
+
+// label :: String -> String -> Boolean -> String
+const label = curry3((name, unit, ok) => name + ' is ' + (ok ? 'in' : 'out') + ' ' + unit)
+
+// describe :: Number -> String   between 2 and 8, labelled 'n' in 'range'
+const describe = (n) => label('n')('range')(between(2)(8)(n))
+`,
+      solution: `const compose = (f, g) => (x) => f(g(x))
+
+// curry3 :: ((a, b, c) -> d) -> (a -> b -> c -> d)
+const curry3 = (fn) => (a) => (b) => (c) => fn(a, b, c)
+
+// between :: Number -> Number -> Number -> Boolean
+const between = curry3((lo, hi, n) => n >= lo && n <= hi)
+
+// label :: String -> String -> Boolean -> String
+const label = curry3((name, unit, ok) => name + ' is ' + (ok ? 'in' : 'out') + ' ' + unit)
+
+// describe :: Number -> String   between 2 and 8, labelled 'n' in 'range'
+const describe = compose(label('n')('range'), between(2)(8))
+`,
+      broken: [
+        `const compose = (f, g) => (x) => f(g(x))
+const curry3 = (fn) => (a) => (b) => (c) => fn(a, b, c)
+const between = curry3((lo, hi, n) => n >= lo && n <= hi)
+const label = curry3((name, unit, ok) => name + ' is ' + (ok ? 'in' : 'out') + ' ' + unit)
+const describe = (n) => label('n')('range')(between(2)(8)(n))
+`,
+        `const compose = (f, g) => (x) => f(g(x))
+const curry3 = (fn) => (a, b, c) => fn(a, b, c)
+const between = curry3((lo, hi, n) => n >= lo && n <= hi)
+const label = curry3((name, unit, ok) => name + ' is ' + (ok ? 'in' : 'out') + ' ' + unit)
+const describe = (n) => label('n', 'range', between(2, 8, n))
+`,
+        `const compose = (f, g) => (x) => f(g(x))
+const curry3 = (fn) => (a) => (b) => (c) => fn(a, b, c)
+const between = curry3((lo, hi, n) => n >= lo && n <= hi)
+const label = curry3((name, unit, ok) => name + ' is ' + (ok ? 'in' : 'out') + ' ' + unit)
+const describe = compose(between(2)(8), label('n')('range'))
+`,
+      ],
+      checks: (T, exp) => {
+        const { curry3, between, label, describe } = exp;
+
+        T.check('curry3 takes one argument at a time', () => {
+          const add = curry3((a: number, b: number, c: number) => a + b + c);
+          return (
+            typeof add(1) === 'function' && typeof add(1)(2) === 'function' && add(1)(2)(3) === 6 ||
+            'Each step should hand back a function until the third argument arrives.'
+          );
+        });
+
+        T.check('Nothing runs until the last argument', () => {
+          const spy = T.spyFn((a: number, b: number, c: number) => a + b + c);
+          curry3(spy)(1)(2);
+          return spy.calls.length === 0 || `It ran early, with ${T.fmt(spy.calls[0])}.`;
+        });
+
+        T.check('between works when fully applied', () => {
+          const got = [between(2)(8)(5), between(2)(8)(1), between(2)(8)(8)];
+          return T.eq(got, [true, false, true]) || `It gave ${T.fmt(got)} for 5, 1 and 8.`;
+        });
+
+        T.check('Partly applying it gives a usable predicate', () => {
+          const inRange = between(2)(8);
+          return (
+            typeof inRange === 'function' && T.eq([3, 9].map(inRange), [true, false]) ||
+            'between(2)(8) should already be the predicate, with nothing left to say.'
+          );
+        });
+
+        T.check('describe puts the two together', () => {
+          const got = [describe(5), describe(1)];
+          return T.eq(got, ['n is in range', 'n is out range']) || `It gave ${T.fmt(got)}.`;
+        });
+
+        T.check('describe names no argument', () => T.shape.isPointFree('describe'));
+
+        T.check('The pieces are composed in the right order', () => {
+          const r = describe(5);
+          return (
+            typeof r === 'string' ||
+            `describe(5) gave ${T.fmt(r)}. The range test runs first and its answer is what gets labelled, not the other way round.`
+          );
+        });
+
+        T.law('describe agrees with doing it by hand', 60, (G) => {
+          const n = G.int();
+          const want = 'n is ' + (n >= 2 && n <= 8 ? 'in' : 'out') + ' range';
+          return describe(n) === want || `At ${n}: ${T.fmt(describe(n))} against ${T.fmt(want)}.`;
+        });
+      },
+    },
   ],
 };

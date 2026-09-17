@@ -247,7 +247,7 @@ const MaybeT = (inner) => ({
       id: 'why',
       kind: 'code',
       role: 'break',
-      covers: ['monads-do-not-compose', 'one-chain'],
+      covers: ['monads-do-not-compose', 'one-chain', 'unwrap-the-result'],
       title: "Show that the nesting does not chain, then fix it",
       prompt:
         "Two monads stacked are not a monad. Write `nested`, which chains a Maybe inside a Result the naive way and ends up two layers deep, and `chainT`, which unwraps both. Seeing the extra layer is the point.",
