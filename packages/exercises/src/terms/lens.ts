@@ -119,7 +119,7 @@ const composeLens = <S, A, B>(outer: Lens<S, A>, inner: Lens<A, B>): Lens<S, B> 
       role: 'implement',
       title: 'lens, view, set, over',
       prompt:
-        'A lens is a getter and a setter travelling together. Build one, and the three functions that use it.',
+        "A lens is a getter and a setter travelling together. Write `lens`, which just holds the pair, then the three functions that use one: `view` reads the focus, `set` replaces it, and `over` applies a function to it. Finally `lensProp`, which builds a lens for a property by name.",
       hints: [
         '`lens(getter, setter)` just holds the pair.',
         '`over` is `set` composed with `view`: read it, apply the function, write it back.',
@@ -256,7 +256,7 @@ const lensProp = (key) => lens((s) => s[key], (value, s) => ({ [key]: value }))
       role: 'apply',
       title: 'Update something nested',
       prompt:
-        'Compose two lenses into one that reaches `user.address.city`, then use it to update a deeply nested record without touching anything else.',
+        "Compose two lenses into one that reaches `user.address.city`, then use it to update a deeply nested record without touching anything else. Write `composeLens`, use it to build `cityLens`, and then `renameCity`.",
       hints: [
         'A composed lens views through both, and sets by setting the inner one inside the outer one.',
         'Work outside in. Read the outer part, set the inner one inside what you read, then write that whole thing back through the outer lens.',

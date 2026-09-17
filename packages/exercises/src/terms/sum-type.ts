@@ -136,13 +136,18 @@ compiler find the places you forgot when the states change. Without \`assertNeve
       role: 'implement',
       title: 'A tagged union with an exhaustive match',
       prompt:
-        'A sum type is a value that is one of several shapes. Build the three constructors and a `match` that refuses to run unless every case is handled.',
+        "A sum type is a value that is one of several shapes. Build the three constructors and a `match` that refuses to run unless every case is handled. The three constructors are `Loading`, `Ok` and `Failed`, and the starter says what shape each returns.",
       hints: [
         'Each constructor tags its value: `{ type: "loading" }`, `{ type: "ok", data }`, `{ type: "failed", error }`.',
         '`match` looks the handler up by tag. Missing handlers should throw, not silently return undefined.',
       ],
       exports: ['Loading', 'Ok', 'Failed', 'match'],
-      starter: `const Loading = () => {
+      starter: `// Each constructor returns a plain object carrying a \`type\` and whatever that case needs.
+// The three types are 'loading', 'ok' and 'failed', and \`match\` looks the handler up by it.
+//   Loading()        ->  { type: 'loading' }
+//   Ok('payload')    ->  { type: 'ok', data: 'payload' }
+//   Failed('boom')   ->  { type: 'failed', error: 'boom' }
+const Loading = () => {
 }
 const Ok = (data) => {
 }
@@ -150,6 +155,10 @@ const Failed = (error) => {
 }
 
 // match :: (State, { loading, ok, failed }) -> a
+// Look up the handler for the state's type and call it with the state. Before that, check
+// every case has a handler, and throw a TypeError naming the missing ones if any are absent.
+//   match(Ok('x'), { loading: ..., ok: (s) => s.data, failed: ... })  ->  'x'
+//   match(Ok('x'), { ok: (s) => s.data })                             ->  throws
 const match = (state, handlers) => {
 }
 `,

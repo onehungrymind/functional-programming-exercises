@@ -89,7 +89,7 @@ const makeCounter = () => () => ++count
       role: 'implement',
       title: 'A counter with private state',
       prompt:
-        'A closure keeps the variables its function was created with alive. Use one to give each counter its own count that nothing outside can reach.',
+        "A closure keeps the variables its function was created with alive. Use one to give each counter its own count that nothing outside can reach. Write `makeCounter`, which returns the counter function.",
       hints: [
         'Declare the count inside `makeCounter`, not outside it.',
         'Each call to `makeCounter` runs the body again, which creates a fresh variable for that counter to close over.',

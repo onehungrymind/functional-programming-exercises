@@ -118,15 +118,20 @@ interface Monoid<A> extends Semigroup<A> {
       role: 'implement',
       title: 'Three ways to combine two things',
       prompt:
-        'A Semigroup has a `concat` that is associative. Write three of them over numbers: keep the larger, keep the smaller, keep the first.',
+        'A Semigroup has a `concat` that is associative. Write three of them over numbers: `Max` keeps the larger of the two, `Min` keeps the smaller, and `First` keeps the one it was called on and ignores the other.',
       hints: [
         'Each `concat` takes another value of the same type and gives one back.',
         'Associativity is what makes them semigroups. `First` is associative even though it ignores its argument.',
       ],
       exports: ['Max', 'Min', 'First'],
-      starter: `const Max = (value) => ({
+      starter: `// Each concat takes another of the same kind and returns another of the same kind, never a
+// bare number, which is what lets the result be concatenated again.
+//   Max(3).concat(Max(7))        ->  Max(7)
+//   Max(3).concat(Max(7)).value  ->  7
+const Max = (value) => ({
   value,
   concat: (other) => {
+    // keep whichever of the two values is larger
   },
   inspect: () => \`Max(\${value})\`
 })
@@ -134,6 +139,7 @@ interface Monoid<A> extends Semigroup<A> {
 const Min = (value) => ({
   value,
   concat: (other) => {
+    // keep whichever of the two values is smaller
   },
   inspect: () => \`Min(\${value})\`
 })
@@ -141,6 +147,7 @@ const Min = (value) => ({
 const First = (value) => ({
   value,
   concat: (other) => {
+    // keep this one and ignore the other entirely
   },
   inspect: () => \`First(\${value})\`
 })

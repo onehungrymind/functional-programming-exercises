@@ -71,7 +71,7 @@ If those two ever disagree, one of your and/or is the wrong way round.`,
       role: 'implement',
       title: 'Combine predicates',
       prompt:
-        'A predicate is a function that answers true or false. Write the three combinators that build bigger predicates out of smaller ones.',
+        "A predicate is a function that answers true or false. Write the three combinators that build bigger predicates out of smaller ones. The three are `both`, `either` and `not`.",
       hints: [
         'Each one returns a new predicate, so the shape is `(...preds) => (x) => ...`.',
         '`both` is an and, `either` is an or, `not` flips the answer.',

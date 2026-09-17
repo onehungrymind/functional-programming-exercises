@@ -124,7 +124,7 @@ wrong everywhere.`,
       role: 'implement',
       title: 'Fold a tree down to one value',
       prompt:
-        'Anything Foldable can be collapsed to a single value. Give a binary tree a `reduce` that visits its elements left to right.',
+        "Anything Foldable can be collapsed to a single value. Give a binary tree a `reduce` that visits its elements left to right. Write `Leaf` and `Node`.",
       hints: [
         'A leaf contributes its own value. A node contributes its left subtree, then itself, then its right.',
         'Thread the accumulator through in that order.',

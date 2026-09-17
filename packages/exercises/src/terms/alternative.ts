@@ -128,18 +128,22 @@ nothing<number>().alt(nothing<number>()).getOrElse(0)      // 0
       role: 'implement',
       title: 'Fall back to the other one',
       prompt:
-        '`alt` picks the first of two that actually has something. Give Maybe an `alt` and a `zero`, and you can chain fallbacks.',
+        "`alt` picks the first of two that actually has something. Give Maybe an `alt` and a `zero`, and you can chain fallbacks. Give `Just` and `Nothing` an `alt` each.",
       hints: [
         'On a Just, alt keeps what it has and ignores the alternative.',
         'On Nothing, alt hands back whatever it was offered.',
         '`zero` is the empty case: Nothing.',
       ],
       exports: ['Just', 'Nothing'],
-      starter: `const Just = (value) => ({
+      starter: `// alt takes another Maybe and returns a Maybe, so fallbacks chain:
+//   Nothing().alt(Just(1)).alt(Just(2))  ->  Just(1)   the first success wins
+//   Just(9).alt(Just(1))                 ->  Just(9)
+const Just = (value) => ({
   isNothing: false,
   value,
   map: (f) => Just(f(value)),
   alt: (other) => {
+    // this one already has a value, so the other is not needed
   },
   inspect: () => \`Just(\${JSON.stringify(value)})\`
 })
@@ -148,6 +152,7 @@ const Nothing = () => ({
   isNothing: true,
   map: () => Nothing(),
   alt: (other) => {
+    // this one has nothing of its own, so the other is the answer, as it is
   },
   inspect: () => 'Nothing'
 })

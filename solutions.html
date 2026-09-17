@@ -482,7 +482,7 @@ The starter has a worked example against each one.</p>
     .map((n) =&gt; <i class="s">`#${n}`</i>)</code></pre></details>
 </article><article class="rung" id="lambda--rung-apply">
   <header><h4>Pass functions around without naming them</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">apply</span></div></header>
-  <p class="prompt">A lambda is a function used as a value. Build <code>pipeline</code> from a list of inline lambdas, and <code>twice</code>, which takes a function and applies it two times.</p>
+  <p class="prompt">A lambda is a function used as a value. Build <code>pipeline</code> from a list of inline lambdas, and <code>twice</code>, which takes a function and applies it two times. Put the three steps in <code>steps</code> as inline lambdas: add one, then double, then subtract three.</p>
   <div class="covers">demonstrates <a class="pill" href="#lambda--function-as-value">function-as-value</a><a class="pill" href="#lambda--inline-it">inline-it</a><a class="pill" href="#lambda--name-is-a-choice">name-is-a-choice</a></div>
   <details class="hints"><summary>3 hints</summary><ol><li><code>twice</code> receives a function as an argument. Call it, then call it again on the result.</li><li><code>steps</code> is an array whose elements are functions. Nothing stops a function being an array element.</li><li><code>pipeline</code> runs the steps left to right over a starting value. <code>reduce</code> already has that shape.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// twice :: (a -&gt; a) -&gt; a -&gt; a</i>
@@ -676,7 +676,7 @@ The starter has a worked example against each one.</p>
       </li></ol>
   <h3 class="lap">Rungs</h3><article class="rung" id="closure--rung-implement">
   <header><h4>A counter with private state</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">A closure keeps the variables its function was created with alive. Use one to give each counter its own count that nothing outside can reach.</p>
+  <p class="prompt">A closure keeps the variables its function was created with alive. Use one to give each counter its own count that nothing outside can reach. Write <code>makeCounter</code>, which returns the counter function.</p>
   <div class="covers">demonstrates <a class="pill" href="#closure--private-state">private-state</a><a class="pill" href="#closure--independent-instances">independent-instances</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>Declare the count inside <code>makeCounter</code>, not outside it.</li><li>Each call to <code>makeCounter</code> runs the body again, which creates a fresh variable for that counter to close over.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// makeCounter :: () -&gt; (() -&gt; Number)</i>
@@ -818,7 +818,7 @@ The starter has a worked example against each one.</p>
       </li></ol>
   <h3 class="lap">Rungs</h3><article class="rung" id="predicate--rung-implement">
   <header><h4>Combine predicates</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">A predicate is a function that answers true or false. Write the three combinators that build bigger predicates out of smaller ones.</p>
+  <p class="prompt">A predicate is a function that answers true or false. Write the three combinators that build bigger predicates out of smaller ones. The three are <code>both</code>, <code>either</code> and <code>not</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#predicate--what-it-is">what-it-is</a><a class="pill" href="#predicate--combinators">combinators</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>Each one returns a new predicate, so the shape is <code>(...preds) =&gt; (x) =&gt; ...</code>.</li><li><code>both</code> is an and, <code>either</code> is an or, <code>not</code> flips the answer.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// both :: (a -&gt; Boolean) -&gt; (a -&gt; Boolean) -&gt; (a -&gt; Boolean)</i>
@@ -1565,7 +1565,7 @@ The starter has a worked example against each one.</p>
       </li></ol>
   <h3 class="lap">Rungs</h3><article class="rung" id="partial-application--rung-implement">
   <header><h4>Write partial</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">Partial application fixes some arguments now and leaves the rest for later. Unlike currying, it takes as many as you give it in one go.</p>
+  <p class="prompt">Partial application fixes some arguments now and leaves the rest for later. Unlike currying, it takes as many as you give it in one go. Write <code>partial</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#partial-application--fix-some-now">fix-some-now</a><a class="pill" href="#partial-application--vs-currying">vs-currying</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>Keep the arguments you were given, then join them with the ones that arrive later.</li><li><code>(...later) =&gt; fn(...first, ...later)</code> is the whole idea.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// partial :: ((a, b, ...) -&gt; r) -&gt; a -&gt; ((b, ...) -&gt; r)</i>
@@ -1672,7 +1672,7 @@ The starter has a worked example against each one.</p>
   xs.reduce((a, b) =&gt; a + b, <i class="n">0</i>)</code></pre><p class="why">Variadic: it takes any number of arguments in one call.</p></li></ol>
 </article><article class="rung" id="currying--rung-implement">
   <header><h4>Write curry2</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">Turn any two-argument function into a curried one. Nothing should run until both arguments have arrived.</p>
+  <p class="prompt">Turn any two-argument function into a curried one. Nothing should run until both arguments have arrived. Write <code>curry2</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#currying--write-it">write-it</a><a class="pill" href="#currying--one-at-a-time">one-at-a-time</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>The outer function takes <code>f</code> and returns a function that takes <code>a</code>.</li><li>That function returns another function, and only the innermost one has both <code>a</code> and <code>b</code> to call <code>f</code> with.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// curry2 :: ((a, b) -&gt; c) -&gt; a -&gt; b -&gt; c</i>
@@ -2269,7 +2269,7 @@ The starter has a worked example against each one.</p>
       </li></ol>
   <h3 class="lap">Rungs</h3><article class="rung" id="continuation--rung-implement">
   <header><h4>Convert to continuation-passing style</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">In continuation-passing style a function never returns. It takes an extra argument, the continuation, and hands its answer to that instead.</p>
+  <p class="prompt">In continuation-passing style a function never returns. It takes an extra argument, the continuation, and hands its answer to that instead. Convert <code>addCps</code> and <code>squareCps</code> to that style, then write <code>addThenSquare</code>, which feeds the first into the second and calls the outer continuation once, at the end.</p>
   <div class="covers">demonstrates <a class="pill" href="#continuation--convert">convert</a><a class="pill" href="#continuation--sequence">sequence</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>Replace every <code>return x</code> with <code>done(x)</code>.</li><li>When one step feeds another, the first step passes a continuation that does the rest.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// addCps :: (Number, Number, (Number -&gt; r)) -&gt; r</i>
@@ -2805,7 +2805,7 @@ The starter has a worked example against each one.</p>
   <ol class="options"><li class="right"><span class="mark">correct</span><pre class="code"><code><i class="c">// Nothing. It states what it needs and something else decides how to supply it</i></code></pre><p class="why">Separating the request from the interpretation is the whole idea. The same program runs against a real config or a fake one.</p></li><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="c">// That the answer comes from a file on disk</i></code></pre><p class="why">If the program knew that, swapping in a test handler would mean rewriting it.</p></li><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="c">// That the handler is asynchronous</i></code></pre><p class="why">Also a handler concern. The program just asks and waits to be resumed.</p></li><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="c">// That there is exactly one handler for it</i></code></pre><p class="why">Any number of handlers can interpret the same request differently.</p></li></ol>
 </article><article class="rung" id="algebraic-effects--rung-swap">
   <header><h4>One program, two handlers</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">apply</span></div></header>
-  <p class="prompt"><code>greet</code> is written for you and you may not change it. Write two handler sets so the same program talks to a real environment under one and to a fixture under the other. If the program has to change, it knew too much.</p>
+  <p class="prompt"><code>greet</code> is written for you and you may not change it. If the program has to change to run somewhere else, it knew too much.\n\nWrite <code>runWith</code>, which drives the generator by answering each request it yields and sending the answer back. Then two handler sets, <code>live</code> and <code>fixture</code>, so the same program talks to a real environment under one and to a fixture under the other.</p>
   <div class="covers">demonstrates <a class="pill" href="#algebraic-effects--ask-do-not-do">ask-do-not-do</a><a class="pill" href="#algebraic-effects--swap-handlers">swap-handlers</a><a class="pill" href="#algebraic-effects--drive-it">drive-it</a></div>
   <details class="hints"><summary>3 hints</summary><ol><li>The program yields a request and waits. Whatever you send back becomes the value of the <code>yield</code>.</li><li><code>runWith</code> drives the generator: yield a request, look up the handler by its type, send the answer back, repeat until done.</li><li>The two handler sets differ only in what they answer. Neither one edits <code>greet</code>.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// Do not change this. It states what it needs and knows nothing about how.</i>
@@ -3738,13 +3738,13 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
       </li></ol>
   <h3 class="lap">Rungs</h3><article class="rung" id="idempotence--rung-recognize">
   <header><h4>Which of these are idempotent?</h4><div class="flags"><span class="tag kind-choice">choice</span><span class="tag">recognize</span></div></header>
-  <p class="prompt">A function is idempotent when applying it again changes nothing: <code>f(f(x))</code> equals <code>f(x)</code>.</p>
+  <p class="prompt">A function is idempotent when applying it again changes nothing: <code>f(f(x))</code> equals <code>f(x)</code>. Select every one below that qualifies. More than one does.</p>
   <div class="covers">demonstrates <a class="pill" href="#idempotence--the-law">the-law</a><a class="pill" href="#idempotence--not-repetition">not-repetition</a></div>
   
   <ol class="options"><li class="right"><span class="mark">correct</span><pre class="code"><code><i class="k">const</i> abs = (n) =&gt; Math.abs(n)</code></pre><p class="why">The absolute value of an absolute value is the same number.</p></li><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="k">const</i> inc = (n) =&gt; n + <i class="n">1</i></code></pre><p class="why">Every application moves further. f(f(0)) is 2, not 1.</p></li><li class="right"><span class="mark">correct</span><pre class="code"><code><i class="k">const</i> sort = (xs) =&gt; [...xs].sort()</code></pre><p class="why">Sorting a sorted list gives the same list back.</p></li><li class="right"><span class="mark">correct</span><pre class="code"><code><i class="k">const</i> trim = (s) =&gt; s.trim()</code></pre><p class="why">Once the whitespace is gone there is none left to remove.</p></li><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="k">const</i> push = (xs) =&gt; [...xs, <i class="n">0</i>]</code></pre><p class="why">Each application makes the list longer.</p></li></ol>
 </article><article class="rung" id="idempotence--rung-implement">
   <header><h4>Make normalizeEmail idempotent</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">Normalizing an already-normalized address has to leave it alone. Trim the whitespace, lower-case it, and drop any <code>+tag</code> from the local part.</p>
+  <p class="prompt">Normalizing an already-normalized address has to leave it alone. Trim the whitespace, lower-case it, and drop any <code>+tag</code> from the local part. Write <code>normalizeEmail</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#idempotence--make-it-so">make-it-so</a><a class="pill" href="#idempotence--the-law">the-law</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>Split on <code>@</code>, work on the local part, and put it back together.</li><li>A <code>+tag</code> is everything from the first plus to the at-sign. Removing it twice must be the same as removing it once.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// normalizeEmail :: String -&gt; String</i>
@@ -4102,7 +4102,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
   <ol class="options"><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="k">const</i> map = (fn, xs) =&gt; xs.map(fn)</code></pre><p class="why">The arrows say one argument at a time. This takes both at once.</p></li><li class="right"><span class="mark">correct</span><pre class="code"><code><i class="k">const</i> map = (fn) =&gt; (xs) =&gt; xs.map(fn)</code></pre><p class="why">A function in, then a list, then a list out. Each arrow is one step.</p></li><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="k">const</i> map = (xs) =&gt; (fn) =&gt; xs.map(fn)</code></pre><p class="why">The arguments arrive in the wrong order: the signature asks for the function first.</p></li><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="k">const</i> map = (fn) =&gt; (xs) =&gt; xs.forEach(fn)</code></pre><p class="why">forEach returns undefined, and the signature promises a [b].</p></li></ol>
 </article><article class="rung" id="type-signatures--rung-implement">
   <header><h4>Write the functions the signatures describe</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">Each signature below determines almost everything about its function. Write the implementation each one describes.</p>
+  <p class="prompt">Each signature below determines almost everything about its function. Write the implementation each one describes. The four are <code>identity</code>, <code>first</code>, <code>count</code> and <code>flip</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#type-signatures--signature-constrains">signature-constrains</a><a class="pill" href="#type-signatures--read-the-arrows">read-the-arrows</a></div>
   <details class="hints"><summary>3 hints</summary><ol><li><code>a -&gt; a</code> can only hand its argument back. There is nothing else it could return.</li><li><code>a -&gt; b -&gt; a</code> has to return the first argument: it is the only <code>a</code> it has.</li><li><code>[a] -&gt; Number</code> cannot look inside the elements, because it knows nothing about <code>a</code>.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// identity :: a -&gt; a</i>
@@ -4202,7 +4202,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
   <ol class="options"><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="c">// { width :: Number, height :: Number }</i></code></pre><p class="why">A width AND a height. That is a product.</p></li><li class="right"><span class="mark">correct</span><pre class="code"><code><i class="c">// Circle Number | Square Number</i></code></pre><p class="why">A shape is one or the other, never both.</p></li><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="c">// [Number, String]</i></code></pre><p class="why">A tuple holds both positions at once.</p></li><li class="right"><span class="mark">correct</span><pre class="code"><code><i class="c">// Loading | Ok a | Failed e</i></code></pre><p class="why">Three possibilities, one at a time.</p></li><li class="right"><span class="mark">correct</span><pre class="code"><code><i class="c">// Boolean</i></code></pre><p class="why">true or false. The smallest sum worth naming.</p></li></ol>
 </article><article class="rung" id="algebraic-data-type--rung-implement">
   <header><h4>Count the inhabitants</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">The names are arithmetic. A product multiplies the possibilities of its parts; a sum adds them. Write the two counters.</p>
+  <p class="prompt">The names are arithmetic. A product multiplies the possibilities of its parts; a sum adds them. Write the two counters. They are <code>productSize</code> and <code>sumSize</code>, each taking the sizes of the parts.</p>
   <div class="covers">demonstrates <a class="pill" href="#algebraic-data-type--counting">counting</a><a class="pill" href="#algebraic-data-type--identities">identities</a></div>
   <details class="hints"><summary>3 hints</summary><ol><li>A pair of a Boolean and a three-valued type has 2 times 3 possible values.</li><li>A choice between a Boolean and a three-valued type has 2 plus 3.</li><li>An empty product has one inhabitant: the empty tuple. An empty sum has none.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// productSize :: [Number] -&gt; Number</i>
@@ -4380,7 +4380,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="sum-type--rung-implement">
   <header><h4>A tagged union with an exhaustive match</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">A sum type is a value that is one of several shapes. Build the three constructors and a <code>match</code> that refuses to run unless every case is handled.</p>
+  <p class="prompt">A sum type is a value that is one of several shapes. Build the three constructors and a <code>match</code> that refuses to run unless every case is handled. The three constructors are <code>Loading</code>, <code>Ok</code> and <code>Failed</code>, and the starter says what shape each returns.</p>
   <div class="covers">demonstrates <a class="pill" href="#sum-type--one-of-several">one-of-several</a><a class="pill" href="#sum-type--exhaustive-match">exhaustive-match</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>Each constructor tags its value: <code>{ type: &quot;loading&quot; }</code>, <code>{ type: &quot;ok&quot;, data }</code>, <code>{ type: &quot;failed&quot;, error }</code>.</li><li><code>match</code> looks the handler up by tag. Missing handlers should throw, not silently return undefined.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> Loading = () =&gt; ({ <i class="k">type</i>: <i class="s">'loading'</i> })
@@ -4396,7 +4396,12 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
     <i class="k">throw</i> <i class="k">new</i> TypeError(<i class="s">`match is missing a handler for: ${missing.join(', ')}`</i>)
   }
   <i class="k">return</i> handlers[state.<i class="k">type</i>](state)
-}</code></pre><details><summary>Starter &middot; 4 exports: <code>Loading</code>, <code>Ok</code>, <code>Failed</code>, <code>match</code></summary><pre class="code"><code><i class="k">const</i> Loading = () =&gt; {
+}</code></pre><details><summary>Starter &middot; 4 exports: <code>Loading</code>, <code>Ok</code>, <code>Failed</code>, <code>match</code></summary><pre class="code"><code><i class="c">// Each constructor returns a plain object carrying a `type` and whatever that case needs.</i>
+<i class="c">// The three types are 'loading', 'ok' and 'failed', and `match` looks the handler up by it.</i>
+<i class="c">//   Loading()        -&gt;  { type: 'loading' }</i>
+<i class="c">//   Ok('payload')    -&gt;  { type: 'ok', data: 'payload' }</i>
+<i class="c">//   Failed('boom')   -&gt;  { type: 'failed', error: 'boom' }</i>
+<i class="k">const</i> Loading = () =&gt; {
 }
 <i class="k">const</i> Ok = (data) =&gt; {
 }
@@ -4404,6 +4409,10 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
 }
 
 <i class="c">// match :: (State, { loading, ok, failed }) -&gt; a</i>
+<i class="c">// Look up the handler for the state's type and call it with the state. Before that, check</i>
+<i class="c">// every case has a handler, and throw a TypeError naming the missing ones if any are absent.</i>
+<i class="c">//   match(Ok('x'), { loading: ..., ok: (s) =&gt; s.data, failed: ... })  -&gt;  'x'</i>
+<i class="c">//   match(Ok('x'), { ok: (s) =&gt; s.data })                             -&gt;  throws</i>
 <i class="k">const</i> match = (state, handlers) =&gt; {
 }</code></pre></details><details><summary>3 variants that must fail</summary><pre class="code"><code><i class="k">const</i> Loading = () =&gt; ({ <i class="k">type</i>: <i class="s">'loading'</i> })
 <i class="k">const</i> Ok = (data) =&gt; ({ <i class="k">type</i>: <i class="s">'ok'</i>, data })
@@ -4620,7 +4629,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="option--rung-implement">
   <header><h4>Some, None, and the three ways out</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">Option makes &quot;there might be nothing here&quot; part of the type. Give it <code>map</code>, <code>chain</code>, and <code>getOrElse</code>, so a missing value flows through without a single null check.</p>
+  <p class="prompt">Option makes &quot;there might be nothing here&quot; part of the type. Give it <code>map</code>, <code>chain</code>, and <code>getOrElse</code>, so a missing value flows through without a single null check. The constructors <code>Some</code> and <code>None</code> are yours to write too.</p>
   <div class="covers">demonstrates <a class="pill" href="#option--absence-in-the-type">absence-in-the-type</a><a class="pill" href="#option--map-chain-getorelse">map-chain-getorelse</a></div>
   <details class="hints"><summary>3 hints</summary><ol><li><code>map</code> on None does nothing and stays None. On Some it applies the function and rewraps.</li><li><code>chain</code> is for a function that itself returns an Option, so do not wrap the result again.</li><li><code>getOrElse</code> is the only way out. It is where the default finally appears.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// Some :: a -&gt; Option a</i>
@@ -4862,7 +4871,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="either--rung-implement">
   <header><h4>Left, Right, and fold</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">Either carries a success or a failure, and says which. <code>map</code> and <code>chain</code> work on the Right only; <code>fold</code> is how you finally handle both.</p>
+  <p class="prompt">Either carries a success or a failure, and says which. <code>map</code> and <code>chain</code> work on the Right only; <code>fold</code> is how you finally handle both. Write <code>Left</code> and <code>Right</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#either--carries-the-reason">carries-the-reason</a><a class="pill" href="#either--right-biased">right-biased</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>Left is the failure. Mapping over it changes nothing and keeps the error intact.</li><li><code>fold(onLeft, onRight)</code> runs exactly one of the two, depending which side you are on.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// Left :: e -&gt; Either e a</i>
@@ -5124,7 +5133,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="lens--rung-implement">
   <header><h4>lens, view, set, over</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">A lens is a getter and a setter travelling together. Build one, and the three functions that use it.</p>
+  <p class="prompt">A lens is a getter and a setter travelling together. Write <code>lens</code>, which just holds the pair, then the three functions that use one: <code>view</code> reads the focus, <code>set</code> replaces it, and <code>over</code> applies a function to it. Finally <code>lensProp</code>, which builds a lens for a property by name.</p>
   <div class="covers">demonstrates <a class="pill" href="#lens--getter-and-setter">getter-and-setter</a><a class="pill" href="#lens--view-set-over">view-set-over</a></div>
   <details class="hints"><summary>3 hints</summary><ol><li><code>lens(getter, setter)</code> just holds the pair.</li><li><code>over</code> is <code>set</code> composed with <code>view</code>: read it, apply the function, write it back.</li><li>The setter must build a new object rather than writing into the old one.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// lens :: ((s -&gt; a), (a -&gt; s -&gt; s)) -&gt; Lens s a</i>
@@ -5184,7 +5193,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
 <i class="k">const</i> lensProp = (key) =&gt; lens((s) =&gt; s[key], (value, s) =&gt; ({ [key]: value }))</code></pre></details>
 </article><article class="rung" id="lens--rung-apply">
   <header><h4>Update something nested</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">apply</span></div></header>
-  <p class="prompt">Compose two lenses into one that reaches <code>user.address.city</code>, then use it to update a deeply nested record without touching anything else.</p>
+  <p class="prompt">Compose two lenses into one that reaches <code>user.address.city</code>, then use it to update a deeply nested record without touching anything else. Write <code>composeLens</code>, use it to build <code>cityLens</code>, and then <code>renameCity</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#lens--compose">compose</a><a class="pill" href="#lens--getter-and-setter">getter-and-setter</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>A composed lens views through both, and sets by setting the inner one inside the outer one.</li><li>Work outside in. Read the outer part, set the inner one inside what you read, then write that whole thing back through the outer lens.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> lens = (getter, setter) =&gt; ({ getter, setter })
@@ -5409,7 +5418,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="prism--rung-implement">
   <header><h4>A prism for integers in strings</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">Where a lens always finds its focus, a prism might not. Build one that reads an integer out of a string when there is one, and rebuilds the string from an integer.</p>
+  <p class="prompt">Where a lens always finds its focus, a prism might not. Build one that reads an integer out of a string when there is one, and rebuilds the string from an integer. Write <code>preview</code>, which may find nothing, and <code>review</code>, which always succeeds.</p>
   <div class="covers">demonstrates <a class="pill" href="#prism--round-trip">round-trip</a><a class="pill" href="#prism--guard-the-edges">guard-the-edges</a></div>
   <details class="hints"><summary>3 hints</summary><ol><li><code>preview</code> returns <code>Some(n)</code> when the string is a whole number, and <code>None()</code> otherwise.</li><li><code>review</code> goes the other way and always succeeds.</li><li>Only a string that round-trips exactly should match: &quot;007&quot; reviews back to &quot;7&quot;, so it must not match.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> Some = (value) =&gt; ({ isSome: <i class="k">true</i>, value })
@@ -5568,7 +5577,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="iso--rung-implement">
   <header><h4>Two views of the same thing</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">An isomorphism is a pair of conversions that lose nothing. Write the Celsius/Fahrenheit pair, and the pair between a record and a tuple.</p>
+  <p class="prompt">An isomorphism is a pair of conversions that lose nothing. Write two pairs: <code>toF</code> and <code>toC</code> between Celsius and Fahrenheit, and <code>toPair</code> and <code>toCoords</code> between a record and a tuple.</p>
   <div class="covers">demonstrates <a class="pill" href="#iso--lossless">lossless</a><a class="pill" href="#iso--float-tolerance">float-tolerance</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>Fahrenheit is <code>c * 9 / 5 + 32</code>, and back again is <code>(f - 32) * 5 / 9</code>.</li><li>The record and the tuple hold exactly the same information, so neither direction can drop a field.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// toF :: Number -&gt; Number</i>
@@ -5709,7 +5718,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="traversal--rung-implement">
   <header><h4>Focus on many things at once</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">Where a lens focuses on one thing and a prism on at most one, a traversal focuses on any number. Write one over the even numbers in a list.</p>
+  <p class="prompt">Where a lens focuses on one thing and a prism on at most one, a traversal focuses on any number. Write one over the even numbers in a list. Write <code>getAll</code>, which collects every focus, and <code>modify</code>, which maps over all of them and hands back the whole list.</p>
   <div class="covers">demonstrates <a class="pill" href="#traversal--leave-the-rest">leave-the-rest</a><a class="pill" href="#traversal--consistency">consistency</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li><code>getAll</code> collects the elements that match, in order.</li><li><code>modify</code> applies the function to the matching elements and leaves the others exactly as they were.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> isEven = (n) =&gt; n % <i class="n">2</i> === <i class="n">0</i>
@@ -6153,7 +6162,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="semigroup--rung-implement">
   <header><h4>Three ways to combine two things</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">A Semigroup has a <code>concat</code> that is associative. Write three of them over numbers: keep the larger, keep the smaller, keep the first.</p>
+  <p class="prompt">A Semigroup has a <code>concat</code> that is associative. Write three of them over numbers: <code>Max</code> keeps the larger of the two, <code>Min</code> keeps the smaller, and <code>First</code> keeps the one it was called on and ignores the other.</p>
   <div class="covers">demonstrates <a class="pill" href="#semigroup--concat-stays-inside">concat-stays-inside</a><a class="pill" href="#semigroup--associativity">associativity</a><a class="pill" href="#semigroup--several-instances">several-instances</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>Each <code>concat</code> takes another value of the same type and gives one back.</li><li>Associativity is what makes them semigroups. <code>First</code> is associative even though it ignores its argument.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> Max = (value) =&gt; ({
@@ -6172,9 +6181,14 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
   value,
   concat: (other) =&gt; First(value),
   inspect: () =&gt; <i class="s">`First(${value})`</i>
-})</code></pre><details><summary>Starter &middot; 3 exports: <code>Max</code>, <code>Min</code>, <code>First</code></summary><pre class="code"><code><i class="k">const</i> Max = (value) =&gt; ({
+})</code></pre><details><summary>Starter &middot; 3 exports: <code>Max</code>, <code>Min</code>, <code>First</code></summary><pre class="code"><code><i class="c">// Each concat takes another of the same kind and returns another of the same kind, never a</i>
+<i class="c">// bare number, which is what lets the result be concatenated again.</i>
+<i class="c">//   Max(3).concat(Max(7))        -&gt;  Max(7)</i>
+<i class="c">//   Max(3).concat(Max(7)).value  -&gt;  7</i>
+<i class="k">const</i> Max = (value) =&gt; ({
   value,
   concat: (other) =&gt; {
+    <i class="c">// keep whichever of the two values is larger</i>
   },
   inspect: () =&gt; <i class="s">`Max(${value})`</i>
 })
@@ -6182,6 +6196,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
 <i class="k">const</i> Min = (value) =&gt; ({
   value,
   concat: (other) =&gt; {
+    <i class="c">// keep whichever of the two values is smaller</i>
   },
   inspect: () =&gt; <i class="s">`Min(${value})`</i>
 })
@@ -6189,6 +6204,7 @@ xs = [<i class="n">3</i>]     <i class="c">// throws</i></code></pre><p class="w
 <i class="k">const</i> First = (value) =&gt; ({
   value,
   concat: (other) =&gt; {
+    <i class="c">// keep this one and ignore the other entirely</i>
   },
   inspect: () =&gt; <i class="s">`First(${value})`</i>
 })</code></pre></details><details><summary>3 variants that must fail</summary><pre class="code"><code><i class="k">const</i> Max = (value) =&gt; ({ value, concat: (other) =&gt; Max(Math.min(value, other.value)), inspect: () =&gt; <i class="s">`Max(${value})`</i> })
@@ -6308,7 +6324,11 @@ Product.empty = () =&gt; Product(<i class="n">1</i>)
 All.empty = () =&gt; All(<i class="k">true</i>)
 
 <i class="k">const</i> Any = (value) =&gt; ({ value, concat: (o) =&gt; Any(value || o.value), inspect: () =&gt; <i class="s">`Any(${value})`</i> })
-Any.empty = () =&gt; Any(<i class="k">false</i>)</code></pre><details><summary>Starter &middot; 4 exports: <code>Sum</code>, <code>Product</code>, <code>All</code>, <code>Any</code></summary><pre class="code"><code><i class="k">const</i> Sum = (value) =&gt; ({ value, concat: (o) =&gt; Sum(value + o.value), inspect: () =&gt; <i class="s">`Sum(${value})`</i> })
+Any.empty = () =&gt; Any(<i class="k">false</i>)</code></pre><details><summary>Starter &middot; 4 exports: <code>Sum</code>, <code>Product</code>, <code>All</code>, <code>Any</code></summary><pre class="code"><code><i class="c">// Each empty is the value that leaves concat alone from both sides, wrapped in its own type.</i>
+<i class="c">//   Sum.empty().concat(Sum(5)).value    -&gt;  5</i>
+<i class="c">//   Sum(5).concat(Sum.empty()).value    -&gt;  5</i>
+<i class="c">// The right constant differs per monoid, and the type cannot tell you which.</i>
+<i class="k">const</i> Sum = (value) =&gt; ({ value, concat: (o) =&gt; Sum(value + o.value), inspect: () =&gt; <i class="s">`Sum(${value})`</i> })
 Sum.empty = () =&gt; {
 }
 
@@ -6339,7 +6359,7 @@ All.empty = () =&gt; All(<i class="k">false</i>)
 Any.empty = () =&gt; Any(<i class="k">true</i>)</code></pre></details>
 </article><article class="rung" id="monoid--rung-break">
   <header><h4>Subtraction is not even a semigroup</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">break</span><span class="tag">inverted</span></div></header>
-  <p class="prompt">Find concrete numbers that show subtraction fails. Fill in a triple where the grouping changes the answer, and a value that 0 fails to leave alone on the left.</p>
+  <p class="prompt">Find concrete numbers that show subtraction fails. Fill in a triple where the grouping changes the answer, and a value that 0 fails to leave alone on the left. The two answers are <code>triple</code> and <code>notFixedByZero</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#monoid--not-every-semigroup">not-every-semigroup</a><a class="pill" href="#monoid--identity">identity</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>Associativity: try any three numbers where the third is not zero.</li><li>Identity: 0 is a right identity, since a - 0 is a. Look at what 0 - a gives you.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> Diff = (value) =&gt; ({
@@ -6498,7 +6518,7 @@ Any.empty = () =&gt; Any(<i class="k">true</i>)</code></pre></details>
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="functor--rung-implement">
   <header><h4>Give Box a lawful map</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">A functor is a container with a map that obeys two laws: mapping identity changes nothing, and mapping f then g equals mapping their composition.</p>
+  <p class="prompt">A functor is a container with a map that obeys two laws: mapping identity changes nothing, and mapping f then g equals mapping their composition. Give <code>Box</code> a <code>map</code> that satisfies both.</p>
   <div class="covers">demonstrates <a class="pill" href="#functor--map-rewraps">map-rewraps</a><a class="pill" href="#functor--two-laws">two-laws</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>map has to hand back a container, not the bare value inside it.</li><li><code>Box(f(value))</code> applies the function and wraps the result again.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// map :: Box a ~&gt; (a -&gt; b) -&gt; Box b</i>
@@ -7619,7 +7639,7 @@ Box.<i class="k">of</i> = Box</code></pre></details>
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="monad--rung-implement">
   <header><h4>chain for Maybe</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">A Monad is a pointed functor with <code>chain</code>: a map whose function already returns a container, so the result is not wrapped twice.</p>
+  <p class="prompt">A Monad is a pointed functor with <code>chain</code>: a map whose function already returns a container, so the result is not wrapped twice. Give <code>Just</code> and <code>Nothing</code> theirs.</p>
   <div class="covers">demonstrates <a class="pill" href="#monad--chain-does-not-rewrap">chain-does-not-rewrap</a><a class="pill" href="#monad--short-circuits">short-circuits</a><a class="pill" href="#monad--three-laws">three-laws</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li><code>map</code> wraps the result. <code>chain</code> does not, because the function already did.</li><li>On Nothing, chain skips the function entirely, exactly as map does.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> Just = (value) =&gt; ({
@@ -7637,11 +7657,15 @@ Box.<i class="k">of</i> = Box</code></pre></details>
   inspect: () =&gt; <i class="s">'Nothing'</i>
 })
 
-Just.<i class="k">of</i> = Just</code></pre><details><summary>Starter &middot; 2 exports: <code>Just</code>, <code>Nothing</code></summary><pre class="code"><code><i class="k">const</i> Just = (value) =&gt; ({
+Just.<i class="k">of</i> = Just</code></pre><details><summary>Starter &middot; 2 exports: <code>Just</code>, <code>Nothing</code></summary><pre class="code"><code><i class="c">// `f` here already returns a Maybe, which is what makes chain different from map.</i>
+<i class="c">//   Just(2).map((n) =&gt; Just(n * 2))    -&gt;  Just(Just(4))   two layers, the thing to avoid</i>
+<i class="c">//   Just(2).chain((n) =&gt; Just(n * 2))  -&gt;  Just(4)         one layer</i>
+<i class="k">const</i> Just = (value) =&gt; ({
   isNothing: <i class="k">false</i>,
   value,
   map: (f) =&gt; Just(f(value)),
   chain: (f) =&gt; {
+    <i class="c">// f already wraps its answer, so do not wrap it again</i>
   },
   inspect: () =&gt; <i class="s">`Just(${JSON.stringify(value)})`</i>
 })
@@ -7650,6 +7674,7 @@ Just.<i class="k">of</i> = Just</code></pre><details><summary>Starter &middot; 2
   isNothing: <i class="k">true</i>,
   map: () =&gt; Nothing(),
   chain: (f) =&gt; {
+    <i class="c">// there is no value to hand f, so f must not run at all</i>
   },
   inspect: () =&gt; <i class="s">'Nothing'</i>
 })
@@ -7671,7 +7696,7 @@ Just.<i class="k">of</i> = Just</code></pre><pre class="code"><code><i class="k"
 Just.<i class="k">of</i> = Just</code></pre></details>
 </article><article class="rung" id="monad--rung-apply">
   <header><h4>chain for Array</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">apply</span></div></header>
-  <p class="prompt">Array is a monad too: <code>chain</code> maps and then flattens one level. Write it, and use it to pair every element with every other.</p>
+  <p class="prompt">Array is a monad too: <code>chain</code> maps and then flattens one level. Write it, and use it to pair every element with every other. Write <code>chain</code>, then use it for <code>pairs</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#monad--flatten-one-level">flatten-one-level</a><a class="pill" href="#monad--chain-does-not-rewrap">chain-does-not-rewrap</a></div>
   <details class="hints"><summary>1 hint</summary><ol><li><code>flatMap</code> is exactly chain for arrays, but write it yourself with map and concat.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// chain :: ((a -&gt; [b]), [a]) -&gt; [b]</i>
@@ -8014,7 +8039,7 @@ Just.<i class="k">of</i> = Just</code></pre></details>
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="comonad--rung-implement">
   <header><h4>extract and extend</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">A Comonad is a Monad with the arrows turned round. Where <code>of</code> puts a value in, <code>extract</code> takes one out; where <code>chain</code> takes a function that wraps, <code>extend</code> takes one that unwraps.</p>
+  <p class="prompt">A Comonad is a Monad with the arrows turned round. Where <code>of</code> puts a value in, <code>extract</code> takes one out; where <code>chain</code> takes a function that wraps, <code>extend</code> takes one that unwraps. Give <code>CoIdentity</code> both.</p>
   <div class="covers">demonstrates <a class="pill" href="#comonad--extend-sees-context">extend-sees-context</a><a class="pill" href="#comonad--laws">laws</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li><code>extract</code> simply hands the value back.</li><li><code>extend(f)</code> calls f with the whole container, not with the value inside, and wraps the answer.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// CoIdentity :: a -&gt; CoIdentity a</i>
@@ -8159,7 +8184,7 @@ Just.<i class="k">of</i> = Just</code></pre></details>
       </li></ol>
   <h3 class="lap">Rungs</h3><article class="rung" id="free-monad--rung-apply">
   <header><h4>Add an instruction to the program</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">apply</span></div></header>
-  <p class="prompt">A Free Monad turns a program into data, so the same program can be interpreted in more than one way. Add a <code>Read</code> instruction and teach both interpreters about it.</p>
+  <p class="prompt">A Free Monad turns a program into data, so the same program can be interpreted in more than one way. Add a <code>Read</code> instruction and teach both interpreters about it. Teach <code>runReal</code> and <code>runTest</code> about the new instruction.</p>
   <div class="covers">demonstrates <a class="pill" href="#free-monad--instruction-carries">instruction-carries</a><a class="pill" href="#free-monad--many-interpreters">many-interpreters</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>An instruction is a plain object with a tag and a payload.</li><li>The interpreter is a lookup from tag to behavior. Each one answers Read differently.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> Write = (text) =&gt; ({ <i class="k">type</i>: <i class="s">'write'</i>, text })
@@ -8218,7 +8243,7 @@ Just.<i class="k">of</i> = Just</code></pre></details>
 <i class="c">// really, in a test, or logged without running at all</i></code></pre><p class="why">Separating the description from the interpretation is the whole trade. A test interpreter needs no mocking.</p></li><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="c">// It runs faster</i></code></pre><p class="why">It runs slower. You are paying for flexibility.</p></li><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="c">// It makes the instructions pure</i></code></pre><p class="why">Building the description is pure, but the real interpreter still performs the effects. They have just moved.</p></li><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="c">// It removes the need for a monad</i></code></pre><p class="why">The opposite. It gives you a monad for free from any functor, which is where the name comes from.</p></li></ol>
 </article><article class="rung" id="free-monad--rung-inspect">
   <header><h4>Read a program without running it</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">apply</span></div></header>
-  <p class="prompt">If the program is data, you can look at it before anything happens. Write <code>describe</code>, which lists the instructions a program will issue without performing any of them, and two interpreters that give the same program different behaviour.</p>
+  <p class="prompt">If the program is data, you can look at it before anything happens. Write <code>describe</code>, which lists the instructions a program will issue without performing any of them, and two interpreters that give the same program different behaviour. Write <code>describe</code>, then <code>runWith</code> to drive a program, and the two handler sets <code>loud</code> and <code>quiet</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#free-monad--program-as-data">program-as-data</a><a class="pill" href="#free-monad--many-interpreters">many-interpreters</a><a class="pill" href="#free-monad--instruction-carries">instruction-carries</a></div>
   <details class="hints"><summary>3 hints</summary><ol><li><code>describe</code> drives the program the way an interpreter does, but answers every request with a placeholder and records the type instead of acting.</li><li>A generator that has not been advanced has done nothing. Only <code>next</code> moves it.</li><li>The two interpreters differ only in what they answer, never in what they are handed.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// Do not change this.</i>
@@ -8545,7 +8570,7 @@ Just.<i class="k">of</i> = Just</code></pre></details>
 })</code></pre></details>
 </article><article class="rung" id="bifunctor--rung-apply">
   <header><h4>bimap for Either</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">apply</span></div></header>
-  <p class="prompt">Either is a bifunctor too: one function for the error and one for the success. Only one of them ever runs.</p>
+  <p class="prompt">Either is a bifunctor too: one function for the error and one for the success. Only one of them ever runs. Give <code>Left</code> and <code>Right</code> a <code>bimap</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#bifunctor--either-error-side">either-error-side</a><a class="pill" href="#bifunctor--slots-stay-put">slots-stay-put</a></div>
   <details class="hints"><summary>1 hint</summary><ol><li>On a Left, apply the first function to the error and leave it a Left.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> Left = (error) =&gt; ({
@@ -8560,9 +8585,14 @@ Just.<i class="k">of</i> = Just</code></pre></details>
   bimap: (f, g) =&gt; Right(g(value)),
   fold: (onLeft, onRight) =&gt; onRight(value),
   inspect: () =&gt; <i class="s">`Right(${JSON.stringify(value)})`</i>
-})</code></pre><details><summary>Starter &middot; 2 exports: <code>Left</code>, <code>Right</code></summary><pre class="code"><code><i class="k">const</i> Left = (error) =&gt; ({
+})</code></pre><details><summary>Starter &middot; 2 exports: <code>Left</code>, <code>Right</code></summary><pre class="code"><code><i class="c">// bimap takes both functions every time and runs exactly one of them, whichever matches the</i>
+<i class="c">// side you are holding. The result is the same side, rebuilt.</i>
+<i class="c">//   Left('boom').bimap((e) =&gt; e.length, (n) =&gt; n * 2)   -&gt;  Left(4)</i>
+<i class="c">//   Right(21).bimap((e) =&gt; e.length, (n) =&gt; n * 2)      -&gt;  Right(42)</i>
+<i class="k">const</i> Left = (error) =&gt; ({
   isRight: <i class="k">false</i>,
   bimap: (f, g) =&gt; {
+    <i class="c">// a Left carries an error, so f is the one that applies. g goes unused.</i>
   },
   fold: (onLeft, onRight) =&gt; onLeft(error),
   inspect: () =&gt; <i class="s">`Left(${JSON.stringify(error)})`</i>
@@ -8571,6 +8601,7 @@ Just.<i class="k">of</i> = Just</code></pre></details>
 <i class="k">const</i> Right = (value) =&gt; ({
   isRight: <i class="k">true</i>,
   bimap: (f, g) =&gt; {
+    <i class="c">// a Right carries a success, so g is the one that applies. f goes unused.</i>
   },
   fold: (onLeft, onRight) =&gt; onRight(value),
   inspect: () =&gt; <i class="s">`Right(${JSON.stringify(value)})`</i>
@@ -8682,7 +8713,7 @@ Just.<i class="k">of</i> = Just</code></pre></details>
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="contravariant-functor--rung-implement">
   <header><h4>Map over the input instead of the output</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">A Predicate consumes values rather than producing them, so a function is applied before it runs, not after. That is <code>contramap</code>.</p>
+  <p class="prompt">A Predicate consumes values rather than producing them, so a function is applied before it runs, not after. That is <code>contramap</code>. Give <code>Predicate</code> a <code>contramap</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#contravariant-functor--maps-the-input">maps-the-input</a><a class="pill" href="#contravariant-functor--behavioural-equality">behavioural-equality</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li><code>map</code> would apply f to the result. <code>contramap</code> applies it to the argument on the way in.</li><li>Build a new Predicate whose own test converts its argument first and then defers to the one you already have.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// Predicate :: (a -&gt; Boolean) -&gt; Predicate a</i>
@@ -8809,7 +8840,7 @@ Just.<i class="k">of</i> = Just</code></pre></details>
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="profunctor--rung-implement">
   <header><h4>Adjust both ends of a function</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">A Profunctor consumes on one side and produces on the other. <code>promap(f, g)</code> pre-processes the input with f and post-processes the output with g.</p>
+  <p class="prompt">A Profunctor consumes on one side and produces on the other. <code>promap(f, g)</code> pre-processes the input with f and post-processes the output with g. Give <code>Fn</code> a <code>promap</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#profunctor--both-ends">both-ends</a><a class="pill" href="#profunctor--composition-order">composition-order</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>f runs first, on the way in. g runs last, on the way out.</li><li>Three calls nested. Start from the argument the new function receives, get it into the shape the old one accepts, run it, then adapt what comes out.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// Fn :: (a -&gt; b) -&gt; Profunctor a b</i>
@@ -8935,7 +8966,7 @@ Just.<i class="k">of</i> = Just</code></pre></details>
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="alternative--rung-implement">
   <header><h4>Fall back to the other one</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt"><code>alt</code> picks the first of two that actually has something. Give Maybe an <code>alt</code> and a <code>zero</code>, and you can chain fallbacks.</p>
+  <p class="prompt"><code>alt</code> picks the first of two that actually has something. Give Maybe an <code>alt</code> and a <code>zero</code>, and you can chain fallbacks. Give <code>Just</code> and <code>Nothing</code> an <code>alt</code> each.</p>
   <div class="covers">demonstrates <a class="pill" href="#alternative--first-success">first-success</a><a class="pill" href="#alternative--annihilation">annihilation</a></div>
   <details class="hints"><summary>3 hints</summary><ol><li>On a Just, alt keeps what it has and ignores the alternative.</li><li>On Nothing, alt hands back whatever it was offered.</li><li><code>zero</code> is the empty case: Nothing.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> Just = (value) =&gt; ({
@@ -8953,11 +8984,15 @@ Just.<i class="k">of</i> = Just</code></pre></details>
   inspect: () =&gt; <i class="s">'Nothing'</i>
 })
 
-Just.zero = () =&gt; Nothing()</code></pre><details><summary>Starter &middot; 2 exports: <code>Just</code>, <code>Nothing</code></summary><pre class="code"><code><i class="k">const</i> Just = (value) =&gt; ({
+Just.zero = () =&gt; Nothing()</code></pre><details><summary>Starter &middot; 2 exports: <code>Just</code>, <code>Nothing</code></summary><pre class="code"><code><i class="c">// alt takes another Maybe and returns a Maybe, so fallbacks chain:</i>
+<i class="c">//   Nothing().alt(Just(1)).alt(Just(2))  -&gt;  Just(1)   the first success wins</i>
+<i class="c">//   Just(9).alt(Just(1))                 -&gt;  Just(9)</i>
+<i class="k">const</i> Just = (value) =&gt; ({
   isNothing: <i class="k">false</i>,
   value,
   map: (f) =&gt; Just(f(value)),
   alt: (other) =&gt; {
+    <i class="c">// this one already has a value, so the other is not needed</i>
   },
   inspect: () =&gt; <i class="s">`Just(${JSON.stringify(value)})`</i>
 })
@@ -8966,6 +9001,7 @@ Just.zero = () =&gt; Nothing()</code></pre><details><summary>Starter &middot; 2 
   isNothing: <i class="k">true</i>,
   map: () =&gt; Nothing(),
   alt: (other) =&gt; {
+    <i class="c">// this one has nothing of its own, so the other is the answer, as it is</i>
   },
   inspect: () =&gt; <i class="s">'Nothing'</i>
 })
@@ -9140,7 +9176,7 @@ Just.zero = () =&gt; Nothing()</code></pre></details>
       </li></ol>
   <h3 class="lap">Lap 1 · JavaScript</h3><article class="rung" id="foldable--rung-implement">
   <header><h4>Fold a tree down to one value</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">Anything Foldable can be collapsed to a single value. Give a binary tree a <code>reduce</code> that visits its elements left to right.</p>
+  <p class="prompt">Anything Foldable can be collapsed to a single value. Give a binary tree a <code>reduce</code> that visits its elements left to right. Write <code>Leaf</code> and <code>Node</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#foldable--collapse">collapse</a><a class="pill" href="#foldable--order-matters">order-matters</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>A leaf contributes its own value. A node contributes its left subtree, then itself, then its right.</li><li>Thread the accumulator through in that order.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// Leaf :: a -&gt; Tree a</i>
@@ -9339,7 +9375,7 @@ Just.zero = () =&gt; Nothing()</code></pre></details>
 }</code></pre></details>
 </article><article class="rung" id="traversable--rung-apply">
   <header><h4>traverse in one pass</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">apply</span></div></header>
-  <p class="prompt"><code>traverse(f, xs)</code> maps and sequences together. Use it to validate a list of inputs, failing on the first bad one.</p>
+  <p class="prompt"><code>traverse(f, xs)</code> maps and sequences together. Use it to validate a list of inputs, failing on the first bad one. Write <code>traverse</code>, then <code>parseAll</code> on top of it.</p>
   <div class="covers">demonstrates <a class="pill" href="#traversable--traverse">traverse</a><a class="pill" href="#traversable--all-or-nothing">all-or-nothing</a></div>
   <details class="hints"><summary>1 hint</summary><ol><li>Apply f to each element, then sequence the results. One pass is enough.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="k">const</i> Just = (value) =&gt; ({ isNothing: <i class="k">false</i>, value, map: (f) =&gt; Just(f(value)) })
@@ -9633,7 +9669,7 @@ Just.zero = () =&gt; Nothing()</code></pre></details>
       </li></ol>
   <h3 class="lap">Rungs</h3><article class="rung" id="semigroupoid--rung-implement">
   <header><h4>Composition that associates</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">A Semigroupoid is anything with an associative <code>compose</code>. Wrap a function so composing two of them gives another one.</p>
+  <p class="prompt">A Semigroupoid is anything with an associative <code>compose</code>. Wrap a function so composing two of them gives another one. Write <code>Morphism</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#semigroupoid--compose-stays-inside">compose-stays-inside</a><a class="pill" href="#semigroupoid--direction">direction</a><a class="pill" href="#semigroupoid--associativity-only">associativity-only</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li><code>compose</code> reads right to left: <code>a.compose(b)</code> runs b first.</li><li>The result has to be another wrapper, or a chain of three will not work.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// Morphism :: (a -&gt; b) -&gt; Semigroupoid a b</i>
@@ -9887,7 +9923,7 @@ Morphism.id = () =&gt; (x) =&gt; x</code></pre></details>
   <ol class="options"><li class="right"><span class="mark">correct</span><pre class="code"><code><i class="c">// uppercase :: String -&gt; String</i></code></pre><p class="why">In and out are both String.</p></li><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="c">// length :: String -&gt; Number</i></code></pre><p class="why">Different type out, so not an endomorphism.</p></li><li class="right"><span class="mark">correct</span><pre class="code"><code><i class="c">// negate :: Number -&gt; Number</i></code></pre><p class="why">Number to Number.</p></li><li class="right"><span class="mark">correct</span><pre class="code"><code><i class="c">// sort :: [a] -&gt; [a]</i></code></pre><p class="why">A list in, a list of the same element type out.</p></li><li class="wrong"><span class="mark">wrong</span><pre class="code"><code><i class="c">// head :: [a] -&gt; a</i></code></pre><p class="why">A list goes in and an element comes out, which are different types.</p></li></ol>
 </article><article class="rung" id="endomorphism--rung-implement">
   <header><h4>Endomorphisms form a monoid</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">Because an endomorphism returns what it was given, two of them always compose. That makes them a monoid, with identity for its empty.</p>
+  <p class="prompt">Because an endomorphism returns what it was given, two of them always compose. That makes them a monoid, with identity for its empty. Write <code>Endo</code>, with its <code>concat</code> and its <code>empty</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#endomorphism--monoid-under-composition">monoid-under-composition</a><a class="pill" href="#endomorphism--fold-a-pipeline">fold-a-pipeline</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li><code>concat</code> composes the two functions. Pick an order and be consistent.</li><li>The empty element is the function that changes nothing.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// Endo :: (a -&gt; a) -&gt; Endo a</i>
@@ -9975,7 +10011,7 @@ Endo.empty = () =&gt; Endo((x) =&gt; x)</code></pre></details>
       </li></ol>
   <h3 class="lap">Rungs</h3><article class="rung" id="isomorphism--rung-implement">
   <header><h4>A pair of morphisms that undo each other</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">An isomorphism is two arrows whose composition is identity in both directions. Write the pair between a coordinate record and a pair.</p>
+  <p class="prompt">An isomorphism is two arrows whose composition is identity in both directions. Write the pair between a coordinate record and a pair. The two directions are <code>pairToCoords</code> and <code>coordsToPair</code>.</p>
   <div class="covers">demonstrates <a class="pill" href="#isomorphism--pair-of-arrows">pair-of-arrows</a><a class="pill" href="#isomorphism--same-information">same-information</a></div>
   <details class="hints"><summary>1 hint</summary><ol><li>Neither direction may lose or invent anything. Both fields have to survive the trip.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// pairToCoords :: [Number, Number] -&gt; { x, y }</i>
@@ -10067,7 +10103,7 @@ Endo.empty = () =&gt; Endo((x) =&gt; x)</code></pre></details>
       </li></ol>
   <h3 class="lap">Rungs</h3><article class="rung" id="homomorphism--rung-implement">
   <header><h4>A map that preserves the structure</h4><div class="flags"><span class="tag kind-code">code</span><span class="tag">implement</span></div></header>
-  <p class="prompt">A homomorphism carries one structure into another so that combining before or after the map gives the same answer. Write one from lists to their lengths.</p>
+  <p class="prompt">A homomorphism carries one structure into another so that combining before or after the map gives the same answer. Build one from lists to their lengths: <code>toLength</code> is the map, and <code>combineLists</code> and <code>combineLengths</code> are the two operations it has to respect.</p>
   <div class="covers">demonstrates <a class="pill" href="#homomorphism--structure-preserving">structure-preserving</a><a class="pill" href="#homomorphism--identity-maps-to-identity">identity-maps-to-identity</a></div>
   <details class="hints"><summary>2 hints</summary><ol><li>Lists combine by concatenation; numbers combine by addition.</li><li><code>length(a ++ b)</code> has to equal <code>length(a) + length(b)</code>. That equation is the whole definition.</li></ol></details>
   <h5>Solution</h5><pre class="code"><code><i class="c">// toLength :: [a] -&gt; Number</i>

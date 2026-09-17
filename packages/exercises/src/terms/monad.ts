@@ -130,17 +130,21 @@ the type permits that: it owes you a \`Maybe<B>\`, and \`nothing<B>()\` is one.`
       role: 'implement',
       title: 'chain for Maybe',
       prompt:
-        'A Monad is a pointed functor with `chain`: a map whose function already returns a container, so the result is not wrapped twice.',
+        'A Monad is a pointed functor with `chain`: a map whose function already returns a container, so the result is not wrapped twice. Give `Just` and `Nothing` theirs.',
       hints: [
         '`map` wraps the result. `chain` does not, because the function already did.',
         'On Nothing, chain skips the function entirely, exactly as map does.',
       ],
       exports: ['Just', 'Nothing'],
-      starter: `const Just = (value) => ({
+      starter: `// \`f\` here already returns a Maybe, which is what makes chain different from map.
+//   Just(2).map((n) => Just(n * 2))    ->  Just(Just(4))   two layers, the thing to avoid
+//   Just(2).chain((n) => Just(n * 2))  ->  Just(4)         one layer
+const Just = (value) => ({
   isNothing: false,
   value,
   map: (f) => Just(f(value)),
   chain: (f) => {
+    // f already wraps its answer, so do not wrap it again
   },
   inspect: () => \`Just(\${JSON.stringify(value)})\`
 })
@@ -149,6 +153,7 @@ const Nothing = () => ({
   isNothing: true,
   map: () => Nothing(),
   chain: (f) => {
+    // there is no value to hand f, so f must not run at all
   },
   inspect: () => 'Nothing'
 })
@@ -238,7 +243,7 @@ Just.of = Just
       role: 'apply',
       title: 'chain for Array',
       prompt:
-        'Array is a monad too: `chain` maps and then flattens one level. Write it, and use it to pair every element with every other.',
+        "Array is a monad too: `chain` maps and then flattens one level. Write it, and use it to pair every element with every other. Write `chain`, then use it for `pairs`.",
       hints: ['`flatMap` is exactly chain for arrays, but write it yourself with map and concat.'],
       exports: ['chain', 'pairs'],
       starter: `// chain :: ((a -> [b]), [a]) -> [b]

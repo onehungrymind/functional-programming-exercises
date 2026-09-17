@@ -106,7 +106,7 @@ a sum type has exactly 3.`,
       role: 'implement',
       title: 'Count the inhabitants',
       prompt:
-        'The names are arithmetic. A product multiplies the possibilities of its parts; a sum adds them. Write the two counters.',
+        "The names are arithmetic. A product multiplies the possibilities of its parts; a sum adds them. Write the two counters. They are `productSize` and `sumSize`, each taking the sizes of the parts.",
       hints: [
         'A pair of a Boolean and a three-valued type has 2 times 3 possible values.',
         'A choice between a Boolean and a three-valued type has 2 plus 3.',

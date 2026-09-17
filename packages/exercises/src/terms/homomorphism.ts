@@ -69,7 +69,7 @@ This is also the name of one of the applicative laws, \`A.of(f).ap(A.of(x))\` eq
       role: 'implement',
       title: 'A map that preserves the structure',
       prompt:
-        'A homomorphism carries one structure into another so that combining before or after the map gives the same answer. Write one from lists to their lengths.',
+        "A homomorphism carries one structure into another so that combining before or after the map gives the same answer. Build one from lists to their lengths: `toLength` is the map, and `combineLists` and `combineLengths` are the two operations it has to respect.",
       hints: [
         'Lists combine by concatenation; numbers combine by addition.',
         '`length(a ++ b)` has to equal `length(a) + length(b)`. That equation is the whole definition.',

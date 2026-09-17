@@ -132,7 +132,11 @@ identity is a property of values, and that is what the law rung is for.`,
         'For All the neutral value is true, because "and true" changes nothing. For Any it is false.',
       ],
       exports: ['Sum', 'Product', 'All', 'Any'],
-      starter: `const Sum = (value) => ({ value, concat: (o) => Sum(value + o.value), inspect: () => \`Sum(\${value})\` })
+      starter: `// Each empty is the value that leaves concat alone from both sides, wrapped in its own type.
+//   Sum.empty().concat(Sum(5)).value    ->  5
+//   Sum(5).concat(Sum.empty()).value    ->  5
+// The right constant differs per monoid, and the type cannot tell you which.
+const Sum = (value) => ({ value, concat: (o) => Sum(value + o.value), inspect: () => \`Sum(\${value})\` })
 Sum.empty = () => {
 }
 
@@ -236,7 +240,7 @@ Any.empty = () => Any(true)
       inverted: true,
       title: 'Subtraction is not even a semigroup',
       prompt:
-        'Find concrete numbers that show subtraction fails. Fill in a triple where the grouping changes the answer, and a value that 0 fails to leave alone on the left.',
+        "Find concrete numbers that show subtraction fails. Fill in a triple where the grouping changes the answer, and a value that 0 fails to leave alone on the left. The two answers are `triple` and `notFixedByZero`.",
       hints: [
         'Associativity: try any three numbers where the third is not zero.',
         'Identity: 0 is a right identity, since a - 0 is a. Look at what 0 - a gives you.',

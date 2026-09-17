@@ -125,7 +125,7 @@ has laws attached to it.`,
       role: 'implement',
       title: 'Two views of the same thing',
       prompt:
-        'An isomorphism is a pair of conversions that lose nothing. Write the Celsius/Fahrenheit pair, and the pair between a record and a tuple.',
+        "An isomorphism is a pair of conversions that lose nothing. Write two pairs: `toF` and `toC` between Celsius and Fahrenheit, and `toPair` and `toCoords` between a record and a tuple.",
       hints: [
         'Fahrenheit is `c * 9 / 5 + 32`, and back again is `(f - 32) * 5 / 9`.',
         'The record and the tuple hold exactly the same information, so neither direction can drop a field.',

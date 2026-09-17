@@ -72,7 +72,7 @@ can choose not to run it, or run it twice.`,
       role: 'implement',
       title: 'Convert to continuation-passing style',
       prompt:
-        'In continuation-passing style a function never returns. It takes an extra argument, the continuation, and hands its answer to that instead.',
+        "In continuation-passing style a function never returns. It takes an extra argument, the continuation, and hands its answer to that instead. Convert `addCps` and `squareCps` to that style, then write `addThenSquare`, which feeds the first into the second and calls the outer continuation once, at the end.",
       hints: [
         'Replace every `return x` with `done(x)`.',
         'When one step feeds another, the first step passes a continuation that does the rest.',

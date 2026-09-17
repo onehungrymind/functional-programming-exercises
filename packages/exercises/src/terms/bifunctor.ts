@@ -197,12 +197,17 @@ const Pair = (first, second) => ({
       role: 'apply',
       title: 'bimap for Either',
       prompt:
-        'Either is a bifunctor too: one function for the error and one for the success. Only one of them ever runs.',
+        "Either is a bifunctor too: one function for the error and one for the success. Only one of them ever runs. Give `Left` and `Right` a `bimap`.",
       hints: ['On a Left, apply the first function to the error and leave it a Left.'],
       exports: ['Left', 'Right'],
-      starter: `const Left = (error) => ({
+      starter: `// bimap takes both functions every time and runs exactly one of them, whichever matches the
+// side you are holding. The result is the same side, rebuilt.
+//   Left('boom').bimap((e) => e.length, (n) => n * 2)   ->  Left(4)
+//   Right(21).bimap((e) => e.length, (n) => n * 2)      ->  Right(42)
+const Left = (error) => ({
   isRight: false,
   bimap: (f, g) => {
+    // a Left carries an error, so f is the one that applies. g goes unused.
   },
   fold: (onLeft, onRight) => onLeft(error),
   inspect: () => \`Left(\${JSON.stringify(error)})\`
@@ -211,6 +216,7 @@ const Pair = (first, second) => ({
 const Right = (value) => ({
   isRight: true,
   bimap: (f, g) => {
+    // a Right carries a success, so g is the one that applies. f goes unused.
   },
   fold: (onLeft, onRight) => onRight(value),
   inspect: () => \`Right(\${JSON.stringify(value)})\`

@@ -125,7 +125,7 @@ all.`,
       role: 'implement',
       title: 'Give Box a lawful map',
       prompt:
-        'A functor is a container with a map that obeys two laws: mapping identity changes nothing, and mapping f then g equals mapping their composition.',
+        "A functor is a container with a map that obeys two laws: mapping identity changes nothing, and mapping f then g equals mapping their composition. Give `Box` a `map` that satisfies both.",
       hints: [
         'map has to hand back a container, not the bare value inside it.',
         '`Box(f(value))` applies the function and wraps the result again.',

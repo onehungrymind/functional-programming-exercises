@@ -263,7 +263,7 @@ const run = (gen, handlers) => {
       covers: ['ask-do-not-do', 'swap-handlers', 'drive-it'],
       title: "One program, two handlers",
       prompt:
-        "`greet` is written for you and you may not change it. Write two handler sets so the same program talks to a real environment under one and to a fixture under the other. If the program has to change, it knew too much.",
+        "`greet` is written for you and you may not change it. If the program has to change to run somewhere else, it knew too much.\\n\\nWrite `runWith`, which drives the generator by answering each request it yields and sending the answer back. Then two handler sets, `live` and `fixture`, so the same program talks to a real environment under one and to a fixture under the other.",
       hints: [
         "The program yields a request and waits. Whatever you send back becomes the value of the `yield`.",
         "`runWith` drives the generator: yield a request, look up the handler by its type, send the answer back, repeat until done.",

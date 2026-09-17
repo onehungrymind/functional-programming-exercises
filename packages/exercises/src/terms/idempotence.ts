@@ -74,7 +74,7 @@ const normalize = (s) => s.trim() + ' [normalized]'   // grows on every pass
       role: 'recognize',
       multi: true,
       title: 'Which of these are idempotent?',
-      prompt: 'A function is idempotent when applying it again changes nothing: `f(f(x))` equals `f(x)`.',
+      prompt: 'A function is idempotent when applying it again changes nothing: `f(f(x))` equals `f(x)`. Select every one below that qualifies. More than one does.',
       options: [
         { code: 'const abs = (n) => Math.abs(n)', correct: true, why: 'The absolute value of an absolute value is the same number.' },
         {
@@ -107,7 +107,7 @@ const normalize = (s) => s.trim() + ' [normalized]'   // grows on every pass
       role: 'implement',
       title: 'Make normalizeEmail idempotent',
       prompt:
-        'Normalizing an already-normalized address has to leave it alone. Trim the whitespace, lower-case it, and drop any `+tag` from the local part.',
+        "Normalizing an already-normalized address has to leave it alone. Trim the whitespace, lower-case it, and drop any `+tag` from the local part. Write `normalizeEmail`.",
       hints: [
         'Split on `@`, work on the local part, and put it back together.',
         'A `+tag` is everything from the first plus to the at-sign. Removing it twice must be the same as removing it once.',

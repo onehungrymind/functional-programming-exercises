@@ -266,7 +266,7 @@ const sequence = (maybes) => {
       role: 'apply',
       title: 'traverse in one pass',
       prompt:
-        '`traverse(f, xs)` maps and sequences together. Use it to validate a list of inputs, failing on the first bad one.',
+        "`traverse(f, xs)` maps and sequences together. Use it to validate a list of inputs, failing on the first bad one. Write `traverse`, then `parseAll` on top of it.",
       hints: ['Apply f to each element, then sequence the results. One pass is enough.'],
       exports: ['traverse', 'parseAll'],
       starter: `const Just = (value) => ({ isNothing: false, value, map: (f) => Just(f(value)) })

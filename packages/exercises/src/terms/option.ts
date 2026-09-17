@@ -130,7 +130,7 @@ narrowing. Everything downstream gets an \`A\` that really is an \`A\`.`,
       role: 'implement',
       title: 'Some, None, and the three ways out',
       prompt:
-        'Option makes "there might be nothing here" part of the type. Give it `map`, `chain`, and `getOrElse`, so a missing value flows through without a single null check.',
+        "Option makes \"there might be nothing here\" part of the type. Give it `map`, `chain`, and `getOrElse`, so a missing value flows through without a single null check. The constructors `Some` and `None` are yours to write too.",
       hints: [
         '`map` on None does nothing and stays None. On Some it applies the function and rewraps.',
         '`chain` is for a function that itself returns an Option, so do not wrap the result again.',

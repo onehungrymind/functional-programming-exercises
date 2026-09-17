@@ -68,7 +68,7 @@ semigroup-to-monoid step, one level up.`,
       role: 'implement',
       title: 'Composition that associates',
       prompt:
-        'A Semigroupoid is anything with an associative `compose`. Wrap a function so composing two of them gives another one.',
+        "A Semigroupoid is anything with an associative `compose`. Wrap a function so composing two of them gives another one. Write `Morphism`.",
       hints: [
         '`compose` reads right to left: `a.compose(b)` runs b first.',
         'The result has to be another wrapper, or a chain of three will not work.',

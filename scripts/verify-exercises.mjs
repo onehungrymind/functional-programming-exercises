@@ -189,29 +189,48 @@ const note = (msg) => problems.push(msg);
     }
   }
 
-  // An export the learner has to invent, whose stub is a bare literal, and which neither the
-  // prompt nor a starter comment ever describes. That combination means they are guessing at
-  // what the thing is supposed to return, which no amount of reading the checks will fix.
+  // The prompt has to name everything the learner is being asked to write. A starter comment
+  // is not enough on its own: the prompt is what they read first, and "write it and the other
+  // one" is how a rung ends up unreadable. Scaffolding handed over finished is exempt, since
+  // there is nothing to say about it.
   {
-    const BARE = /=>\s*(false|true|0|1|-1|'[^']*'|"[^"]*"|\[\]|\{\}|null|undefined)\s*[;,]?\s*$/;
+    /** True when the starter leaves this binding unwritten rather than handing it over done. */
+    const isStub = (starter, name) => {
+      const lines = starter.split('\n');
+      const at = lines.findIndex((l) => new RegExp(`^\\s*(const|function\\*?)\\s+${name}\\b`).test(l));
+      if (at === -1) return false;
+      const rest = lines.slice(at).join('\n');
+      const open = rest.indexOf('{', rest.indexOf('='));
+      if (open === -1) {
+        return /=\s*(false|true|0|1|-1|''|""|\[\]|\{\}|null|undefined)\s*[;,]?\s*$/.test(lines[at]);
+      }
+      let depth = 0;
+      let end = -1;
+      for (let i = open; i < rest.length; i += 1) {
+        if (rest[i] === '{') depth += 1;
+        else if (rest[i] === '}' && --depth === 0) {
+          end = i;
+          break;
+        }
+      }
+      if (end === -1) return false;
+      const body = rest.slice(open + 1, end);
+      // Nothing but comments means it is theirs to fill in. So does an empty method body.
+      return (
+        body.replace(/\/\/[^\n]*/g, '').trim() === '' ||
+        /[:=]\s*(\([^)]*\)|\w+)\s*=>\s*\{\s*(\/\/[^\n]*\s*)*\}/.test(body)
+      );
+    };
+
     for (const set of Object.values(exerciseSets)) {
       for (const rung of set.rungs) {
         if (rung.kind !== 'code') continue;
-        const comments = rung.starter
-          .split('\n')
-          .filter((l) => l.trim().startsWith('//'))
-          .join(' ');
-        for (const name of rung.exports) {
-          const decl = rung.starter
-            .split('\n')
-            .find((l) => new RegExp(`^const ${name}\\s*=`).test(l.trim()));
-          if (!decl || !BARE.test(decl.trim())) continue;
-          if (!rung.prompt.includes(name) && !comments.includes(name)) {
-            note(
-              `${set.termId}/${rung.id}: \`${name}\` starts as a bare stub and neither the prompt ` +
-                `nor a starter comment says what it should return. The learner is guessing.`,
-            );
-          }
+        const unnamed = rung.exports.filter((n) => isStub(rung.starter, n) && !rung.prompt.includes(n));
+        if (unnamed.length) {
+          note(
+            `${set.termId}/${rung.id}: the prompt never names ${unnamed.map((n) => `\`${n}\``).join(', ')}, ` +
+              `which the learner has to write. Name every one and say what it returns.`,
+          );
         }
       }
     }

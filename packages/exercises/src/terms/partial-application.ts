@@ -68,7 +68,7 @@ warn('disk filling up')             // [WARN] disk filling up
       role: 'implement',
       title: 'Write partial',
       prompt:
-        'Partial application fixes some arguments now and leaves the rest for later. Unlike currying, it takes as many as you give it in one go.',
+        "Partial application fixes some arguments now and leaves the rest for later. Unlike currying, it takes as many as you give it in one go. Write `partial`.",
       hints: [
         'Keep the arguments you were given, then join them with the ones that arrive later.',
         '`(...later) => fn(...first, ...later)` is the whole idea.',

@@ -129,7 +129,7 @@ common before it will let you leave.`,
       role: 'implement',
       title: 'Left, Right, and fold',
       prompt:
-        'Either carries a success or a failure, and says which. `map` and `chain` work on the Right only; `fold` is how you finally handle both.',
+        "Either carries a success or a failure, and says which. `map` and `chain` work on the Right only; `fold` is how you finally handle both. Write `Left` and `Right`.",
       hints: [
         'Left is the failure. Mapping over it changes nothing and keeps the error intact.',
         '`fold(onLeft, onRight)` runs exactly one of the two, depending which side you are on.',

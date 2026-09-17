@@ -121,7 +121,7 @@ are the same.`,
       role: 'implement',
       title: 'Adjust both ends of a function',
       prompt:
-        'A Profunctor consumes on one side and produces on the other. `promap(f, g)` pre-processes the input with f and post-processes the output with g.',
+        "A Profunctor consumes on one side and produces on the other. `promap(f, g)` pre-processes the input with f and post-processes the output with g. Give `Fn` a `promap`.",
       hints: [
         'f runs first, on the way in. g runs last, on the way out.',
         'Three calls nested. Start from the argument the new function receives, get it into the shape the old one accepts, run it, then adapt what comes out.',

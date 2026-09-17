@@ -96,7 +96,7 @@ possible honest implementations, and \`a -> a\` has exactly one.`,
       role: 'implement',
       title: 'Write the functions the signatures describe',
       prompt:
-        'Each signature below determines almost everything about its function. Write the implementation each one describes.',
+        "Each signature below determines almost everything about its function. Write the implementation each one describes. The four are `identity`, `first`, `count` and `flip`.",
       hints: [
         '`a -> a` can only hand its argument back. There is nothing else it could return.',
         '`a -> b -> a` has to return the first argument: it is the only `a` it has.',

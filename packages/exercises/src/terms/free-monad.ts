@@ -76,7 +76,7 @@ this trick.`,
       role: 'apply',
       title: 'Add an instruction to the program',
       prompt:
-        'A Free Monad turns a program into data, so the same program can be interpreted in more than one way. Add a `Read` instruction and teach both interpreters about it.',
+        "A Free Monad turns a program into data, so the same program can be interpreted in more than one way. Add a `Read` instruction and teach both interpreters about it. Teach `runReal` and `runTest` about the new instruction.",
       hints: [
         'An instruction is a plain object with a tag and a payload.',
         'The interpreter is a lookup from tag to behavior. Each one answers Read differently.',
@@ -253,7 +253,7 @@ const runTest = (program) => program.filter((i) => i.type === 'write').map((i) =
       covers: ['program-as-data', 'many-interpreters', 'instruction-carries'],
       title: "Read a program without running it",
       prompt:
-        "If the program is data, you can look at it before anything happens. Write `describe`, which lists the instructions a program will issue without performing any of them, and two interpreters that give the same program different behaviour.",
+        "If the program is data, you can look at it before anything happens. Write `describe`, which lists the instructions a program will issue without performing any of them, and two interpreters that give the same program different behaviour. Write `describe`, then `runWith` to drive a program, and the two handler sets `loud` and `quiet`.",
       hints: [
         "`describe` drives the program the way an interpreter does, but answers every request with a placeholder and records the type instead of acting.",
         "A generator that has not been advanced has done nothing. Only `next` moves it.",

@@ -124,7 +124,7 @@ compiles.`,
       role: 'implement',
       title: 'Focus on many things at once',
       prompt:
-        'Where a lens focuses on one thing and a prism on at most one, a traversal focuses on any number. Write one over the even numbers in a list.',
+        "Where a lens focuses on one thing and a prism on at most one, a traversal focuses on any number. Write one over the even numbers in a list. Write `getAll`, which collects every focus, and `modify`, which maps over all of them and hands back the whole list.",
       hints: [
         '`getAll` collects the elements that match, in order.',
         '`modify` applies the function to the matching elements and leaves the others exactly as they were.',

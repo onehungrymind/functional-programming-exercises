@@ -126,7 +126,7 @@ argument position. That is the variance you were reasoning about by hand, checke
       role: 'implement',
       title: 'Map over the input instead of the output',
       prompt:
-        'A Predicate consumes values rather than producing them, so a function is applied before it runs, not after. That is `contramap`.',
+        "A Predicate consumes values rather than producing them, so a function is applied before it runs, not after. That is `contramap`. Give `Predicate` a `contramap`.",
       hints: [
         '`map` would apply f to the result. `contramap` applies it to the argument on the way in.',
         'Build a new Predicate whose own test converts its argument first and then defers to the one you already have.',

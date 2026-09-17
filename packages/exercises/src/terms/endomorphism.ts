@@ -91,7 +91,7 @@ the identity, not a special case you have to write a branch for.`,
       role: 'implement',
       title: 'Endomorphisms form a monoid',
       prompt:
-        'Because an endomorphism returns what it was given, two of them always compose. That makes them a monoid, with identity for its empty.',
+        "Because an endomorphism returns what it was given, two of them always compose. That makes them a monoid, with identity for its empty. Write `Endo`, with its `concat` and its `empty`.",
       hints: [
         '`concat` composes the two functions. Pick an order and be consistent.',
         'The empty element is the function that changes nothing.',

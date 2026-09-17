@@ -67,7 +67,7 @@ it does not preserve.`,
       role: 'implement',
       title: 'A pair of morphisms that undo each other',
       prompt:
-        'An isomorphism is two arrows whose composition is identity in both directions. Write the pair between a coordinate record and a pair.',
+        "An isomorphism is two arrows whose composition is identity in both directions. Write the pair between a coordinate record and a pair. The two directions are `pairToCoords` and `coordsToPair`.",
       hints: ['Neither direction may lose or invent anything. Both fields have to survive the trip.'],
       exports: ['pairToCoords', 'coordsToPair'],
       starter: `// pairToCoords :: [Number, Number] -> { x, y }

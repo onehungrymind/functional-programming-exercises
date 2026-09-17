@@ -179,7 +179,7 @@ const process = (ns) => ns.map(double).filter(isBig).map(label)
       covers: ['function-as-value', 'inline-it', 'name-is-a-choice'],
       title: "Pass functions around without naming them",
       prompt:
-        "A lambda is a function used as a value. Build `pipeline` from a list of inline lambdas, and `twice`, which takes a function and applies it two times.",
+        "A lambda is a function used as a value. Build `pipeline` from a list of inline lambdas, and `twice`, which takes a function and applies it two times. Put the three steps in `steps` as inline lambdas: add one, then double, then subtract three.",
       hints: [
         "`twice` receives a function as an argument. Call it, then call it again on the result.",
         "`steps` is an array whose elements are functions. Nothing stops a function being an array element.",

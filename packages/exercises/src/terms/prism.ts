@@ -114,7 +114,7 @@ to be rejected, or the trip back gives \`'7'\` and the law is gone.`,
       role: 'implement',
       title: 'A prism for integers in strings',
       prompt:
-        'Where a lens always finds its focus, a prism might not. Build one that reads an integer out of a string when there is one, and rebuilds the string from an integer.',
+        "Where a lens always finds its focus, a prism might not. Build one that reads an integer out of a string when there is one, and rebuilds the string from an integer. Write `preview`, which may find nothing, and `review`, which always succeeds.",
       hints: [
         '`preview` returns `Some(n)` when the string is a whole number, and `None()` otherwise.',
         '`review` goes the other way and always succeeds.',

@@ -107,7 +107,7 @@ const incrementAll = map(add(1))                         // does not
       role: 'implement',
       title: 'Write curry2',
       prompt:
-        'Turn any two-argument function into a curried one. Nothing should run until both arguments have arrived.',
+        "Turn any two-argument function into a curried one. Nothing should run until both arguments have arrived. Write `curry2`.",
       hints: [
         'The outer function takes `f` and returns a function that takes `a`.',
         'That function returns another function, and only the innermost one has both `a` and `b` to call `f` with.',

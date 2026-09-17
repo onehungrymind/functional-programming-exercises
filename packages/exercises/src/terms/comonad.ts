@@ -126,7 +126,7 @@ grid, \`f\` seeing the whole container is the difference between a cell and its 
       role: 'implement',
       title: 'extract and extend',
       prompt:
-        'A Comonad is a Monad with the arrows turned round. Where `of` puts a value in, `extract` takes one out; where `chain` takes a function that wraps, `extend` takes one that unwraps.',
+        "A Comonad is a Monad with the arrows turned round. Where `of` puts a value in, `extract` takes one out; where `chain` takes a function that wraps, `extend` takes one that unwraps. Give `CoIdentity` both.",
       hints: [
         '`extract` simply hands the value back.',
         '`extend(f)` calls f with the whole container, not with the value inside, and wraps the answer.',
