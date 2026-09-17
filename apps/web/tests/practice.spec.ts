@@ -78,6 +78,26 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test.describe('opening a concept', () => {
+  test('lands on Learn, not Practice', async ({ page }) => {
+    // It used to open straight into Practice whenever anything was unfinished, which for a
+    // concept nobody has touched is always, so reading about one meant clicking back.
+    await page.goto('/');
+    await page.getByTitle('Switch to the list').click();
+    await page.locator('.list-item').first().click();
+    await expect(page.locator('.drawer')).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Learn' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('a concept with progress still lands on Learn', async ({ page }) => {
+    await seedDone(page, 'currying', ['implement']);
+    await page.goto('/');
+    await page.getByTitle('Switch to the list').click();
+    await page.locator('.list-item', { hasText: 'Currying' }).first().click();
+    await expect(page.getByRole('tab', { name: 'Learn' })).toHaveAttribute('aria-selected', 'true');
+  });
+});
+
 test.describe('deep links', () => {
   test('a term hash opens the drawer on Learn', async ({ page }) => {
     await page.goto('/#/term/functor');

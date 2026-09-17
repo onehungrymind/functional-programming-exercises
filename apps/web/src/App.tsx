@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Github, List, Moon, Network, Search, Sun, Target } from 'lucide-react';
-import { manifest, manifestByTerm } from '@fpx/exercises/manifest';
+import { manifest } from '@fpx/exercises/manifest';
 import { categoriesById, graph, meta, termsById } from './data';
 import { GraphCanvas } from './graph/GraphCanvas';
 import { Drawer } from './drawer/Drawer';
@@ -48,15 +48,12 @@ export function App() {
     return { done, total };
   }, [progressByTerm]);
 
+  // Selecting a concept always lands on Learn. It used to open straight into Practice whenever
+  // anything was unfinished, which for a concept you have not touched is always, so opening
+  // one to read about it meant arriving somewhere else and clicking back. A deep link to
+  // `#/term/x/practice` still goes where it says.
   const select = useCallback((id: string | null) => {
-    if (!id) {
-      navigate({ termId: null, tab: 'learn', rungId: null });
-      return;
-    }
-    // Open straight into Practice when there is something to practice and it is unfinished.
-    const entry = manifestByTerm[id];
-    const unfinished = entry?.rungs.some((r) => !progress.isDone(id, r.id));
-    navigate({ termId: id, tab: entry && unfinished ? 'practice' : 'learn', rungId: null });
+    navigate({ termId: id, tab: 'learn', rungId: null });
   }, []);
 
   // Keyboard: `/` opens search, Escape closes whatever is open.
