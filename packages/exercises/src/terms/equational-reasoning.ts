@@ -195,5 +195,116 @@ const fast = (ns) => ns.filter((n) => isBig(step(n))).map(step)
         });
       },
     },
+
+    {
+      id: 'needs-purity',
+      kind: 'code',
+      role: 'break',
+      covers: ['needs-purity', 'safe-rewrites'],
+      title: "Find the input where a safe rewrite stops being safe",
+      prompt:
+        "Replacing `f(x) + f(x)` with `2 * f(x)` is the most ordinary optimisation there is, and it is only valid for pure functions. Write both forms and `agree`, which reports whether they match for a given function. You pass when it says yes for a pure one and no for an impure one.",
+      hints: [
+        "`twice` calls `f` two times. `once` calls it a single time and doubles the answer.",
+        "`agree` runs both and compares. It has to run them against the same function, in that order.",
+        "Do not try to make them agree. The rung is about finding where they do not.",
+      ],
+      exports: ['twice', 'once', 'agree'],
+      starter: `// twice :: ((a -> Number), a) -> Number   f(x) + f(x)
+const twice = (f, x) => 0
+
+// once :: ((a -> Number), a) -> Number   2 * f(x)
+const once = (f, x) => 0
+
+// agree :: ((a -> Number), a) -> Boolean
+const agree = (f, x) => true
+`,
+      solution: `// twice :: ((a -> Number), a) -> Number   f(x) + f(x)
+const twice = (f, x) => f(x) + f(x)
+
+// once :: ((a -> Number), a) -> Number   2 * f(x)
+const once = (f, x) => 2 * f(x)
+
+// agree :: ((a -> Number), a) -> Boolean
+const agree = (f, x) => twice(f, x) === once(f, x)
+`,
+      broken: [
+        `const twice = (f, x) => 2 * f(x)
+const once = (f, x) => 2 * f(x)
+const agree = (f, x) => twice(f, x) === once(f, x)
+`,
+        `const twice = (f, x) => f(x) + f(x)
+const once = (f, x) => f(x) + f(x)
+const agree = (f, x) => twice(f, x) === once(f, x)
+`,
+        `const twice = (f, x) => f(x) + f(x)
+const once = (f, x) => 2 * f(x)
+const agree = (f, x) => true
+`,
+      ],
+      checks: (T, exp) => {
+        const { twice, once, agree } = exp;
+
+        T.law('Both forms agree for a pure function', 60, (G) => {
+          const f = G.fn();
+          const n = G.int();
+          const a = twice(f.f, n);
+          const b = once(f.f, n);
+          return a === b || `With ${f.name} at ${n}: ${T.fmt(a)} against ${T.fmt(b)}. For a pure f the rewrite is exact.`;
+        });
+
+        T.check('twice really calls the function two times', () => {
+          let calls = 0;
+          twice(() => {
+            calls += 1;
+            return 1;
+          }, 0);
+          return calls === 2 || `twice called f ${calls} time${calls === 1 ? '' : 's'}. That is the form the rewrite starts from.`;
+        });
+
+        T.check('once really calls the function one time', () => {
+          let calls = 0;
+          once(() => {
+            calls += 1;
+            return 1;
+          }, 0);
+          return calls === 1 || `once called f ${calls} times. Calling it once is the entire saving the rewrite buys.`;
+        });
+
+        T.check('agree says yes for a pure function', () => {
+          const r = agree((n: number) => n * 3, 4);
+          return r === true || `For a pure tripling it reported ${T.fmt(r)}.`;
+        });
+
+        T.check('agree says no for a function with a running count', () => {
+          let n = 0;
+          const r = agree(() => ++n, 0);
+          return (
+            r === false ||
+            `For a counter it reported ${T.fmt(r)}. Two calls give 1 and 2, summing to 3; one call gives 1, doubling to 2. The rewrite changed the answer.`
+          );
+        });
+
+        T.check('agree says no for a function that reads the dice', () => {
+          const r = agree(() => Math.random(), 0);
+          return r === false || `For a random function it reported ${T.fmt(r)}.`;
+        });
+
+        T.check('agree says no for a function that writes to something outside', () => {
+          const log: number[] = [];
+          const r = agree(() => log.push(1), 0);
+          return (
+            r === false ||
+            `For a function that appends to a log it reported ${T.fmt(r)}. push returns the new length, so two calls do not match one doubled.`
+          );
+        });
+
+        T.check('agree is not just always false', () => {
+          const a = agree((n: number) => n + 1, 1);
+          const b = agree((n: number) => n, 0);
+          return (a === true && b === true) || 'Two obviously pure functions were reported as disagreeing.';
+        });
+      },
+    },
   ],
 };

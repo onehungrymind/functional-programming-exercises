@@ -659,6 +659,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Rewrite a pipeline step by step",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "needs-purity",
+        "role": "break",
+        "title": "Find the input where a safe rewrite stops being safe",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -676,6 +683,13 @@ export const manifest: ManifestEntry[] = [
         "id": "implement",
         "role": "implement",
         "title": "Make normalizeEmail idempotent",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "classify",
+        "role": "apply",
+        "title": "Tell idempotent apart from safe to repeat",
         "kind": "code",
         "lang": "js"
       }
@@ -735,6 +749,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Write the functions the signatures describe",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "constrains",
+        "role": "implement",
+        "title": "Write the only function each signature allows",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -752,6 +773,13 @@ export const manifest: ManifestEntry[] = [
         "id": "implement",
         "role": "implement",
         "title": "Count the inhabitants",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "arithmetic",
+        "role": "apply",
+        "title": "Count the values, and watch the names make sense",
         "kind": "code",
         "lang": "js"
       }

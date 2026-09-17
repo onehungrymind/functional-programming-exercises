@@ -192,5 +192,118 @@ const sumSize = (sizes) => sizes.reduce((a, b) => a + b)
         });
       },
     },
+
+    {
+      id: 'arithmetic',
+      kind: 'code',
+      role: 'apply',
+      covers: ['sum-vs-product', 'counting'],
+      title: "Count the values, and watch the names make sense",
+      prompt:
+        "The names are arithmetic. Write `countProduct` and `countSum` over the sizes of the parts, then `sizeOf`, which handles a small description of either kind. The answers are why one is called a product and the other a sum.",
+      hints: [
+        "A product holds all of its fields at once, so the combinations multiply.",
+        "A sum holds exactly one of its cases, so the possibilities add.",
+        "A product of no fields has one value, not none: there is exactly one way to hold nothing. That makes 1 the right starting point for a multiplication, and 0 for a sum.",
+      ],
+      exports: ['countProduct', 'countSum', 'sizeOf'],
+      starter: `// countProduct :: [Number] -> Number
+const countProduct = (sizes) => 0
+
+// countSum :: [Number] -> Number
+const countSum = (sizes) => 0
+
+// sizeOf :: { kind, parts } -> Number
+// { kind: 'product', parts: [2, 3] }  ->  6
+// { kind: 'sum', parts: [2, 3] }      ->  5
+const sizeOf = (type) => 0
+`,
+      solution: `// countProduct :: [Number] -> Number
+const countProduct = (sizes) => sizes.reduce((a, b) => a * b, 1)
+
+// countSum :: [Number] -> Number
+const countSum = (sizes) => sizes.reduce((a, b) => a + b, 0)
+
+// sizeOf :: { kind, parts } -> Number
+// { kind: 'product', parts: [2, 3] }  ->  6
+// { kind: 'sum', parts: [2, 3] }      ->  5
+const sizeOf = (type) =>
+  type.kind === 'product' ? countProduct(type.parts) : countSum(type.parts)
+`,
+      broken: [
+        `const countProduct = (sizes) => sizes.reduce((a, b) => a * b, 0)
+const countSum = (sizes) => sizes.reduce((a, b) => a + b, 0)
+const sizeOf = (type) =>
+  type.kind === 'product' ? countProduct(type.parts) : countSum(type.parts)
+`,
+        `const countProduct = (sizes) => sizes.reduce((a, b) => a * b, 1)
+const countSum = (sizes) => sizes.reduce((a, b) => a + b, 1)
+const sizeOf = (type) =>
+  type.kind === 'product' ? countProduct(type.parts) : countSum(type.parts)
+`,
+        `const countProduct = (sizes) => sizes.reduce((a, b) => a + b, 0)
+const countSum = (sizes) => sizes.reduce((a, b) => a * b, 1)
+const sizeOf = (type) =>
+  type.kind === 'product' ? countProduct(type.parts) : countSum(type.parts)
+`,
+        `const countProduct = (sizes) => sizes.reduce((a, b) => a * b, 1)
+const countSum = (sizes) => sizes.reduce((a, b) => a + b, 0)
+const sizeOf = (type) => countProduct(type.parts)
+`,
+      ],
+      checks: (T, exp) => {
+        const { countProduct, countSum, sizeOf } = exp;
+
+        T.check('A product of a boolean and a three multiplies', () => {
+          const r = countProduct([2, 3]);
+          return r === 6 || `countProduct([2, 3]) gave ${T.fmt(r)}. Holding both at once means every pairing is a distinct value.`;
+        });
+
+        T.check('A sum of a boolean and a three adds', () => {
+          const r = countSum([2, 3]);
+          return r === 5 || `countSum([2, 3]) gave ${T.fmt(r)}. Holding exactly one of them means the possibilities pile up rather than combine.`;
+        });
+
+        T.check('A product of no fields has one value', () => {
+          const r = countProduct([]);
+          return (
+            r === 1 ||
+            `countProduct([]) gave ${T.fmt(r)}, and it should be 1. There is exactly one way to hold nothing, which is why the empty record is a real type with a real value in it.`
+          );
+        });
+
+        T.check('A sum of no cases has none', () => {
+          const r = countSum([]);
+          return (
+            r === 0 ||
+            `countSum([]) gave ${T.fmt(r)}, and it should be 0. A choice between nothing is a type you cannot produce a value of at all.`
+          );
+        });
+
+        T.check('A single part gives itself back, either way', () => {
+          const a = countProduct([7]);
+          const b = countSum([7]);
+          return (a === 7 && b === 7) || `One part of size 7 gave ${T.fmt(a)} as a product and ${T.fmt(b)} as a sum.`;
+        });
+
+        T.check('A zero-sized field wipes out a product', () => {
+          const r = countProduct([3, 0, 5]);
+          return r === 0 || `countProduct([3, 0, 5]) gave ${T.fmt(r)}. If one field has no values, the whole record has none.`;
+        });
+
+        T.check('sizeOf reads the kind', () => {
+          const p = sizeOf({ kind: 'product', parts: [2, 3] });
+          const s = sizeOf({ kind: 'sum', parts: [2, 3] });
+          return (p === 6 && s === 5) || `The same parts gave ${T.fmt(p)} as a product and ${T.fmt(s)} as a sum.`;
+        });
+
+        T.law('A product is never smaller than a sum once every part has values', 60, (G) => {
+          const parts = [G.nat() + 1, G.nat() + 1, G.nat() + 1];
+          const p = sizeOf({ kind: 'product', parts });
+          const s = sizeOf({ kind: 'sum', parts });
+          return p >= s || `With parts ${T.fmt(parts)} the product came to ${T.fmt(p)} and the sum to ${T.fmt(s)}.`;
+        });
+      },
+    },
   ],
 };

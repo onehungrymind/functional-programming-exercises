@@ -202,5 +202,119 @@ const flip = (f) => (b) => (a) => f(a)(b)
         });
       },
     },
+
+    {
+      id: 'constrains',
+      kind: 'code',
+      role: 'implement',
+      covers: ['match-implementation', 'signature-constrains'],
+      title: "Write the only function each signature allows",
+      prompt:
+        "A signature made of type variables leaves almost nothing to decide. Write the three functions so each one works for every type at once, which is what a variable in a signature means.",
+      hints: [
+        "`same :: a -> a` has exactly one implementation. There is no value of type `a` to invent, so the only `a` available is the one you were handed.",
+        "`count :: [a] -> Number` cannot look at the elements, because `a` could be anything. It can only count them.",
+        "`both :: (a -> b, [a]) -> [b]` has to produce `b`s, and the only way to make one is to call the function it was given.",
+      ],
+      exports: ['same', 'count', 'both'],
+      starter: `// same :: a -> a
+const same = (x) => null
+
+// count :: [a] -> Number
+const count = (xs) => 0
+
+// both :: ((a -> b), [a]) -> [b]
+const both = (f, xs) => []
+`,
+      solution: `// same :: a -> a
+const same = (x) => x
+
+// count :: [a] -> Number
+const count = (xs) => xs.length
+
+// both :: ((a -> b), [a]) -> [b]
+const both = (f, xs) => xs.map(f)
+`,
+      broken: [
+        `const same = (x) => x
+const count = (xs) => xs.filter(Boolean).length
+const both = (f, xs) => xs.map(f)
+`,
+        `const same = (x) => x
+const count = (xs) => xs.length
+const both = (f, xs) => xs.map(f).filter(Boolean)
+`,
+        `const same = (x) => String(x)
+const count = (xs) => xs.length
+const both = (f, xs) => xs.map(f)
+`,
+        `const same = (x) => x
+const count = (xs) => xs.length
+const both = (f, xs) => xs.map((x) => x)
+`,
+      ],
+      checks: (T, exp) => {
+        const { same, count, both } = exp;
+
+        T.check('same gives back exactly what it was handed', () => {
+          const o = { a: 1 };
+          const f = (n: number) => n;
+          return (
+            same(3) === 3 && same('x') === 'x' && same(o) === o && same(f) === f ||
+            `same changed something on the way through. With \`a -> a\` there is no other \`a\` in scope, so there is nothing else it could return.`
+          );
+        });
+
+        T.check('same does not convert anything', () => {
+          const r = same(3);
+          return (
+            typeof r === 'number' ||
+            `same(3) came back as a ${typeof r}. The signature says the type going out is the same variable as the one going in.`
+          );
+        });
+
+        T.check('same works on null and undefined too', () => {
+          return (same(null) === null && same(undefined) === undefined) || 'same treats some values specially, and it has no way to know what it is holding.';
+        });
+
+        T.check('count counts', () => {
+          const got = [count([]), count([1, 2, 3]), count(['a'])];
+          return T.eq(got, [0, 3, 1]) || `count gave ${T.fmt(got)} for an empty list, a three, and a one.`;
+        });
+
+        T.check('count cannot be looking at the elements', () => {
+          const r = count([0, '', false, null]);
+          return (
+            r === 4 ||
+            `A list of four falsy values counted as ${T.fmt(r)}. With \`[a] -> Number\` the elements could be anything, so testing them is not something the signature permits.`
+          );
+        });
+
+        T.check('both applies the function to every element', () => {
+          const r = both((n: number) => n * 2, [1, 2, 3]);
+          return T.eq(r, [2, 4, 6]) || `both gave ${T.fmt(r)}.`;
+        });
+
+        T.check('both keeps every element, including the falsy results', () => {
+          const r = both((n: number) => n - 1, [1, 2]);
+          return (
+            T.eq(r, [0, 1]) ||
+            `both gave ${T.fmt(r)}, expected [0, 1]. The signature says \`[a] -> [b]\`, and dropping one would mean the lengths could differ.`
+          );
+        });
+
+        T.check('both actually uses the function it was given', () => {
+          const r = both((s: string) => s.length, ['ab', 'c']);
+          return T.eq(r, [2, 1]) || `both gave ${T.fmt(r)}. There is no other way to produce a \`b\` than to call the \`a -> b\` you were handed.`;
+        });
+
+        T.law('both preserves length', 60, (G) => {
+          const xs = G.ints();
+          const f = G.fn();
+          const r = both(f.f, xs);
+          return r.length === xs.length || `A list of ${xs.length} came back with ${r.length}.`;
+        });
+      },
+    },
   ],
 };

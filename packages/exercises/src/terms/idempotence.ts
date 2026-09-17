@@ -186,5 +186,151 @@ const normalizeEmail = (email) => {
         );
       },
     },
+
+    {
+      id: 'classify',
+      kind: 'code',
+      role: 'apply',
+      covers: ['not-repetition', 'the-law'],
+      title: "Tell idempotent apart from safe to repeat",
+      prompt:
+        "Write `isIdempotent`, which applies a function once and again and compares. Then classify `append`, which is perfectly safe to call as often as you like and is not idempotent. The two are not the same thing.",
+      hints: [
+        "The law is `f(f(x))` equals `f(x)`. Check it against every sample, not just one.",
+        "Compare by contents, not by identity. `snapshot` is there for that.",
+        "`append` never throws, never corrupts anything, and gives a longer list every time. Safe to retry is not the same as idempotent.",
+      ],
+      exports: ['isIdempotent', 'append', 'verdicts'],
+      starter: `const snapshot = (v) => JSON.stringify(v)
+
+// isIdempotent :: ((a -> a), [a]) -> Boolean
+const isIdempotent = (f, samples) => true
+
+// append :: [Number] -> [Number]   safe to call repeatedly, not idempotent
+const append = (xs) => xs
+
+// verdicts :: { [name]: Boolean }
+const verdicts = {
+  abs: true,
+  append: true,
+  trim: true,
+  increment: true
+}
+`,
+      solution: `const snapshot = (v) => JSON.stringify(v)
+
+// isIdempotent :: ((a -> a), [a]) -> Boolean
+const isIdempotent = (f, samples) =>
+  samples.every((x) => snapshot(f(f(x))) === snapshot(f(x)))
+
+// append :: [Number] -> [Number]   safe to call repeatedly, not idempotent
+const append = (xs) => [...xs, 0]
+
+// verdicts :: { [name]: Boolean }
+const verdicts = {
+  abs: true,
+  append: false,
+  trim: true,
+  increment: false
+}
+`,
+      broken: [
+        `const snapshot = (v) => JSON.stringify(v)
+const isIdempotent = (f, samples) => samples.every((x) => f(f(x)) === f(x))
+const append = (xs) => [...xs, 0]
+const verdicts = { abs: true, append: false, trim: true, increment: false }
+`,
+        `const snapshot = (v) => JSON.stringify(v)
+const isIdempotent = (f, samples) =>
+  samples.every((x) => snapshot(f(f(x))) === snapshot(f(x)))
+const append = (xs) => xs
+const verdicts = { abs: true, append: false, trim: true, increment: false }
+`,
+        `const snapshot = (v) => JSON.stringify(v)
+const isIdempotent = (f, samples) =>
+  samples.every((x) => snapshot(f(f(x))) === snapshot(f(x)))
+const append = (xs) => [...xs, 0]
+const verdicts = { abs: true, append: true, trim: true, increment: false }
+`,
+        `const snapshot = (v) => JSON.stringify(v)
+const isIdempotent = (f, samples) =>
+  samples.some((x) => snapshot(f(f(x))) === snapshot(f(x)))
+const append = (xs) => [...xs, 0]
+const verdicts = { abs: true, append: false, trim: true, increment: false }
+`,
+      ],
+      checks: (T, exp) => {
+        const { isIdempotent, append, verdicts } = exp;
+
+        T.check('It says yes to absolute value', () => {
+          const r = isIdempotent(Math.abs, [-3, 0, 5]);
+          return r === true || `Math.abs was reported as ${T.fmt(r)}. Taking it twice is taking it once.`;
+        });
+
+        T.check('It says no to adding one', () => {
+          const r = isIdempotent((n: number) => n + 1, [0, 1, 2]);
+          return r === false || `Adding one was reported as ${T.fmt(r)}.`;
+        });
+
+        T.check('It compares contents, not identity', () => {
+          const sorted = (xs: number[]) => [...xs].sort((a, b) => a - b);
+          const r = isIdempotent(sorted, [[3, 1, 2], [1]]);
+          return (
+            r === true ||
+            `Sorting was reported as ${T.fmt(r)}. It gives a new array each time, so comparing with === would always say no even though the contents match.`
+          );
+        });
+
+        T.check('One passing sample is not enough', () => {
+          const halfBaked = (n: number) => (n === 0 ? 0 : n + 1);
+          const r = isIdempotent(halfBaked, [0, 1, 2]);
+          return (
+            r === false ||
+            `A function that holds only at zero was reported as ${T.fmt(r)}. The law has to hold for every sample.`
+          );
+        });
+
+        T.check('append grows the list', () => {
+          const r = append([1, 2]);
+          return (
+            Array.isArray(r) && r.length === 3 ||
+            `append([1, 2]) gave ${T.fmt(r)}. It needs to actually add something, or there is nothing to classify.`
+          );
+        });
+
+        T.check('append leaves its argument alone', () => {
+          const xs = T.freeze([1, 2]);
+          append(xs);
+          return xs.length === 2 || `The original list is now ${T.fmt(xs)}.`;
+        });
+
+        T.check('append is safe to call as often as you like', () => {
+          let threw = false;
+          try {
+            append(append(append([])));
+          } catch {
+            threw = true;
+          }
+          return !threw || 'append threw when called repeatedly. It is meant to be the harmless one.';
+        });
+
+        T.check('append is not idempotent, and the verdicts say so', () => {
+          const measured = isIdempotent(append, [[], [1, 2]]);
+          if (measured !== false) return `Your own isIdempotent reports append as ${T.fmt(measured)}, and it should be false.`;
+          return (
+            verdicts.append === false ||
+            'The verdicts list append as idempotent. It is safe to retry and it changes the value every time, and those are two different properties.'
+          );
+        });
+
+        T.check('The other three verdicts are right', () => {
+          const want = { abs: true, trim: true, increment: false };
+          for (const [k, v] of Object.entries(want)) {
+            if (verdicts[k] !== v) return `verdicts.${k} is ${T.fmt(verdicts[k])}, and it should be ${v}.`;
+          }
+          return true;
+        });
+      },
+    },
   ],
 };
