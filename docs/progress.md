@@ -264,6 +264,81 @@ Back to 174KB gzip initial, with the content a separate 75KB chunk and the edito
 
 ## Phase 8 (stretch): TypeScript rungs — not started
 
+## The polish pass
+
+A walk through everything that stood between this and something you could teach from with
+total confidence. Each item was decided on its own, and this is what came of them.
+
+### Every rubric item is demonstrated twice, at least once by running code
+
+Three measurements started at bad numbers and end at zero.
+
+| | before | after |
+|---|---|---|
+| Items graded only by a choice rung | 31 | 0 |
+| Items resting on a single rung | 164 | 0 |
+| Sets sitting at the two-rung floor | 44 | 0 |
+
+211 rungs, up from 176. 984 variants graded, none of which fail by crashing. Verify enforces
+both properties, so neither can come back quietly.
+
+The role spread moved as a side effect rather than a goal: `apply` went from 24 to 70 and
+`break` from 5 to 14. That is what happens when you stop reaching for "write it" every time
+and start asking what would actually demonstrate the claim. Repairing three near-misses.
+Watching a stack overflow before fixing it. Writing the substitution test rather than reading
+about it. Finding the input where a safe rewrite stops being safe.
+
+Nine items turned out to be demonstrated already by a rung that did not declare it, and those
+`covers` lists now say so. Two of the eleven I proposed did not hold up and were dropped, which
+is the only reason that half is trustworthy.
+
+### Hints describe, they do not quote
+
+Eight rungs had a hint handing over a chunk of their own solution, the worst being a rung whose
+only hint was the answer. Rewritten to name the shape instead, and gated.
+
+The gate exempts text already visible in the starter. The first version flagged a comonad hint
+for quoting an interface printed two inches above it, and satisfying that would have made the
+hint worse.
+
+### Verify checks that the notes mention each rubric item
+
+It derives terms from each statement and wants two of them in the prose, with a `teaches`
+override for the 14 statements worded too abstractly for that to work.
+
+Three items looked like real gaps and were not. Higher-order functions never says "argument"
+and does say **takes**, in the first line. Pure function never says "impure" and instead says
+code usually breaks one requirement and not the other. Memoization never says "pure" because it
+says referentially transparent and links to it. I went looking to fix prose and found prose
+that was right and a heuristic that was wrong.
+
+### solutions.html
+
+Committed rather than hidden. The answers were never really a secret, and withholding them only
+means whoever needs one goes and finds a worse version somewhere else. Reading the answer and
+reasoning backwards is a way people learn, not a failure to try, and the page says so at the
+top rather than scolding. Verify fails if it has drifted.
+
+### docs/teaching-day.md
+
+Five sessions, about 22 concepts covered properly, a map to the other 51. Each session names
+what to open with, the demo to keep if only one survives, the questions that always come, and
+where to stop. Verify checks every rung it points at, because a renamed rung turns a demo into
+a dead end and the place you find that out is in front of a room.
+
+### Two rules I broke while writing the content
+
+Both are in CLAUDE.md and both caught me anyway, which is worth recording.
+
+A check must be safe against the mistake it is testing for. The lazy evaluation rung had an
+endless generator, and a broken variant whose `take` drains its source ate the verify worker's
+heap. Two apomorphism variants did the same by never terminating. Bounded now, and the
+apomorphism rung caps how often it will let a step be asked, so a learner whose unfold never
+stops gets a sentence instead of a frozen tab.
+
+The end-to-end suite hardcoded rung counts, so nine tests failed on content changes that were
+entirely correct. They derive from the manifest now.
+
 ## Deferred, on purpose
 
 Things that are genuinely not done, kept here rather than in a comment nobody reads. None of
