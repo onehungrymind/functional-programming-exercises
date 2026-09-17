@@ -136,6 +136,26 @@ const note = (msg) => problems.push(msg);
     note('packages/exercises/src/notes.ts has drifted from the exercise sets. Run `npm run build:manifest`.');
   }
 
+  // The teaching plan names specific rungs to demo. A renamed rung turns those into dead
+  // ends, and the place you find out is in front of a room.
+  const PLAN = join(ROOT, 'docs/teaching-day.md');
+  if (existsSync(PLAN)) {
+    const plan = readFileSync(PLAN, 'utf8');
+    for (const [, termId, rungId] of plan.matchAll(/#\/term\/([a-z0-9-]+)\/practice\/([a-z0-9-]+)/g)) {
+      const set = exerciseSets[termId];
+      if (!set) note(`docs/teaching-day.md points at "${termId}", which is not a concept.`);
+      else if (!set.rungs.some((r) => r.id === rungId)) {
+        note(
+          `docs/teaching-day.md points at ${termId}/${rungId}, which is not a rung. ` +
+            `That set has: ${set.rungs.map((r) => r.id).join(', ')}.`,
+        );
+      }
+    }
+    for (const [, termId] of plan.matchAll(/#\/term\/([a-z0-9-]+)(?![a-z0-9-/])/g)) {
+      if (!exerciseSets[termId]) note(`docs/teaching-day.md points at "${termId}", which is not a concept.`);
+    }
+  }
+
   // solutions.html is committed, so a stale copy is a wrong answer shipped to a learner.
   const SOLUTIONS = join(ROOT, 'solutions.html');
   const { solutionsHtml } = await import(new URL(`file://${join(ROOT, 'scripts/build-solutions.mjs')}`).href);

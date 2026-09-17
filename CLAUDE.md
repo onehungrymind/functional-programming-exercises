@@ -2,6 +2,8 @@
 
 Standalone practice app for the 73 concepts on [FP Jargon](https://hemanth.github.io/functional-programming-jargon/).
 Plan: `docs/fp-exercises-plan.md`. Progress log: `docs/progress.md`.
+Teaching a day of this: `docs/teaching-day.md`. It names specific rungs to demo, and verify
+fails if any of them stops existing.
 Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream site).
 
 ## Hard rules
