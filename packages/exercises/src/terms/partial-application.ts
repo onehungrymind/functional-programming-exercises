@@ -198,7 +198,7 @@ const fivePlus = partial(add, 4)
       covers: ['vs-currying', 'reuse'],
       title: "Partial application against currying, side by side",
       prompt:
-        "Both fix arguments for later, and they differ in how many you may supply at a time. Write `partial` and `curry3`, then build the same specialised function with each.",
+        "Both fix arguments for later, and they differ in how many you may supply at a time. `curry3` is written for you, because currying is the next concept and this one is about the comparison. Write `partial`, then build the same specialised function twice: `viaPartial` with yours, and `viaCurry` with the curried one.",
       hints: [
         "`partial` takes as many as you hand it, in one go, and waits for the rest.",
         "`curry3` takes exactly one at a time, three times.",
@@ -207,11 +207,15 @@ const fivePlus = partial(add, 4)
       exports: ['partial', 'curry3', 'viaPartial', 'viaCurry'],
       starter: `const vol = (l, w, h) => l * w * h
 
-// partial :: ((...a) -> r, ...a) -> ((...rest) -> r)
-const partial = (fn, ...fixed) => fn
+// Written for you. Takes exactly one argument at a time, three times over.
+//   curry3(vol)(2)(3)(4)  ->  24
+//   curry3(vol)(2, 3)     ->  ignores the 3; one at a time means one
+const curry3 = (fn) => (a) => (b) => (c) => fn(a, b, c)
 
-// curry3 :: ((a, b, c) -> r) -> (a -> b -> c -> r)
-const curry3 = (fn) => fn
+// partial :: ((...a) -> r, ...a) -> ((...rest) -> r)
+// Takes as many as you hand it, in one go, and waits for the rest.
+//   partial(vol, 2, 3)(4)  ->  24
+const partial = (fn, ...fixed) => fn
 
 // viaPartial :: Number -> Number   length 2 and width 3 fixed, in one call
 const viaPartial = (h) => vol(2, 3, h)
@@ -242,9 +246,9 @@ const viaCurry = curry3(vol)(2)(3)
 `,
         `const vol = (l, w, h) => l * w * h
 const partial = (fn, ...fixed) => (...rest) => fn(...fixed, ...rest)
-const curry3 = (fn) => (a, b, c) => fn(a, b, c)
+const curry3 = (fn) => (a) => (b) => (c) => fn(a, b, c)
 const viaPartial = partial(vol, 2, 3)
-const viaCurry = (h) => vol(2, 3, h)
+const viaCurry = (h) => curry3(vol)(2)(3)(h)
 `,
         `const vol = (l, w, h) => l * w * h
 const partial = (fn, first) => (...rest) => fn(first, ...rest)

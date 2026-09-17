@@ -277,42 +277,45 @@ const curriesBadly = (fn, wanted) => fn.length < wanted
       kind: 'code',
       role: 'break',
       covers: ['why-it-matters', 'declared-vs-call'],
-      title: "Curry by reading fn.length, then find where that breaks",
+      title: "Watch auto-currying read fn.length and get it wrong",
       prompt:
-        "Three functions, in this order, because each one uses the one before it.\n\n1. `curryN(n, fn)` gathers arguments until it has `n` of them, then calls `fn` with all of them. Given fewer, it hands back a function waiting for the rest.\n\n2. `curryByLength(fn)` does the same job, except it is not told the arity. It reads `fn.length`. Build it out of `curryN`.\n\n3. `surprise()` returns `true` if `curryByLength` gets `volDefaulted` wrong, and `false` if it handles it correctly. \"Wrong\" here means something specific: hand it two of that function's three arguments and see whether it has already called through instead of waiting for the third.\n\nThe starter has a worked example against each one.",
+        "Auto-currying has to know how many arguments to wait for, and it finds out by reading `fn.length`. `curryN` is written for you, because building it is currying's job and that comes later. You need two things.\n\n1. `curryByLength(fn)` is one line: it asks `fn` how many arguments it declares, and hands that to `curryN`.\n\n2. `surprise()` returns `true` if that goes wrong for `volDefaulted`, and `false` if it does not. Give `curryByLength` two of that function's three arguments. If you are handed a function, it is still waiting and nothing went wrong. If you are handed a number, it finished a step early.",
       hints: [
-        "Start with `curryN`. Keep the arguments you have been given so far, and each time more arrive, decide whether you now have enough to call `fn` or whether to wait again.",
-        "`curryByLength` is one line once `curryN` works. The only thing it adds is where the count comes from.",
-        "For `surprise`, apply `curryByLength` to the defaulted function, give that two arguments, and look at what you are holding. A function means it is still waiting and nothing went wrong. A number means it finished a step early.",
+        "`curryByLength` passes two things to `curryN`: how many arguments to wait for, and the function itself. Only one of those needs working out.",
+        "Every function has a `.length`. Try `vol.length` and `volDefaulted.length` in your head before you write anything.",
+        "A parameter with a default is not counted, and counting stops at the first one. So a three-parameter function with one default reports 2.",
       ],
-      exports: ['curryByLength', 'curryN', 'surprise'],
-      starter: `// Two functions to try these on. Both multiply three numbers.
-const vol = (l, w, h) => l * w * h              // vol.length is 3
-const volDefaulted = (l, w, h = 1) => l * w * h // volDefaulted.length is 2, not 3
+      exports: ['curryByLength', 'surprise'],
+      starter: `// Two functions to try things on. Both multiply three numbers.
+const vol = (l, w, h) => l * w * h
+const volDefaulted = (l, w, h = 1) => l * w * h
 
-// curryN :: (Number, Function) -> Function
-// Gathers n arguments, then calls fn with all of them.
+// Written for you. Gathers n arguments, then calls fn with all of them.
 //   curryN(3, vol)(2)(3)(4)  ->  24
-//   curryN(3, vol)(2, 3)(4)  ->  24      grouping does not matter
 //   curryN(3, vol)(2)(3)     ->  a function, still waiting for the third
-const curryN = (n, fn) => fn
+// It works by holding what it has been given so far: enough, and it calls fn;
+// not enough, and it hands back a function that resumes with the new arguments added.
+const curryN = (n, fn) => {
+  const collect = (got) =>
+    got.length >= n ? fn(...got) : (...more) => collect([...got, ...more])
+  return collect([])
+}
 
 // curryByLength :: Function -> Function
-// The same job, but it reads the arity off fn.length instead of being told.
+// The same, except nobody tells it the count. It reads it off the function.
 //   curryByLength(vol)(2)(3)(4)  ->  24
 const curryByLength = (fn) => fn
 
 // surprise :: () -> Boolean
 // true if curryByLength mishandles volDefaulted, false if it does not.
-// Give curryByLength two of volDefaulted's three arguments. If what you get back is
-// still a function, it is waiting properly and the answer is false. If it has already
-// produced a number, it stopped a step early and the answer is true.
+// Hand curryByLength two of volDefaulted's three arguments. A function back means it
+// is still waiting, so the answer is false. A number back means it stopped early,
+// so the answer is true.
 const surprise = () => false
 `,
       solution: `const vol = (l, w, h) => l * w * h
 const volDefaulted = (l, w, h = 1) => l * w * h
 
-// curryN :: (Number, Function) -> Function
 const curryN = (n, fn) => {
   const collect = (got) =>
     got.length >= n ? fn(...got) : (...more) => collect([...got, ...more])
@@ -324,67 +327,79 @@ const curryByLength = (fn) => curryN(fn.length, fn)
 
 // surprise :: () -> Boolean
 const surprise = () => {
-  // volDefaulted.length is 2, so curryByLength calls through after two arguments
-  // and hands back a number where it should still be waiting for the third.
+  // volDefaulted.length is 2, not 3, so this comes back as a number rather than
+  // a function still waiting for the height.
   const afterTwo = curryByLength(volDefaulted)(2)(3)
   return typeof afterTwo !== 'function'
 }
 `,
       broken: [
-        `const curryByLength = (fn) => curryN(fn.length, fn)
+        `const vol = (l, w, h) => l * w * h
+const volDefaulted = (l, w, h = 1) => l * w * h
 const curryN = (n, fn) => {
-  const collect = (got) => (got.length >= n ? fn(...got) : (...more) => collect([...got, ...more]))
+  const collect = (got) =>
+    got.length >= n ? fn(...got) : (...more) => collect([...got, ...more])
   return collect([])
 }
+const curryByLength = (fn) => curryN(fn.length, fn)
 const surprise = () => false
 `,
-        `const curryByLength = (fn) => curryN(fn.length + 1, fn)
+        `const vol = (l, w, h) => l * w * h
+const volDefaulted = (l, w, h = 1) => l * w * h
 const curryN = (n, fn) => {
-  const collect = (got) => (got.length >= n ? fn(...got) : (...more) => collect([...got, ...more]))
+  const collect = (got) =>
+    got.length >= n ? fn(...got) : (...more) => collect([...got, ...more])
   return collect([])
 }
+const curryByLength = (fn) => curryN(fn.length + 1, fn)
 const surprise = () => {
-  const vol = (l, w, h = 1) => l * w * h
-  // Two of three arguments in, and it has already called through.
-  return typeof curryByLength(vol)(2)(3) !== 'function'
+  const afterTwo = curryByLength(volDefaulted)(2)(3)
+  return typeof afterTwo !== 'function'
 }
 `,
-        `const curryByLength = (fn) => curryN(fn.length, fn)
+        `const vol = (l, w, h) => l * w * h
+const volDefaulted = (l, w, h = 1) => l * w * h
 const curryN = (n, fn) => {
-  const collect = (got) => (got.length > n ? fn(...got) : (...more) => collect([...got, ...more]))
+  const collect = (got) =>
+    got.length >= n ? fn(...got) : (...more) => collect([...got, ...more])
   return collect([])
 }
+const curryByLength = (fn) => fn
 const surprise = () => {
-  const vol = (l, w, h = 1) => l * w * h
-  // Two of three arguments in, and it has already called through.
-  return typeof curryByLength(vol)(2)(3) !== 'function'
+  const afterTwo = curryByLength(volDefaulted)(2)(3)
+  return typeof afterTwo !== 'function'
 }
 `,
       ],
       checks: (T, exp) => {
-        const { curryByLength, curryN, surprise } = exp;
+        const { curryByLength, surprise } = exp;
         const vol = (l: number, w: number, h: number) => l * w * h;
         const defaulted = (l: number, w: number, h = 1) => l * w * h;
 
         T.check('It curries a plain three-parameter function', () => {
           const r = curryByLength(vol)(2)(3)(4);
-          return r === 24 || `It gave ${T.fmt(r)}, expected 24.`;
+          return r === 24 || `curryByLength(vol)(2)(3)(4) gave ${T.fmt(r)}, expected 24.`;
         });
 
-        T.check('It is still waiting after two of three', () => {
-          return typeof curryByLength(vol)(2)(3) === 'function' || 'Two of three arguments should not be enough to call through.';
+        T.check('Two of three arguments is not enough to call through', () => {
+          const r = curryByLength(vol)(2)(3);
+          return (
+            typeof r === 'function' ||
+            `It gave ${T.fmt(r)} after two arguments. vol declares three, so it should still be waiting.`
+          );
         });
 
-        T.check('curryN uses the count it was handed', () => {
-          const r = curryN(3, defaulted)(2)(3)(4);
-          return r === 24 || `curryN(3, defaulted)(2)(3)(4) gave ${T.fmt(r)}, expected 24.`;
+        T.check('It reads the count rather than assuming one', () => {
+          const add = (a: number, b: number) => a + b;
+          const r = curryByLength(add)(1)(2);
+          return r === 3 || `On a two-parameter function it gave ${T.fmt(r)} after two arguments, expected 3.`;
         });
 
-        T.check('Reading fn.length gets the defaulted function wrong', () => {
+        T.check('A defaulted parameter is where it goes wrong', () => {
           const r = curryByLength(defaulted)(2)(3);
           return (
             r === 6 ||
-            `It gave ${T.fmt(r)}. A defaulted parameter is not counted, so fn.length says 2 and the third argument is never waited for. That is the answer this rung wants to see.`
+            `It gave ${T.fmt(r)}. The default means fn.length reports 2, so it called through with two arguments and let the height default to 1, giving 6. That wrong answer is what this rung wants to see.`
           );
         });
 
@@ -392,25 +407,26 @@ const surprise = () => {
           const r = surprise();
           return (
             r === true ||
-            `surprise reported ${T.fmt(r)}. Getting 6 instead of a function still waiting is the surprise, and the rung is about noticing it rather than avoiding it.`
+            `surprise reported ${T.fmt(r)}. Getting a number where a function should still be waiting is the surprise, and the rung is about catching it rather than avoiding it.`
           );
         });
 
-        T.check('curryN fixes the same case', () => {
-          const partial = curryN(3, defaulted)(2)(3);
-          return typeof partial === 'function' && partial(4) === 24 || `curryN still gave ${T.fmt(partial)} after two arguments.`;
+        T.check('surprise is measuring, not guessing', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('const surprise'));
+          return (
+            /curryByLength\s*\(/.test(body) ||
+            'surprise never calls curryByLength. Reporting true without running anything proves nothing.'
+          );
         });
 
         T.check('A rest parameter reports nothing at all', () => {
           const rested = (...xs: number[]) => xs.length;
           const r = curryByLength(rested);
-          return r === 0 || `Currying a rest-only function by its length gave ${T.fmt(r)}. fn.length is 0, so it calls through immediately with nothing.`;
-        });
-
-        T.law('curryN agrees with calling directly', 60, (G) => {
-          const a = G.int(), b = G.int(), c = G.int();
-          const r = curryN(3, vol)(a)(b)(c);
-          return r === vol(a, b, c) || `At ${T.fmt([a, b, c])}: ${T.fmt(r)} against ${T.fmt(vol(a, b, c))}.`;
+          return (
+            r === 0 ||
+            `Currying a rest-only function gave ${T.fmt(r)}. Its length is 0, so it calls through immediately with no arguments.`
+          );
         });
       },
     },

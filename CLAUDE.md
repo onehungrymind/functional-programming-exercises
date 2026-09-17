@@ -66,6 +66,11 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
   in the footer link and NOTICE.md. Write notes that continue the page, not that annotate it.
   Every set declares a `rubric` or `rubricTodo`, and either `notes`, `upstreamIsEnough`, or
   `rubricTodo`. Verify prints how many concepts are still unmigrated.
+- **A rung may only ask the learner to write things its concept or an earlier one has taught.**
+  Machinery from a later concept can appear, but handed over finished with a comment saying
+  what it does, never as something to implement. Arity is concept 3 and Currying is 14, so an
+  arity rung that wants an auto-curry built from scratch is a wall, not an exercise. The order
+  is the registration order in `packages/exercises/src/index.ts`.
 - Learning order comes from `apps/web/src/curriculum.ts`, never from the graph. The graph's
   links say "related to", not "depends on", and their direction is whichever way the upstream
   README cross-referenced. Ask it for concepts with no prerequisites and it offers comonad and

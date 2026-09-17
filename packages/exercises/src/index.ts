@@ -139,10 +139,13 @@ const ALL: ExerciseSet[] = [
   functor,
   pointedFunctor,
   constantFunctor,
-  constantMonad,
-  lift,
+  // `ap` before the things built on it, and `chain` before the things built on that.
+  // Lift is written with `ap`, and Constant Monad is a chain that refuses to chain, so
+  // both used to arrive before the operation they are about.
   applicativeFunctor,
+  lift,
   monad,
+  constantMonad,
   kleisliComposition,
   comonad,
   freeMonad,

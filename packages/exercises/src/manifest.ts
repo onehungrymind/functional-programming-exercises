@@ -83,7 +83,7 @@ export const manifest: ManifestEntry[] = [
       {
         "id": "curry-by-length",
         "role": "break",
-        "title": "Curry by reading fn.length, then find where that breaks",
+        "title": "Watch auto-currying read fn.length and get it wrong",
         "kind": "code",
         "lang": "js"
       }
@@ -1456,28 +1456,35 @@ export const manifest: ManifestEntry[] = [
     ]
   },
   {
-    "termId": "constant-monad",
+    "termId": "applicative-functor",
     "rungs": [
       {
         "id": "implement",
         "role": "implement",
-        "title": "A chain that keeps the contents",
+        "title": "Apply a wrapped function to a wrapped value",
         "kind": "code",
         "lang": "js"
       },
       {
-        "id": "break",
-        "role": "break",
-        "title": "Show that it is not a lawful monad",
+        "id": "apply",
+        "role": "apply",
+        "title": "Combine two Maybes without unwrapping either",
         "kind": "code",
         "lang": "js"
       },
       {
-        "id": "which-laws",
-        "role": "break",
-        "title": "Two laws hold, one does not",
+        "id": "typed",
+        "role": "implement",
+        "title": "Satisfy Box<A> including ap",
         "kind": "code",
-        "lang": "js"
+        "lang": "ts"
+      },
+      {
+        "id": "typed-read",
+        "role": "recognize",
+        "title": "ap is a condition on the receiver",
+        "kind": "expr",
+        "lang": "ts"
       }
     ]
   },
@@ -1515,39 +1522,6 @@ export const manifest: ManifestEntry[] = [
     ]
   },
   {
-    "termId": "applicative-functor",
-    "rungs": [
-      {
-        "id": "implement",
-        "role": "implement",
-        "title": "Apply a wrapped function to a wrapped value",
-        "kind": "code",
-        "lang": "js"
-      },
-      {
-        "id": "apply",
-        "role": "apply",
-        "title": "Combine two Maybes without unwrapping either",
-        "kind": "code",
-        "lang": "js"
-      },
-      {
-        "id": "typed",
-        "role": "implement",
-        "title": "Satisfy Box<A> including ap",
-        "kind": "code",
-        "lang": "ts"
-      },
-      {
-        "id": "typed-read",
-        "role": "recognize",
-        "title": "ap is a condition on the receiver",
-        "kind": "expr",
-        "lang": "ts"
-      }
-    ]
-  },
-  {
     "termId": "monad",
     "rungs": [
       {
@@ -1577,6 +1551,32 @@ export const manifest: ManifestEntry[] = [
         "title": "Count the layers map leaves behind",
         "kind": "expr",
         "lang": "ts"
+      }
+    ]
+  },
+  {
+    "termId": "constant-monad",
+    "rungs": [
+      {
+        "id": "implement",
+        "role": "implement",
+        "title": "A chain that keeps the contents",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "break",
+        "role": "break",
+        "title": "Show that it is not a lawful monad",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "which-laws",
+        "role": "break",
+        "title": "Two laws hold, one does not",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
