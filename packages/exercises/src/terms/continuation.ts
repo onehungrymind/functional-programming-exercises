@@ -203,5 +203,136 @@ const addThenSquare = (a, b, done) => addCps(a, b, (sum) => done(squareCps(sum, 
         },
       ],
     },
+
+    {
+      id: 'name-it',
+      kind: 'code',
+      role: 'apply',
+      covers: ['what-it-is', 'convert'],
+      title: "Write the continuation down, then intercept one",
+      prompt:
+        "In `square(add(1, n)) + 10`, the continuation of the `add` call is everything still waiting on its answer. Write that as a function. Then write `intercept`, which wraps a continuation-passing function so you can watch what flows through it.",
+      hints: [
+        "Ask what happens after `add` produces its answer. Squaring, then adding ten. That is the continuation.",
+        "The continuation takes the answer as its argument, so it starts `(x) =>`.",
+        "`intercept` gets a continuation-passing function and a spy. It hands the function a continuation of its own making, which calls the spy and then the real one.",
+      ],
+      exports: ['restOfProgram', 'intercept'],
+      starter: `const square = (x) => x * x
+// the whole program, for reference
+const program = (n) => square(add(1, n)) + 10
+
+// restOfProgram :: Number -> Number
+// everything still waiting on the answer to add(1, n)
+const restOfProgram = (x) => x
+
+// intercept :: (((a, (b -> c)) -> c), (b -> void)) -> ((a, (b -> c)) -> c)
+const intercept = (cpsFn, spy) => (value, k) => cpsFn(value, k)
+`,
+      solution: `const square = (x) => x * x
+// the whole program, for reference
+const program = (n) => square(add(1, n)) + 10
+
+// restOfProgram :: Number -> Number
+// everything still waiting on the answer to add(1, n)
+const restOfProgram = (x) => square(x) + 10
+
+// intercept :: (((a, (b -> c)) -> c), (b -> void)) -> ((a, (b -> c)) -> c)
+const intercept = (cpsFn, spy) => (value, k) =>
+  cpsFn(value, (answer) => {
+    spy(answer)
+    return k(answer)
+  })
+`,
+      broken: [
+        `const square = (x) => x * x
+const restOfProgram = (x) => square(x)
+const intercept = (cpsFn, spy) => (value, k) =>
+  cpsFn(value, (answer) => {
+    spy(answer)
+    return k(answer)
+  })
+`,
+        `const square = (x) => x * x
+const restOfProgram = (x) => square(x + 10)
+const intercept = (cpsFn, spy) => (value, k) =>
+  cpsFn(value, (answer) => {
+    spy(answer)
+    return k(answer)
+  })
+`,
+        `const square = (x) => x * x
+const restOfProgram = (x) => square(x) + 10
+const intercept = (cpsFn, spy) => (value, k) => {
+  spy(value)
+  return cpsFn(value, k)
+}
+`,
+        `const square = (x) => x * x
+const restOfProgram = (x) => square(x) + 10
+const intercept = (cpsFn, spy) => (value, k) =>
+  cpsFn(value, (answer) => {
+    spy(answer)
+  })
+`,
+      ],
+      checks: (T, exp) => {
+        const { restOfProgram, intercept } = exp;
+        const square = (x: number) => x * x;
+        const program = (n: number) => square(1 + n) + 10;
+
+        T.check('The continuation squares, then adds ten', () => {
+          const r = restOfProgram(3);
+          return r === 19 || `Handed 3, the rest of the program should square it and add ten, giving 19. It gave ${T.fmt(r)}.`;
+        });
+
+        T.law('Feeding it the answer to add reproduces the whole program', 60, (G) => {
+          const n = G.int();
+          const a = restOfProgram(1 + n);
+          const b = program(n);
+          return (
+            a === b ||
+            `At n = ${n}: handing the continuation the answer to add(1, n) gave ${T.fmt(a)}, but the program gives ${T.fmt(b)}. The continuation is everything the call was holding up, no more and no less.`
+          );
+        });
+
+        T.check('It does not do the adding itself', () => {
+          const r = restOfProgram(0);
+          return r === 10 || `Handed 0 it gave ${T.fmt(r)}, expected 10. The add has already happened by the time the continuation runs.`;
+        });
+
+        T.check('intercept still produces the right answer', () => {
+          const addCps = (v: number, k: (x: number) => unknown) => k(v + 1);
+          const r = intercept(addCps, () => {})(41, (x: number) => x);
+          return r === 42 || `Intercepting an increment of 41 gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The spy sees the answer, not the argument', () => {
+          const addCps = (v: number, k: (x: number) => unknown) => k(v + 1);
+          const seen: number[] = [];
+          intercept(addCps, (x: number) => seen.push(x))(41, (x: number) => x);
+          return (
+            T.eq(seen, [42]) ||
+            `The spy saw ${T.fmt(seen)}, expected [42]. It goes in the continuation, which is where the answer arrives, not before the call.`
+          );
+        });
+
+        T.check('The real continuation still runs', () => {
+          const addCps = (v: number, k: (x: number) => unknown) => k(v + 1);
+          let ran = false;
+          intercept(addCps, () => {})(1, () => {
+            ran = true;
+            return 0;
+          });
+          return ran || 'The continuation that was passed in never ran. Watching what flows through is not the same as swallowing it.';
+        });
+
+        T.check('Whatever the continuation returns comes back out', () => {
+          const idCps = (v: number, k: (x: number) => unknown) => k(v);
+          const r = intercept(idCps, () => {})(5, (x: number) => 'saw ' + x);
+          return r === 'saw 5' || `The result was ${T.fmt(r)}, expected 'saw 5'.`;
+        });
+      },
+    },
   ],
 };

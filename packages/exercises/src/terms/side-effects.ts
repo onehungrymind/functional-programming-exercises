@@ -209,5 +209,136 @@ const report = (items) => summarize(items)
         });
       },
     },
+
+    {
+      id: 'reads',
+      kind: 'code',
+      role: 'apply',
+      covers: ['reads-count-too', 'separate', 'push-to-edge'],
+      title: "Reading is an effect too",
+      prompt:
+        "`greeting` reaches for the clock and the dice. Split it: `greetingPure` takes everything it needs and computes, `greetingIO` does the reaching and calls it. Nothing may change about what gets produced.",
+      hints: [
+        "Reading the clock is an effect. So is `Math.random()`. Neither writes anything, and both make the same input give different answers.",
+        "Whatever the pure half needs, hand it in as an argument. Hour and roll.",
+        "The effectful half should be almost nothing: gather, then delegate.",
+      ],
+      exports: ['greetingPure', 'greetingIO'],
+      starter: `// greeting :: String -> String   as it stands today
+const greeting = (name) => {
+  const hour = new Date(Date.now()).getUTCHours()
+  const part = hour < 12 ? 'morning' : 'evening'
+  const lucky = Math.random() < 0.5 ? '!' : '.'
+  return 'good ' + part + ', ' + name + lucky
+}
+
+// greetingPure :: (Number, Number, String) -> String
+const greetingPure = (hour, roll, name) => ''
+
+// greetingIO :: String -> String
+const greetingIO = (name) => ''
+`,
+      solution: `// greetingPure :: (Number, Number, String) -> String
+const greetingPure = (hour, roll, name) => {
+  const part = hour < 12 ? 'morning' : 'evening'
+  const lucky = roll < 0.5 ? '!' : '.'
+  return 'good ' + part + ', ' + name + lucky
+}
+
+// greetingIO :: String -> String
+const greetingIO = (name) =>
+  greetingPure(new Date(Date.now()).getUTCHours(), Math.random(), name)
+`,
+      broken: [
+        `const greetingPure = (hour, roll, name) => {
+  const part = hour < 12 ? 'morning' : 'evening'
+  const lucky = Math.random() < 0.5 ? '!' : '.'
+  return 'good ' + part + ', ' + name + lucky
+}
+const greetingIO = (name) => greetingPure(new Date(Date.now()).getUTCHours(), 0, name)
+`,
+        `const greetingPure = (hour, roll, name) => {
+  const part = new Date(Date.now()).getUTCHours() < 12 ? 'morning' : 'evening'
+  const lucky = roll < 0.5 ? '!' : '.'
+  return 'good ' + part + ', ' + name + lucky
+}
+const greetingIO = (name) => greetingPure(0, Math.random(), name)
+`,
+        `const greetingPure = (hour, roll, name) => {
+  const part = hour < 12 ? 'morning' : 'evening'
+  const lucky = roll < 0.5 ? '!' : '.'
+  return 'good ' + part + ', ' + name + lucky
+}
+const greetingIO = (name) => greetingPure(0, 0, name)
+`,
+      ],
+      checks: (T, exp) => {
+        const { greetingPure, greetingIO } = exp;
+
+        T.check('The pure half reaches for nothing', () => {
+          T.effects.length = 0;
+          greetingPure(9, 0.1, 'ada');
+          return (
+            T.effects.length === 0 ||
+            `It called ${T.effects.join(' and ')}. Reading is an effect: the clock and the dice both make one input give many answers.`
+          );
+        });
+
+        T.check('The pure half still produces the right string', () => {
+          const r = greetingPure(9, 0.1, 'ada');
+          return r === 'good morning, ada!' || `greetingPure(9, 0.1, 'ada') gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The hour it is handed is the hour it uses', () => {
+          const a = greetingPure(9, 0.1, 'x');
+          const b = greetingPure(20, 0.1, 'x');
+          return (
+            a !== b && /morning/.test(a) && /evening/.test(b) ||
+            `Hour 9 gave ${T.fmt(a)} and hour 20 gave ${T.fmt(b)}. If they match, the hour is coming from somewhere else.`
+          );
+        });
+
+        T.check('The roll it is handed is the roll it uses', () => {
+          const a = greetingPure(9, 0.1, 'x');
+          const b = greetingPure(9, 0.9, 'x');
+          return a !== b || `Rolls of 0.1 and 0.9 both gave ${T.fmt(a)}. The roll is coming from somewhere else.`;
+        });
+
+        T.law('Same arguments, same answer, every time', 60, (G) => {
+          const h = G.nat() % 24;
+          const roll = G.nat() / 10;
+          const a = greetingPure(h, roll, 'ada');
+          const b = greetingPure(h, roll, 'ada');
+          return a === b || `Two calls with (${h}, ${roll}) gave ${T.fmt(a)} and ${T.fmt(b)}.`;
+        });
+
+        T.check('The effectful half does the reaching', () => {
+          T.effects.length = 0;
+          greetingIO('ada');
+          const names = T.effects.join(' ');
+          return (
+            /Date\.now|Math\.random/.test(names) ||
+            'greetingIO reached for nothing. The effects are not eliminated, only relocated, and this is where they were relocated to.'
+          );
+        });
+
+        T.check('The effectful half produces the same shape of answer', () => {
+          const r = greetingIO('ada');
+          return (
+            /^good (morning|evening), ada[!.]$/.test(r) ||
+            `greetingIO('ada') gave ${T.fmt(r)}, which does not look like what the original produced.`
+          );
+        });
+
+        T.check('The effectful half delegates rather than repeating the logic', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('const greetingIO'));
+          return (
+            /greetingPure\s*\(/.test(body) ||
+            'greetingIO does not call greetingPure. Splitting means one half computes and the other half acts, not that both do both.'
+          );
+        });
+      },
+    },
   ],
 };

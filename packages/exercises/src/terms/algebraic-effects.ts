@@ -255,5 +255,176 @@ const run = (gen, handlers) => {
         },
       ],
     },
+
+    {
+      id: 'swap',
+      kind: 'code',
+      role: 'apply',
+      covers: ['ask-do-not-do', 'swap-handlers'],
+      title: "One program, two handlers",
+      prompt:
+        "`greet` is written for you and you may not change it. Write two handler sets so the same program talks to a real environment under one and to a fixture under the other. If the program has to change, it knew too much.",
+      hints: [
+        "The program yields a request and waits. Whatever you send back becomes the value of the `yield`.",
+        "`runWith` drives the generator: yield a request, look up the handler by its type, send the answer back, repeat until done.",
+        "The two handler sets differ only in what they answer. Neither one edits `greet`.",
+      ],
+      exports: ['greet', 'runWith', 'live', 'fixture'],
+      starter: `// Do not change this. It states what it needs and knows nothing about how.
+function* greet(id) {
+  const name = yield { type: 'lookup', id }
+  yield { type: 'log', message: 'greeting ' + name }
+  return 'hello ' + name
+}
+
+// runWith :: (Handlers, Generator) -> a
+const runWith = (handlers, gen) => undefined
+
+// live :: Handlers
+const live = {}
+
+// fixture :: Handlers
+const fixture = {}
+`,
+      solution: `// Do not change this. It states what it needs and knows nothing about how.
+function* greet(id) {
+  const name = yield { type: 'lookup', id }
+  yield { type: 'log', message: 'greeting ' + name }
+  return 'hello ' + name
+}
+
+// runWith :: (Handlers, Generator) -> a
+const runWith = (handlers, gen) => {
+  let step = gen.next()
+  while (!step.done) {
+    const request = step.value
+    step = gen.next(handlers[request.type](request))
+  }
+  return step.value
+}
+
+// live :: Handlers
+const live = {
+  lookup: (request) => 'user-' + request.id,
+  log: (request) => console.log(request.message)
+}
+
+// fixture :: Handlers
+const fixture = {
+  lookup: () => 'ada',
+  log: () => undefined
+}
+`,
+      broken: [
+        `function* greet(id) {
+  const name = yield { type: 'lookup', id }
+  yield { type: 'log', message: 'greeting ' + name }
+  return 'hello ' + name
+}
+const runWith = (handlers, gen) => {
+  const step = gen.next()
+  return step.value
+}
+const live = { lookup: (r) => 'user-' + r.id, log: (r) => console.log(r.message) }
+const fixture = { lookup: () => 'ada', log: () => undefined }
+`,
+        `function* greet(id) {
+  const name = yield { type: 'lookup', id }
+  yield { type: 'log', message: 'greeting ' + name }
+  return 'hello ' + name
+}
+const runWith = (handlers, gen) => {
+  let step = gen.next()
+  while (!step.done) step = gen.next()
+  return step.value
+}
+const live = { lookup: (r) => 'user-' + r.id, log: (r) => console.log(r.message) }
+const fixture = { lookup: () => 'ada', log: () => undefined }
+`,
+        `function* greet(id) {
+  const name = yield { type: 'lookup', id }
+  yield { type: 'log', message: 'greeting ' + name }
+  return 'hello ' + name
+}
+const runWith = (handlers, gen) => {
+  let step = gen.next()
+  while (!step.done) step = gen.next(handlers[step.value.type](step.value))
+  return step.value
+}
+const live = { lookup: () => 'ada', log: () => undefined }
+const fixture = { lookup: () => 'ada', log: () => undefined }
+`,
+      ],
+      checks: (T, exp) => {
+        const { greet, runWith, live, fixture } = exp;
+
+        T.check('The program runs to a result under the fixture', () => {
+          const r = runWith(fixture, greet(1));
+          return r === 'hello ada' || `Under the fixture it gave ${T.fmt(r)}, expected 'hello ada'.`;
+        });
+
+        T.check('The same program gives a different answer under the live handlers', () => {
+          const r = runWith(live, greet(7));
+          return (
+            r === 'hello user-7' ||
+            `Under live it gave ${T.fmt(r)}, expected 'hello user-7'. The two handler sets are meant to differ.`
+          );
+        });
+
+        T.check('The two are actually different', () => {
+          const a = runWith(live, greet(7));
+          const b = runWith(fixture, greet(7));
+          return a !== b || `Both handler sets gave ${T.fmt(a)}. Swapping them should change the behaviour without touching the program.`;
+        });
+
+        T.check('Every request is answered, not just the first', () => {
+          const seen: string[] = [];
+          const watching = {
+            lookup: () => {
+              seen.push('lookup');
+              return 'ada';
+            },
+            log: () => {
+              seen.push('log');
+              return undefined;
+            },
+          };
+          runWith(watching, greet(1));
+          return T.eq(seen, ['lookup', 'log']) || `The handlers saw ${T.fmt(seen)}, expected a lookup then a log.`;
+        });
+
+        T.check('The answer is fed back into the program', () => {
+          const r = runWith({ lookup: () => 'grace', log: () => undefined }, greet(1));
+          return (
+            r === 'hello grace' ||
+            `Answering the lookup with 'grace' gave ${T.fmt(r)}. The value handed to next() becomes the value of the yield.`
+          );
+        });
+
+        T.check('The request carries what the handler needs', () => {
+          let got: unknown;
+          runWith(
+            {
+              lookup: (req: { id: number }) => {
+                got = req.id;
+                return 'x';
+              },
+              log: () => undefined,
+            },
+            greet(42),
+          );
+          return got === 42 || `The lookup handler was given ${T.fmt(got)} as the id.`;
+        });
+
+        T.check('The program still knows nothing about how', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('function* greet'), src.indexOf('const runWith'));
+          return (
+            !/console\.|fetch\(|localStorage|Math\.random|Date\.now/.test(body) ||
+            'The program reaches for something itself. Asking rather than doing is the whole point, and a program that does anything cannot be re-handled.'
+          );
+        });
+      },
+    },
   ],
 };

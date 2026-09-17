@@ -446,6 +446,13 @@ export const manifest: ManifestEntry[] = [
         "title": "What is the continuation?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "name-it",
+        "role": "apply",
+        "title": "Write the continuation down, then intercept one",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -503,6 +510,13 @@ export const manifest: ManifestEntry[] = [
         "title": "What does the program know?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "swap",
+        "role": "apply",
+        "title": "One program, two handlers",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -520,6 +534,13 @@ export const manifest: ManifestEntry[] = [
         "id": "implement",
         "role": "implement",
         "title": "Push the effects to the edge",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "reads",
+        "role": "apply",
+        "title": "Reading is an effect too",
         "kind": "code",
         "lang": "js"
       }
@@ -541,6 +562,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Treat a function as data",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "expressions",
+        "role": "apply",
+        "title": "Turn statements into expressions",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -558,6 +586,13 @@ export const manifest: ManifestEntry[] = [
         "id": "implement",
         "role": "implement",
         "title": "Freeze all the way down",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "prove-it",
+        "role": "break",
+        "title": "Prove that const promises nothing about the value",
         "kind": "code",
         "lang": "js"
       }
@@ -596,6 +631,13 @@ export const manifest: ManifestEntry[] = [
         "id": "implement",
         "role": "implement",
         "title": "Make the calls substitutable",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "the-test",
+        "role": "apply",
+        "title": "Write the substitution test",
         "kind": "code",
         "lang": "js"
       }

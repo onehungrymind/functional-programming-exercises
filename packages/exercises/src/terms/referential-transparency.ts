@@ -188,5 +188,187 @@ const firstItem = (xs) => [...xs].pop()
         });
       },
     },
+
+    {
+      id: 'the-test',
+      kind: 'code',
+      role: 'apply',
+      covers: ['substitution-test', 'what-breaks-it'],
+      title: "Write the substitution test",
+      prompt:
+        "The test is one question: could this call be replaced by its result without changing the program? Write `substitutable`, which answers it for a given function and arguments, and catches both of the things that break it.",
+      hints: [
+        "Call it more than once with the same arguments. If the answers differ, the call cannot stand in for its result.",
+        "`T.effects` is not available to you here. Use the `watch` helper in the starter: it records reads of the clock and the dice while your callback runs.",
+        "The other breach is writing to what it was given. Compare the arguments before and after.",
+      ],
+      exports: ['substitutable'],
+      starter: `// watch :: (() -> a) -> { value, touchedOutside }
+// Records whether the clock or the dice were read while fn ran.
+const watch = (fn) => {
+  const realNow = Date.now
+  const realRandom = Math.random
+  let touchedOutside = false
+  Date.now = () => { touchedOutside = true; return realNow() }
+  Math.random = () => { touchedOutside = true; return realRandom() }
+  try {
+    return { value: fn(), touchedOutside }
+  } finally {
+    Date.now = realNow
+    Math.random = realRandom
+  }
+}
+
+const snapshot = (v) => JSON.stringify(v)
+
+// substitutable :: ((...a) -> b, [a]) -> Boolean
+const substitutable = (fn, args) => true
+`,
+      solution: `// watch :: (() -> a) -> { value, touchedOutside }
+// Records whether the clock or the dice were read while fn ran.
+const watch = (fn) => {
+  const realNow = Date.now
+  const realRandom = Math.random
+  let touchedOutside = false
+  Date.now = () => { touchedOutside = true; return realNow() }
+  Math.random = () => { touchedOutside = true; return realRandom() }
+  try {
+    return { value: fn(), touchedOutside }
+  } finally {
+    Date.now = realNow
+    Math.random = realRandom
+  }
+}
+
+const snapshot = (v) => JSON.stringify(v)
+
+// substitutable :: ((...a) -> b, [a]) -> Boolean
+const substitutable = (fn, args) => {
+  const before = snapshot(args)
+  const first = watch(() => fn(...args))
+  const second = watch(() => fn(...args))
+  if (first.touchedOutside || second.touchedOutside) return false
+  if (snapshot(args) !== before) return false
+  return snapshot(first.value) === snapshot(second.value)
+}
+`,
+      broken: [
+        `const watch = (fn) => {
+  const realNow = Date.now
+  const realRandom = Math.random
+  let touchedOutside = false
+  Date.now = () => { touchedOutside = true; return realNow() }
+  Math.random = () => { touchedOutside = true; return realRandom() }
+  try {
+    return { value: fn(), touchedOutside }
+  } finally {
+    Date.now = realNow
+    Math.random = realRandom
+  }
+}
+const snapshot = (v) => JSON.stringify(v)
+const substitutable = (fn, args) => {
+  const first = watch(() => fn(...args))
+  const second = watch(() => fn(...args))
+  return snapshot(first.value) === snapshot(second.value)
+}
+`,
+        `const watch = (fn) => {
+  const realNow = Date.now
+  const realRandom = Math.random
+  let touchedOutside = false
+  Date.now = () => { touchedOutside = true; return realNow() }
+  Math.random = () => { touchedOutside = true; return realRandom() }
+  try {
+    return { value: fn(), touchedOutside }
+  } finally {
+    Date.now = realNow
+    Math.random = realRandom
+  }
+}
+const snapshot = (v) => JSON.stringify(v)
+const substitutable = (fn, args) => {
+  const before = snapshot(args)
+  const first = watch(() => fn(...args))
+  if (first.touchedOutside) return false
+  return snapshot(args) === before
+}
+`,
+        `const watch = (fn) => {
+  const realNow = Date.now
+  const realRandom = Math.random
+  let touchedOutside = false
+  Date.now = () => { touchedOutside = true; return realNow() }
+  Math.random = () => { touchedOutside = true; return realRandom() }
+  try {
+    return { value: fn(), touchedOutside }
+  } finally {
+    Date.now = realNow
+    Math.random = realRandom
+  }
+}
+const snapshot = (v) => JSON.stringify(v)
+const substitutable = (fn, args) => true
+`,
+      ],
+      checks: (T, exp) => {
+        const substitutable = exp.substitutable;
+
+        T.check('A pure call passes the test', () => {
+          const r = substitutable((a: number, b: number) => a + b, [1, 2]);
+          return r === true || `Adding 1 and 2 was reported as ${T.fmt(r)}. That call can stand in for 3 anywhere.`;
+        });
+
+        T.check('A call that reads the clock fails', () => {
+          const r = substitutable(() => Date.now(), []);
+          return r === false || `A call reading the clock was reported as ${T.fmt(r)}. It gives a different answer each time, so it cannot be replaced by any one of them.`;
+        });
+
+        T.check('A call that rolls the dice fails', () => {
+          const r = substitutable(() => Math.random(), []);
+          return r === false || `A call reading the dice was reported as ${T.fmt(r)}.`;
+        });
+
+        T.check('A call that writes to its argument fails', () => {
+          const push = (xs: number[]) => {
+            xs.push(1);
+            return xs.length;
+          };
+          const r = substitutable(push, [[]]);
+          return (
+            r === false ||
+            `A call that changes what it was given was reported as ${T.fmt(r)}. Replacing it with its result would lose the change, so the program would not be the same.`
+          );
+        });
+
+        T.check('Reading an argument is fine', () => {
+          const r = substitutable((xs: number[]) => xs.length, [[1, 2, 3]]);
+          return r === true || `Reading the length was reported as ${T.fmt(r)}.`;
+        });
+
+        T.check('Returning a fresh object is fine', () => {
+          const r = substitutable((a: number) => ({ a }), [1]);
+          return r === true || `Returning a new object was reported as ${T.fmt(r)}. Two equal objects are the same answer.`;
+        });
+
+        T.check('A counter that changes on every call fails', () => {
+          let n = 0;
+          const r = substitutable(() => ++n, []);
+          return r === false || `A function with a running count was reported as ${T.fmt(r)}.`;
+        });
+
+        T.check('It calls the function more than once', () => {
+          let calls = 0;
+          substitutable(() => {
+            calls += 1;
+            return 1;
+          }, []);
+          return (
+            calls >= 2 ||
+            `The function was called ${calls} time${calls === 1 ? '' : 's'}. One call cannot tell you whether the answer is stable.`
+          );
+        });
+      },
+    },
   ],
 };

@@ -209,5 +209,139 @@ const apply = (name, a, b) => {
         });
       },
     },
+
+    {
+      id: 'expressions',
+      kind: 'code',
+      role: 'apply',
+      covers: ['expression-not-statement', 'functions-as-data'],
+      title: "Turn statements into expressions",
+      prompt:
+        "Only an expression produces a value, which is why a statement cannot be passed to anything. Rewrite `label` and `rate` as expressions, then use them inline in `describe` without a single intermediate binding.",
+      hints: [
+        "`if` is a statement. The ternary is its expression form, and it evaluates to something.",
+        "`switch` is a statement too. A lookup object is data, and indexing it is an expression.",
+        "`describe` should read as one expression: nothing assigned, nothing returned early.",
+      ],
+      exports: ['label', 'rate', 'describe'],
+      starter: `// label :: Number -> String
+const label = (n) => {
+  if (n > 0) {
+    return 'positive'
+  } else if (n < 0) {
+    return 'negative'
+  } else {
+    return 'zero'
+  }
+}
+
+// rate :: String -> Number
+const rate = (tier) => {
+  switch (tier) {
+    case 'gold': return 0.2
+    case 'silver': return 0.1
+    default: return 0
+  }
+}
+
+// describe :: (Number, String) -> String
+const describe = (n, tier) => {
+  const l = label(n)
+  const r = rate(tier)
+  return l + ' at ' + r
+}
+`,
+      solution: `// label :: Number -> String
+const label = (n) => (n > 0 ? 'positive' : n < 0 ? 'negative' : 'zero')
+
+// rate :: String -> Number
+const rates = { gold: 0.2, silver: 0.1 }
+const rate = (tier) => rates[tier] ?? 0
+
+// describe :: (Number, String) -> String
+const describe = (n, tier) => label(n) + ' at ' + rate(tier)
+`,
+      broken: [
+        `const label = (n) => {
+  if (n > 0) return 'positive'
+  if (n < 0) return 'negative'
+  return 'zero'
+}
+const rates = { gold: 0.2, silver: 0.1 }
+const rate = (tier) => rates[tier] ?? 0
+const describe = (n, tier) => label(n) + ' at ' + rate(tier)
+`,
+        `const label = (n) => (n > 0 ? 'positive' : n < 0 ? 'negative' : 'zero')
+const rate = (tier) => {
+  switch (tier) {
+    case 'gold': return 0.2
+    case 'silver': return 0.1
+    default: return 0
+  }
+}
+const describe = (n, tier) => label(n) + ' at ' + rate(tier)
+`,
+        `const label = (n) => (n > 0 ? 'positive' : 'negative')
+const rates = { gold: 0.2, silver: 0.1 }
+const rate = (tier) => rates[tier] ?? 0
+const describe = (n, tier) => label(n) + ' at ' + rate(tier)
+`,
+        `const label = (n) => (n > 0 ? 'positive' : n < 0 ? 'negative' : 'zero')
+const rates = { gold: 0.2, silver: 0.1 }
+const rate = (tier) => rates[tier]
+const describe = (n, tier) => label(n) + ' at ' + rate(tier)
+`,
+      ],
+      checks: (T, exp) => {
+        const { label, rate, describe } = exp;
+
+        T.check('label covers all three cases', () => {
+          const got = [label(5), label(-5), label(0)];
+          return T.eq(got, ['positive', 'negative', 'zero']) || `label gave ${T.fmt(got)} for 5, -5 and 0.`;
+        });
+
+        T.check('rate looks up the tiers it knows', () => {
+          const got = [rate('gold'), rate('silver')];
+          return T.eq(got, [0.2, 0.1]) || `rate gave ${T.fmt(got)} for gold and silver.`;
+        });
+
+        T.check('An unknown tier still produces a number', () => {
+          const r = rate('bronze');
+          return r === 0 || `rate('bronze') gave ${T.fmt(r)}. A missing key gives undefined, which is not a value you meant.`;
+        });
+
+        T.check('describe puts the two together', () => {
+          const r = describe(5, 'gold');
+          return r === 'positive at 0.2' || `describe(5, 'gold') gave ${T.fmt(r)}.`;
+        });
+
+        T.check('No if or switch statement is left', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+          const found = /\bif\s*\(/.test(src) ? 'if' : /\bswitch\s*\(/.test(src) ? 'switch' : '';
+          return (
+            !found ||
+            `There is still an \`${found}\` statement. A statement does something; only an expression evaluates to a value, which is why one can be passed along and the other cannot.`
+          );
+        });
+
+        T.check('describe holds no intermediate bindings', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('const describe'));
+          return (
+            !/\b(const|let|var)\s+\w+\s*=/.test(body.slice(body.indexOf('=>'))) ||
+            'describe still assigns to something along the way. Once both halves are expressions they can be written where they are used.'
+          );
+        });
+
+        T.check('rate is backed by data rather than branching', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          return (
+            /\{\s*gold\s*:/.test(src) || /'gold'\s*:/.test(src) || /"gold"\s*:/.test(src)
+              ? true
+              : 'The tiers are still written as control flow. Putting them in an object makes them data, which you can then look up, extend, or hand to something else.'
+          );
+        });
+      },
+    },
   ],
 };

@@ -209,5 +209,162 @@ const deepFreeze = (o) => {
         });
       },
     },
+
+    {
+      id: 'prove-it',
+      kind: 'code',
+      role: 'break',
+      covers: ['binding-not-value', 'freeze-is-shallow'],
+      title: "Prove that const promises nothing about the value",
+      prompt:
+        "`const` stops the binding being reassigned and says nothing at all about what it points at. Demonstrate that: write `mutateThrough`, which changes a const-bound object without reassigning anything, and `reassign`, which reports what happens when you do try.",
+      hints: [
+        "`const config = {...}` then `config.retries = 9` is legal. The binding did not move; the object did.",
+        "`reassign` should try the assignment inside a try/catch and report the error's name, because that is the thing `const` actually prevents.",
+        "`shallowGap` is about `Object.freeze` stopping at one level. Write to something one level down.",
+      ],
+      exports: ['mutateThrough', 'reassign', 'shallowGap'],
+      starter: `// mutateThrough :: () -> Object   change a const-bound object in place
+const mutateThrough = () => {
+  const config = { retries: 3 }
+  return config
+}
+
+// reassign :: () -> String   the name of the error you get for reassigning
+const reassign = () => 'none'
+
+// shallowGap :: () -> Boolean   did the nested write get through a freeze?
+const shallowGap = () => false
+`,
+      solution: `// mutateThrough :: () -> Object   change a const-bound object in place
+const mutateThrough = () => {
+  const config = { retries: 3 }
+  config.retries = 9
+  return config
+}
+
+// reassign :: () -> String   the name of the error you get for reassigning
+const reassign = () => {
+  const config = { retries: 3 }
+  try {
+    // eslint-disable-next-line no-const-assign
+    eval('config = { retries: 9 }')
+    return 'none'
+  } catch (e) {
+    return e.name
+  }
+}
+
+// shallowGap :: () -> Boolean   did the nested write get through a freeze?
+const shallowGap = () => {
+  const config = Object.freeze({ limits: { retries: 3 } })
+  config.limits.retries = 9
+  return config.limits.retries === 9
+}
+`,
+      broken: [
+        `const mutateThrough = () => {
+  const config = { retries: 3 }
+  return config
+}
+const reassign = () => {
+  const config = { retries: 3 }
+  try {
+    eval('config = { retries: 9 }')
+    return 'none'
+  } catch (e) {
+    return e.name
+  }
+}
+const shallowGap = () => {
+  const config = Object.freeze({ limits: { retries: 3 } })
+  config.limits.retries = 9
+  return config.limits.retries === 9
+}
+`,
+        `const mutateThrough = () => {
+  const config = { retries: 3 }
+  config.retries = 9
+  return config
+}
+const reassign = () => 'none'
+const shallowGap = () => {
+  const config = Object.freeze({ limits: { retries: 3 } })
+  config.limits.retries = 9
+  return config.limits.retries === 9
+}
+`,
+        `const mutateThrough = () => {
+  const config = { retries: 3 }
+  config.retries = 9
+  return config
+}
+const reassign = () => {
+  const config = { retries: 3 }
+  try {
+    eval('config = { retries: 9 }')
+    return 'none'
+  } catch (e) {
+    return e.name
+  }
+}
+const shallowGap = () => false
+`,
+      ],
+      checks: (T, exp) => {
+        const { mutateThrough, reassign, shallowGap } = exp;
+
+        T.check('The const-bound object really did change', () => {
+          const r = mutateThrough();
+          return (
+            r && r.retries === 9 ||
+            `It came back as ${T.fmt(r)}. \`const\` did not stop this, and the rung wants to see that it did not.`
+          );
+        });
+
+        T.check('Nothing was reassigned to get there', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('const mutateThrough'), src.indexOf('const reassign'));
+          return (
+            !/^\s*config\s*=/m.test(body) ||
+            'The binding itself was reassigned, which is the one thing const does prevent. Reach through it instead.'
+          );
+        });
+
+        T.check('Reassigning the binding is what throws', () => {
+          const r = reassign();
+          return (
+            r === 'TypeError' ||
+            `Reassigning reported ${T.fmt(r)}, expected 'TypeError'. That is the entire promise: the name keeps pointing at the same thing.`
+          );
+        });
+
+        T.check('The two halves disagree, which is the lesson', () => {
+          const mutated = mutateThrough().retries === 9;
+          const threw = reassign() !== 'none';
+          return (
+            (mutated && threw) ||
+            `Writing through gave ${mutated ? 'a change' : 'no change'} and reassigning ${threw ? 'threw' : 'did not throw'}. One is allowed and one is not, and that gap is what const actually means.`
+          );
+        });
+
+        T.check('A freeze does not reach the second level', () => {
+          const r = shallowGap();
+          return (
+            r === true ||
+            `shallowGap reported ${T.fmt(r)}. Object.freeze protects the object you hand it and nothing it points at, so the nested write goes through.`
+          );
+        });
+
+        T.check('The freeze is actually applied', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const body = src.slice(src.indexOf('const shallowGap'));
+          return (
+            /Object\.freeze\s*\(/.test(body) ||
+            'Nothing was frozen, so the write going through proves nothing. Freeze the outer object, then write one level down.'
+          );
+        });
+      },
+    },
   ],
 };
