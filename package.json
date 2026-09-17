@@ -15,7 +15,8 @@
     "verify": "tsx scripts/verify-exercises.mjs",
     "sync:jargons": "node scripts/sync-jargons.mjs",
     "test:e2e": "playwright test --config apps/web/playwright.config.ts",
-    "build:manifest": "tsx scripts/build-manifest.mjs"
+    "build:manifest": "tsx scripts/build-manifest.mjs",
+    "build:solutions": "tsx scripts/build-solutions.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

@@ -1,23 +1,26 @@
 #!/usr/bin/env node
 /**
- * Generates a standalone answer key for every rung in the repo.
+ * Generates solutions.html: every rubric, rung, solution, hint and failing variant on one page.
  *
- * This is an authoring tool, not something a learner should see. It exists because the only
- * way to judge whether the content is any good is to read the rubric, the rungs and the
- * solutions side by side, and doing that across 73 source files means never actually doing it.
+ * Two audiences, one page. For whoever is writing the content, it is the only way to read the
+ * rubric next to the rungs next to the answers, which is how you find out whether a concept
+ * hangs together. For a learner, it is the back of the book.
  *
- * Generated rather than written, so it cannot go stale: run it again after changing a set.
- * The output is deliberately gitignored. It contains every solution, and a committed copy is
- * a file that eventually gets served.
+ * The answers are not withheld. Working a problem out unaided is the better path and most
+ * people should take it, but some of us read the answer first and reason backwards to why it
+ * is the answer, and that is a real way to learn rather than a failure to try. Hiding it would
+ * only mean the people who need it most go and find a worse version elsewhere.
  *
- * Usage: npx tsx scripts/build-answer-key.mjs [outfile]
+ * Generated rather than written, so it cannot drift: `npm run verify` fails if it is stale.
+ *
+ * Usage: npx tsx scripts/build-solutions.mjs [outfile]
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = resolve(process.argv[2] ?? join(ROOT, 'answer-key.html'));
+const OUT = resolve(process.argv[2] ?? join(ROOT, 'solutions.html'));
 
 const { exerciseSets, exerciseTermIds } = await import(
   new URL(`file://${join(ROOT, 'packages/exercises/src/index.ts')}`).href
@@ -233,8 +236,7 @@ const html = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<title>Answer Key</title>
+<title>Solutions</title>
 <style>
 :root {
   --bg: #121212; --panel: #1a1a19; --card: #1f1f1f; --card2: #262624;
@@ -371,14 +373,16 @@ ul.flat { list-style: none; margin: 0; padding: 0; }
 <body>
 <div class="wrap">
   <aside class="side">
-    <h1>Answer Key</h1>
+    <h1>Solutions</h1>
     <input id="q" type="search" placeholder="filter concepts" autocomplete="off">
     <nav>${nav}</nav>
   </aside>
   <main>
-    <p class="warning"><b>Authoring copy.</b> Every solution, every hint, and every variant that
-    is meant to fail. Regenerate with <code>npx tsx scripts/build-answer-key.mjs</code> after
-    changing a set. It is gitignored on purpose: do not commit it or serve it next to the app.</p>
+    <p class="warning"><b>The back of the book.</b> Every rubric, prompt, hint, solution, and
+    every variant that is meant to fail. Working a rung out unaided is the better path and most
+    of the time it is worth the struggle. But reading the answer and reasoning backwards to why
+    it is the answer is also how people learn, so it is here rather than withheld. Regenerate
+    with <code>npm run build:solutions</code>.</p>
 
     <dl class="stats">
       ${stat('Concepts', totals.concepts)}
@@ -416,9 +420,15 @@ ul.flat { list-style: none; margin: 0; padding: 0; }
 </html>
 `;
 
-writeFileSync(OUT, html);
-console.log(
-  `\n  wrote ${relative(ROOT, OUT)} (${Math.round(Buffer.byteLength(html) / 1024)} kB)\n` +
-    `  ${totals.concepts} concepts, ${totals.rungs} rungs, ${totals.variants} failing variants\n` +
-    `  ${totals.weak} rubric items are graded by recognition only, ${totals.single} by a single rung\n`,
-);
+/** Exported so `npm run verify` can re-render and compare without writing anything. */
+export const solutionsHtml = html;
+
+// Only writes when run as a script. Imported, it just hands over the rendered page.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  writeFileSync(OUT, html);
+  console.log(
+    `\n  wrote ${relative(ROOT, OUT)} (${Math.round(Buffer.byteLength(html) / 1024)} kB)\n` +
+      `  ${totals.concepts} concepts, ${totals.rungs} rungs, ${totals.variants} failing variants\n` +
+      `  ${totals.weak} rubric items are graded by recognition only, ${totals.single} by a single rung\n`,
+  );
+}

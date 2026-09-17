@@ -135,6 +135,18 @@ const note = (msg) => problems.push(msg);
   if (JSON.stringify(notesFromSets) !== JSON.stringify(conceptNotes)) {
     note('packages/exercises/src/notes.ts has drifted from the exercise sets. Run `npm run build:manifest`.');
   }
+
+  // solutions.html is committed, so a stale copy is a wrong answer shipped to a learner.
+  const SOLUTIONS = join(ROOT, 'solutions.html');
+  const { solutionsHtml } = await import(new URL(`file://${join(ROOT, 'scripts/build-solutions.mjs')}`).href);
+  const onDisk = existsSync(SOLUTIONS) ? readFileSync(SOLUTIONS, 'utf8') : null;
+  if (onDisk !== solutionsHtml) {
+    note(
+      onDisk === null
+        ? 'solutions.html is missing. Run `npm run build:solutions`.'
+        : 'solutions.html has drifted from the exercise sets. Run `npm run build:solutions`.',
+    );
+  }
 }
 
 let codeRungs = 0;
