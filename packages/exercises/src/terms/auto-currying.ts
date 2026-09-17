@@ -189,5 +189,29 @@ const curry = (fn) => {
         },
       ],
     },
+
+    {
+      id: 'arity',
+      kind: 'expr',
+      role: 'recognize',
+      covers: ['reads-length', 'waits'],
+      title: "Predict what arity each definition reports",
+      prompt:
+        "Auto-currying decides when to call through by reading `fn.length`. Type an array of the four lengths, in order. Getting this right is the difference between using it and being surprised by it.",
+      hints: [
+        "`fn.length` counts the parameters before the first one with a default, and stops there.",
+        "A rest parameter is not counted at all.",
+        "Destructuring one object still counts as one parameter.",
+      ],
+      context: `const plain   = (a, b, c) => a + b + c
+const defaulted = (a, b, c = 1) => a + b + c
+const rested  = (a, ...rest) => a
+const destructured = ({ x, y }) => x + y
+`,
+      placeholder: "[_, _, _, _]",
+      expect: [3,2,1,1],
+      solution: "[plain.length, defaulted.length, rested.length, destructured.length]",
+      broken: ["[3, 3, 2, 2]", "[3, 3, 1, 1]", "[3, 2, 2, 1]", "[3, 2, 1, 2]"],
+    },
   ],
 };

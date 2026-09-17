@@ -170,5 +170,97 @@ const process = (ns) => ns.map(double).filter(isBig).map(label)
         });
       },
     },
+
+    {
+      id: 'apply',
+      kind: 'code',
+      role: 'apply',
+      covers: ['function-as-value', 'inline-it'],
+      title: "Pass functions around without naming them",
+      prompt:
+        "A lambda is a function used as a value. Build `pipeline` from a list of inline lambdas, and `twice`, which takes a function and applies it two times.",
+      hints: [
+        "`twice` receives a function as an argument. Call it, then call it again on the result.",
+        "`steps` is an array whose elements are functions. Nothing stops a function being an array element.",
+        "`pipeline` runs the steps left to right over a starting value. `reduce` already has that shape.",
+      ],
+      exports: ['twice', 'steps', 'pipeline'],
+      starter: `// twice :: (a -> a) -> a -> a
+const twice = (f) => (x) => x
+
+// steps :: [Number -> Number]   add one, then double, then subtract three
+const steps = []
+
+// pipeline :: ([a -> a], a) -> a
+const pipeline = (fns, x) => x
+`,
+      solution: `// twice :: (a -> a) -> a -> a
+const twice = (f) => (x) => f(f(x))
+
+// steps :: [Number -> Number]   add one, then double, then subtract three
+const steps = [(n) => n + 1, (n) => n * 2, (n) => n - 3]
+
+// pipeline :: ([a -> a], a) -> a
+const pipeline = (fns, x) => fns.reduce((acc, f) => f(acc), x)
+`,
+      broken: [
+        `const twice = (f) => (x) => f(x)
+const steps = [(n) => n + 1, (n) => n * 2, (n) => n - 3]
+const pipeline = (fns, x) => fns.reduce((acc, f) => f(acc), x)
+`,
+        `const twice = (f) => (x) => f(f(x))
+const steps = [(n) => n + 1, (n) => n * 2, (n) => n - 3]
+const pipeline = (fns, x) => fns.reduceRight((acc, f) => f(acc), x)
+`,
+        `const twice = (f) => (x) => f(f(x))
+const steps = [(n) => n - 3, (n) => n * 2, (n) => n + 1]
+const pipeline = (fns, x) => fns.reduce((acc, f) => f(acc), x)
+`,
+      ],
+      checks: (T, exp) => {
+        const { twice, steps, pipeline } = exp;
+
+        T.check('twice takes a function and uses it as a value', () => {
+          const r = twice((n: number) => n + 1)(0);
+          return r === 2 || `Applying an increment twice to 0 gave ${T.fmt(r)}. It has to run the function it was handed, then run it again.`;
+        });
+
+        T.law('twice is the function applied two times, whatever the function', 60, (G) => {
+          const f = G.fn();
+          const n = G.int();
+          const r = twice(f.f)(n);
+          return r === f.f(f.f(n)) || `With ${f.name} at ${n}: got ${T.fmt(r)}, expected ${T.fmt(f.f(f.f(n)))}.`;
+        });
+
+        T.check('steps is a list of three functions', () => {
+          if (!Array.isArray(steps)) return `steps is ${T.fmt(steps)}, and it should be an array.`;
+          if (steps.length !== 3) return `steps has ${steps.length} entries, expected 3.`;
+          const bad = steps.findIndex((f) => typeof f !== 'function');
+          return bad === -1 || `Entry ${bad} is ${T.fmt(steps[bad])}, not a function. A function is a value like any other.`;
+        });
+
+        T.check('None of the steps was given a name first', () => {
+          return (
+            !/const\s+(addOne|double|subtractThree|minusThree)\b/.test(T.src) ||
+            'The steps were declared as named helpers and then referenced. Write them inline, which is the whole point of a lambda.'
+          );
+        });
+
+        T.check('pipeline runs the steps left to right', () => {
+          const r = pipeline(steps, 5);
+          return r === 9 || `Starting at 5, adding one gives 6, doubling gives 12, subtracting three gives 9. The pipeline gave ${T.fmt(r)}.`;
+        });
+
+        T.check('pipeline works on any list of functions', () => {
+          const r = pipeline([(s: string) => s + '!', (s: string) => s.toUpperCase()], 'hi');
+          return r === 'HI!' || `Appending then upper-casing 'hi' gave ${T.fmt(r)}, expected 'HI!'.`;
+        });
+
+        T.check('An empty pipeline gives the value back', () => {
+          const r = pipeline([], 7);
+          return r === 7 || `pipeline([], 7) gave ${T.fmt(r)}.`;
+        });
+      },
+    },
   ],
 };

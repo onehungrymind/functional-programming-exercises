@@ -209,5 +209,174 @@ const breaksOn = (fn, inputs) =>
         });
       },
     },
+
+    {
+      id: 'widen',
+      kind: 'code',
+      role: 'apply',
+      covers: ['spot-them', 'survey', 'three-failures'],
+      title: "Survey three functions, then make them total",
+      prompt:
+        "`probe` runs a function over a list of inputs and collects the ones it is not defined for, without dying on the first throw. Then make `safeHead`, `safeDiv` and `safeParse` total by widening what they return.",
+      hints: [
+        "`probe` has to survive a throw, so each call needs its own try/catch. Collect the input, not the error.",
+        "A value that is `undefined`, `NaN`, or a throw all count as not defined for that input.",
+        "Widening means every input gets an answer. `null` for the missing case is enough here, as long as nothing throws and nothing comes back `undefined` or `NaN`.",
+      ],
+      exports: ['probe', 'safeHead', 'safeDiv', 'safeParse'],
+      starter: `// probe :: ((a -> b), [a]) -> [a]   the inputs it is not defined for
+const probe = (fn, inputs) => []
+
+// safeHead :: [a] -> a | null
+const safeHead = (xs) => xs[0]
+
+// safeDiv :: (Number, Number) -> Number | null
+const safeDiv = (a, b) => a / b
+
+// safeParse :: String -> Number | null
+const safeParse = (s) => Number(s)
+`,
+      solution: `// probe :: ((a -> b), [a]) -> [a]   the inputs it is not defined for
+const probe = (fn, inputs) =>
+  inputs.filter((x) => {
+    try {
+      const r = fn(x)
+      return r === undefined || (typeof r === 'number' && Number.isNaN(r))
+    } catch {
+      return true
+    }
+  })
+
+// safeHead :: [a] -> a | null
+const safeHead = (xs) => (xs.length ? xs[0] : null)
+
+// safeDiv :: (Number, Number) -> Number | null
+const safeDiv = (a, b) => (b === 0 ? null : a / b)
+
+// safeParse :: String -> Number | null
+const safeParse = (s) => (Number.isNaN(Number(s)) ? null : Number(s))
+`,
+      broken: [
+        `const probe = (fn, inputs) => {
+  try {
+    return inputs.filter((x) => fn(x) === undefined)
+  } catch {
+    return []
+  }
+}
+const safeHead = (xs) => (xs.length ? xs[0] : null)
+const safeDiv = (a, b) => (b === 0 ? null : a / b)
+const safeParse = (s) => (Number.isNaN(Number(s)) ? null : Number(s))
+`,
+        `const probe = (fn, inputs) =>
+  inputs.filter((x) => {
+    try {
+      const r = fn(x)
+      return r === undefined || (typeof r === 'number' && Number.isNaN(r))
+    } catch {
+      return true
+    }
+  })
+const safeHead = (xs) => xs[0]
+const safeDiv = (a, b) => (b === 0 ? null : a / b)
+const safeParse = (s) => (Number.isNaN(Number(s)) ? null : Number(s))
+`,
+        `const probe = (fn, inputs) =>
+  inputs.filter((x) => {
+    try {
+      fn(x)
+      return false
+    } catch {
+      return true
+    }
+  })
+const safeHead = (xs) => (xs.length ? xs[0] : null)
+const safeDiv = (a, b) => (b === 0 ? null : a / b)
+const safeParse = (s) => (Number.isNaN(Number(s)) ? null : Number(s))
+`,
+        `const probe = (fn, inputs) =>
+  inputs.filter((x) => {
+    try {
+      const r = fn(x)
+      return r === undefined || (typeof r === 'number' && Number.isNaN(r))
+    } catch {
+      return true
+    }
+  })
+const safeHead = (xs) => (xs.length ? xs[0] : null)
+const safeDiv = (a, b) => a / b
+const safeParse = (s) => (Number.isNaN(Number(s)) ? null : Number(s))
+`,
+      ],
+      checks: (T, exp) => {
+        const { probe, safeHead, safeDiv, safeParse } = exp;
+
+        T.check('probe survives a function that throws', () => {
+          const boom = (n: number) => {
+            if (n === 2) throw new Error('nope');
+            return n;
+          };
+          let r;
+          try {
+            r = probe(boom, [1, 2, 3]);
+          } catch (e) {
+            return `probe let the throw escape: ${(e as Error).message}. Each call needs its own guard, or the survey dies on the first bad input.`;
+          }
+          return T.eq(r, [2]) || `probe gave ${T.fmt(r)}, expected [2].`;
+        });
+
+        T.check('probe keeps going after a throw', () => {
+          const boom = (n: number) => {
+            if (n % 2 === 0) throw new Error('even');
+            return n;
+          };
+          const r = probe(boom, [1, 2, 3, 4]);
+          return T.eq(r, [2, 4]) || `probe gave ${T.fmt(r)}, expected [2, 4]. It stopped at the first one.`;
+        });
+
+        T.check('probe counts undefined as not defined', () => {
+          const half = (n: number) => (n % 2 === 0 ? n / 2 : undefined);
+          const r = probe(half, [1, 2, 3, 4]);
+          return T.eq(r, [1, 3]) || `probe gave ${T.fmt(r)}, expected [1, 3]. A silent undefined is a gap too.`;
+        });
+
+        T.check('probe counts NaN as not defined', () => {
+          const r = probe((s: string) => Number(s), ['1', 'x', '3']);
+          return T.eq(r, ['x']) || `probe gave ${T.fmt(r)}, expected ['x'].`;
+        });
+
+        T.check('probe finds nothing wrong with a total function', () => {
+          const r = probe((n: number) => n * 2, [1, 2, 3]);
+          return T.eq(r, []) || `probe gave ${T.fmt(r)} for a function defined everywhere.`;
+        });
+
+        T.check('safeHead has an answer for the empty list', () => {
+          const r = safeHead([]);
+          return r === null || `safeHead([]) gave ${T.fmt(r)}. Widening means every input gets an answer.`;
+        });
+
+        T.check('safeHead still gives the head', () => {
+          return safeHead([4, 5]) === 4 || `safeHead([4, 5]) gave ${T.fmt(safeHead([4, 5]))}.`;
+        });
+
+        T.check('safeDiv has an answer for zero', () => {
+          const r = safeDiv(1, 0);
+          return r === null || `safeDiv(1, 0) gave ${T.fmt(r)}. Infinity is not a number you meant.`;
+        });
+
+        T.check('safeParse has an answer for nonsense', () => {
+          const r = safeParse('banana');
+          return r === null || `safeParse('banana') gave ${T.fmt(r)}.`;
+        });
+
+        T.check('The three are total under probe', () => {
+          const a = probe(safeHead, [[], [1], [1, 2]]);
+          const b = probe((s: string) => safeParse(s), ['1', 'x', '']);
+          if (a.length) return `safeHead is still undefined for ${T.fmt(a)}.`;
+          if (b.length) return `safeParse is still undefined for ${T.fmt(b)}.`;
+          return true;
+        });
+      },
+    },
   ],
 };

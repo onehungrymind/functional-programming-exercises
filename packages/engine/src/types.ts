@@ -30,6 +30,14 @@ export interface BaseRung {
    */
   covers: string[];
   role: RungRole;
+  /**
+   * Which lap this rung belongs to. `'ts'` puts it after the divider, with the typed material.
+   *
+   * On a code rung it also means the types are erased before the answer runs, and an answer
+   * leaning on `any` is rejected. On an expression rung it means the same erasure is applied
+   * to the read-only context, so the context can show a real signature.
+   */
+  lang?: 'js' | 'ts';
   /** Sentence case, imperative or a question. */
   title: string;
   /** Markdown. Internal `#term` links are routed in-app. */
@@ -60,7 +68,10 @@ export interface ChoiceRung extends BaseRung {
  */
 export interface ExprRung extends BaseRung {
   kind: 'expr';
-  /** Read-only code shown above the input, so the expression has something to refer to. */
+  /**
+   * Read-only code shown above the input, so the expression has something to refer to.
+   * With `lang: 'ts'` it is erased before the expression runs, so it can carry real types.
+   */
   context?: string;
   /** Shown in the empty input. A shape, not the answer. */
   placeholder?: string;
@@ -75,13 +86,11 @@ export interface ExprRung extends BaseRung {
 export interface CodeRung extends BaseRung {
   kind: 'code';
   /**
-   * `'ts'` erases the types before running and rejects an answer that leans on `any`.
-   *
    * A typed rung supplies the interface and asks the learner to satisfy it, so what is being
    * tested is reading a signature. Verifying that their own annotations are right would mean
-   * shipping the TypeScript compiler; this costs 61KB instead of roughly 1.5MB.
+   * shipping the TypeScript compiler; erasing with sucrase costs 61KB instead of roughly 1.5MB.
+   * The flag itself lives on `BaseRung`, since it also marks which lap a rung is in.
    */
-  lang?: 'js' | 'ts';
   starter: string;
   /** Must pass. Enforced by `npm run verify`. */
   solution: string;

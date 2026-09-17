@@ -205,5 +205,143 @@ const addItem = (cart, item, now) => ({
         });
       },
     },
+
+    {
+      id: 'purify',
+      kind: 'code',
+      role: 'apply',
+      covers: ['spot-the-breach', 'purify', 'shallow-copy-trap'],
+      title: "Purify three functions",
+      prompt:
+        "Each of these breaks one of the two requirements. Rewrite each so it returns the same output for the same input and touches nothing outside itself. `addTag` has the trap: its object is nested.",
+      hints: [
+        "`total` is reading something that is not an argument. Hand it in instead.",
+        "`addItem` writes into the array it was given. Build a new one.",
+        "A spread copies one level. `post.meta` is still the same object after `{ ...post }`, so writing to it writes to the original.",
+      ],
+      exports: ['total', 'addItem', 'addTag'],
+      starter: `let taxRate = 0.2
+
+// total :: [Number] -> Number
+const total = (prices) => prices.reduce((a, b) => a + b, 0) * (1 + taxRate)
+
+// addItem :: ([a], a) -> [a]
+const addItem = (items, item) => {
+  items.push(item)
+  return items
+}
+
+// addTag :: (Post, String) -> Post
+const addTag = (post, tag) => {
+  const next = { ...post }
+  next.meta.tags.push(tag)
+  return next
+}
+`,
+      solution: `// total :: ([Number], Number) -> Number
+const total = (prices, taxRate) => prices.reduce((a, b) => a + b, 0) * (1 + taxRate)
+
+// addItem :: ([a], a) -> [a]
+const addItem = (items, item) => [...items, item]
+
+// addTag :: (Post, String) -> Post
+const addTag = (post, tag) => ({
+  ...post,
+  meta: { ...post.meta, tags: [...post.meta.tags, tag] }
+})
+`,
+      broken: [
+        `let taxRate = 0.2
+const total = (prices) => prices.reduce((a, b) => a + b, 0) * (1 + taxRate)
+const addItem = (items, item) => [...items, item]
+const addTag = (post, tag) => ({
+  ...post,
+  meta: { ...post.meta, tags: [...post.meta.tags, tag] }
+})
+`,
+        `const total = (prices, taxRate) => prices.reduce((a, b) => a + b, 0) * (1 + taxRate)
+const addItem = (items, item) => {
+  items.push(item)
+  return items
+}
+const addTag = (post, tag) => ({
+  ...post,
+  meta: { ...post.meta, tags: [...post.meta.tags, tag] }
+})
+`,
+        `const total = (prices, taxRate) => prices.reduce((a, b) => a + b, 0) * (1 + taxRate)
+const addItem = (items, item) => [...items, item]
+const addTag = (post, tag) => {
+  const next = { ...post }
+  next.meta.tags = [...next.meta.tags, tag]
+  return next
+}
+`,
+        `const total = (prices, taxRate) => prices.reduce((a, b) => a + b, 0) * (1 + taxRate)
+const addItem = (items, item) => [...items, item]
+const addTag = (post, tag) => {
+  const next = { ...post, meta: { ...post.meta } }
+  next.meta.tags.push(tag)
+  return next
+}
+`,
+      ],
+      checks: (T, exp) => {
+        const { total, addItem, addTag } = exp;
+
+        T.check('total takes the rate rather than reaching for it', () => {
+          return (
+            total.length >= 2 ||
+            `total takes ${total.length} argument${total.length === 1 ? '' : 's'}. Anything it depends on has to arrive as one, or the same list can give two answers.`
+          );
+        });
+
+        T.check('total computes with the rate it was given', () => {
+          const r = total([100, 50], 0.1);
+          return Math.abs(r - 165) < 1e-9 || `total([100, 50], 0.1) gave ${T.fmt(r)}, expected 165.`;
+        });
+
+        T.check('Changing the rate changes the answer', () => {
+          const a = total([100], 0);
+          const b = total([100], 0.5);
+          return (a === 100 && b === 150) || `A rate of 0 gave ${T.fmt(a)} and a rate of 0.5 gave ${T.fmt(b)}.`;
+        });
+
+        T.check('addItem leaves the list it was handed alone', () => {
+          const items = T.freeze([1, 2]);
+          const r = addItem(items, 3);
+          if (!T.eq(r, [1, 2, 3])) return `addItem([1, 2], 3) gave ${T.fmt(r)}.`;
+          return items.length === 2 || `The original list is now ${T.fmt(items)}.`;
+        });
+
+        T.check('addTag returns a post with the tag on it', () => {
+          const post = { title: 'x', meta: { tags: ['a'], views: 1 } };
+          const r = addTag(post, 'b');
+          return T.eq(r.meta.tags, ['a', 'b']) || `Adding 'b' gave tags ${T.fmt(r.meta.tags)}.`;
+        });
+
+        T.check('The nested object survives untouched', () => {
+          const post = { title: 'x', meta: { tags: ['a'], views: 1 } };
+          const before = post.meta.tags;
+          addTag(post, 'b');
+          return (
+            (post.meta.tags === before && T.eq(post.meta.tags, ['a'])) ||
+            `The original post now reads ${T.fmt(post.meta.tags)}. A spread copies one level, so post.meta is still shared until you copy that too.`
+          );
+        });
+
+        T.check('The nested object is a new one, not the same one', () => {
+          const post = { title: 'x', meta: { tags: ['a'], views: 1 } };
+          const r = addTag(post, 'b');
+          return r.meta !== post.meta || 'The result shares its `meta` with the original, so writing to one writes to both.';
+        });
+
+        T.check('The rest of the post comes through', () => {
+          const post = { title: 'x', meta: { tags: [], views: 7 } };
+          const r = addTag(post, 'b');
+          return (r.title === 'x' && r.meta.views === 7) || `The result lost something: ${T.fmt(r)}.`;
+        });
+      },
+    },
   ],
 };

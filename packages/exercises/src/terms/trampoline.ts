@@ -218,5 +218,129 @@ const sumBelow = (n, acc = 0) => {
         },
       ],
     },
+
+    {
+      id: 'break',
+      kind: 'code',
+      role: 'break',
+      covers: ['why-the-stack-runs-out', 'return-instead-of-call', 'the-driver'],
+      title: "Show the stack running out, then survive it",
+      prompt:
+        "`countDirect` recurses the ordinary way and `countBounced` returns a thunk for each step. Write both, plus the driver. You pass when the direct one blows the stack at 100000 and the bounced one does not.",
+      hints: [
+        "`countDirect` is the naive version. Do not try to make it survive; the rung is about watching it fail.",
+        "`countBounced` returns `() => countBounced(...)` instead of calling itself, so the frame is gone before the next step starts.",
+        "`run` keeps calling while it is holding a function. One unwrapping is not enough, because the thunk returns another thunk.",
+      ],
+      exports: ['countDirect', 'countBounced', 'run'],
+      starter: `// countDirect :: (Number, Number) -> Number   plain recursion, will not survive
+const countDirect = (n, acc = 0) => acc
+
+// countBounced :: (Number, Number) -> Number | (() -> ...)
+const countBounced = (n, acc = 0) => acc
+
+// run :: (a | (() -> a)) -> a
+const run = (result) => result
+`,
+      solution: `// countDirect :: (Number, Number) -> Number   plain recursion, will not survive
+const countDirect = (n, acc = 0) => (n === 0 ? acc : countDirect(n - 1, acc + n))
+
+// countBounced :: (Number, Number) -> Number | (() -> ...)
+const countBounced = (n, acc = 0) => (n === 0 ? acc : () => countBounced(n - 1, acc + n))
+
+// run :: (a | (() -> a)) -> a
+const run = (result) => {
+  let r = result
+  while (typeof r === 'function') r = r()
+  return r
+}
+`,
+      broken: [
+        `const countDirect = (n, acc = 0) => (n === 0 ? acc : countDirect(n - 1, acc + n))
+const countBounced = (n, acc = 0) => (n === 0 ? acc : countBounced(n - 1, acc + n))
+const run = (result) => {
+  let r = result
+  while (typeof r === 'function') r = r()
+  return r
+}
+`,
+        `const countDirect = (n, acc = 0) => (n === 0 ? acc : countDirect(n - 1, acc + n))
+const countBounced = (n, acc = 0) => (n === 0 ? acc : () => countBounced(n - 1, acc + n))
+const run = (result) => (typeof result === 'function' ? result() : result)
+`,
+        `const countDirect = (n, acc = 0) => acc
+const countBounced = (n, acc = 0) => (n === 0 ? acc : () => countBounced(n - 1, acc + n))
+const run = (result) => {
+  let r = result
+  while (typeof r === 'function') r = r()
+  return r
+}
+`,
+      ],
+      checks: (T, exp) => {
+        const { countDirect, countBounced, run } = exp;
+        const sum = (n: number) => (n * (n + 1)) / 2;
+
+        T.check('Both agree on a small number', () => {
+          const a = countDirect(10);
+          const b = run(countBounced(10));
+          return (
+            (a === 55 && b === 55) ||
+            `Counting down from 10 should give 55. Direct gave ${T.fmt(a)} and bounced gave ${T.fmt(b)}.`
+          );
+        });
+
+        T.check('countBounced hands back a thunk rather than an answer', () => {
+          const r = countBounced(5);
+          return (
+            typeof r === 'function' ||
+            `countBounced(5) gave ${T.fmt(r)} straight away. It should return the next step unevaluated, so the frame it is in can be discarded.`
+          );
+        });
+
+        T.check('The last step is a value, not another thunk', () => {
+          const r = countBounced(0, 7);
+          return r === 7 || `countBounced(0, 7) gave ${T.fmt(r)}. Something has to end the bouncing.`;
+        });
+
+        T.check('The direct version does run out of stack', () => {
+          let threw = '';
+          try {
+            countDirect(100000);
+          } catch (e) {
+            threw = (e as Error).name;
+          }
+          return (
+            threw === 'RangeError' ||
+            `countDirect(100000) ${threw ? 'threw a ' + threw : 'returned without complaint'}. This rung wants to see it fail: every pending call is a frame, and 100000 of them is past the limit.`
+          );
+        });
+
+        T.check('The bounced version survives the same depth', () => {
+          let r;
+          try {
+            r = run(countBounced(100000));
+          } catch (e) {
+            return `The bounced version threw ${(e as Error).name} too. Returning a thunk only helps if nothing is left waiting on the stack.`;
+          }
+          return r === sum(100000) || `It survived but gave ${T.fmt(r)}, expected ${sum(100000)}.`;
+        });
+
+        T.check('The driver keeps going, rather than unwrapping once', () => {
+          const r = run(() => () => () => 3);
+          return r === 3 || `Three nested thunks unwrapped to ${T.fmt(r)}. Each call can hand back another function.`;
+        });
+
+        T.check('The driver leaves a plain value alone', () => {
+          return run(9) === 9 || `run(9) gave ${T.fmt(run(9))}.`;
+        });
+
+        T.law('The bounced version agrees with the formula', 40, (G) => {
+          const n = G.nat() + 1;
+          const r = run(countBounced(n));
+          return r === sum(n) || `Counting down from ${n} gave ${T.fmt(r)}, expected ${sum(n)}.`;
+        });
+      },
+    },
   ],
 };

@@ -220,5 +220,103 @@ const toLabel = (n) => {
         });
       },
     },
+
+    {
+      id: 'repair',
+      kind: 'code',
+      role: 'apply',
+      covers: ['diagnose', 'no-gaps', 'three-requirements'],
+      title: "Repair three near-misses",
+      prompt:
+        "Each of these fails exactly one of the three requirements. Fix each one so it relates every input to exactly one output and does nothing else observable, without changing what it is obviously for.",
+      hints: [
+        "`half` is fine for even numbers and falls off a cliff for odd ones. Every input needs an output.",
+        "`pick` gives a different answer each time it is called with the same list.",
+        "`stamp` reaches outside itself for the time. Anything it needs, it should be handed.",
+      ],
+      exports: ['half', 'pick', 'stamp'],
+      starter: `// half :: Number -> Number
+const half = (n) => {
+  if (n % 2 === 0) return n / 2
+}
+
+// pick :: [a] -> a
+const pick = (xs) => xs[Math.floor(Math.random() * xs.length)]
+
+// stamp :: String -> String
+const stamp = (message) => Date.now() + ' ' + message
+`,
+      solution: `// half :: Number -> Number
+const half = (n) => n / 2
+
+// pick :: [a] -> a
+const pick = (xs) => xs[0]
+
+// stamp :: (Number, String) -> String
+const stamp = (at, message) => at + ' ' + message
+`,
+      broken: [
+        `const half = (n) => {
+  if (n % 2 === 0) return n / 2
+}
+const pick = (xs) => xs[0]
+const stamp = (at, message) => at + ' ' + message
+`,
+        `const half = (n) => n / 2
+const pick = (xs) => xs[Math.floor(Math.random() * xs.length)]
+const stamp = (at, message) => at + ' ' + message
+`,
+        `const half = (n) => n / 2
+const pick = (xs) => xs[0]
+const stamp = (at, message) => Date.now() + ' ' + message
+`,
+        `const half = (n) => (n % 2 === 0 ? n / 2 : null)
+const pick = (xs) => xs[0]
+const stamp = (at, message) => at + ' ' + message
+`,
+      ],
+      checks: (T, exp) => {
+        const { half, pick, stamp } = exp;
+
+        T.law('half has an answer for every number, not just the even ones', 80, (G) => {
+          const n = G.int();
+          const r = half(n);
+          if (r === undefined || r === null) return `half(${n}) gave ${T.fmt(r)}. A gap in the inputs is the requirement it was breaking.`;
+          return r === n / 2 || `half(${n}) gave ${T.fmt(r)}, expected ${n / 2}.`;
+        });
+
+        T.check('half still halves', () => {
+          return half(7) === 3.5 || `half(7) gave ${T.fmt(half(7))}. Covering the odd case does not mean rounding it away.`;
+        });
+
+        T.law('pick gives the same answer every time for the same list', 60, (G) => {
+          const xs = G.ints();
+          if (!xs.length) return true;
+          T.effects.length = 0;
+          const a = pick(xs);
+          const b = pick(xs);
+          const c = pick(xs);
+          if (T.effects.length) return `pick called ${T.effects[0]}. One input has to mean one output, and a random one means many.`;
+          return (a === b && b === c) || `pick(${T.fmt(xs)}) gave ${T.fmt(a)}, then ${T.fmt(b)}, then ${T.fmt(c)}.`;
+        });
+
+        T.check('pick still picks from the list it was given', () => {
+          const xs = [4, 5, 6];
+          const r = pick(xs);
+          return xs.includes(r) || `pick([4, 5, 6]) gave ${T.fmt(r)}, which is not in the list.`;
+        });
+
+        T.check('stamp takes the time rather than reading it', () => {
+          T.effects.length = 0;
+          const r = stamp(1700000000000, 'saved');
+          if (T.effects.length) return `stamp called ${T.effects[0]}. Whatever it needs from outside should arrive as an argument.`;
+          return r === '1700000000000 saved' || `stamp(1700000000000, 'saved') gave ${T.fmt(r)}.`;
+        });
+
+        T.check('stamp gives the same answer twice', () => {
+          return stamp(1, 'x') === stamp(1, 'x') || 'Two calls with the same arguments disagreed.';
+        });
+      },
+    },
   ],
 };

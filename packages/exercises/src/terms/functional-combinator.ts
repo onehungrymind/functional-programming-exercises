@@ -208,5 +208,125 @@ const S = (f) => (g) => (x) => f(x)(g)
         },
       ],
     },
+
+    {
+      id: 'identities',
+      kind: 'code',
+      role: 'implement',
+      covers: ['no-free-variables', 'the-classics', 'identities'],
+      title: "Write S, K, I and check that S(K)(K) is I",
+      prompt:
+        "A combinator uses nothing but its own arguments. Write the three classics, then `skk`, built only out of them, and confirm it behaves like `I`.",
+      hints: [
+        "`I` gives back what it was handed. `K` takes two and keeps the first.",
+        "`S` is `(f) => (g) => (x) => f(x)(g(x))`: hand `x` to both, then apply one result to the other.",
+        "`skk` is `S(K)(K)`. Build it from the pieces rather than writing it out, or the identity proves nothing.",
+      ],
+      exports: ['I', 'K', 'S', 'skk'],
+      starter: `// I :: a -> a
+const I = (x) => x
+
+// K :: a -> b -> a
+const K = (x) => (y) => y
+
+// S :: (a -> b -> c) -> (a -> b) -> a -> c
+const S = (f) => (g) => (x) => x
+
+// skk :: a -> a   built from S and K, not written out
+const skk = I
+`,
+      solution: `// I :: a -> a
+const I = (x) => x
+
+// K :: a -> b -> a
+const K = (x) => (y) => x
+
+// S :: (a -> b -> c) -> (a -> b) -> a -> c
+const S = (f) => (g) => (x) => f(x)(g(x))
+
+// skk :: a -> a   built from S and K, not written out
+const skk = S(K)(K)
+`,
+      broken: [
+        `const I = (x) => x
+const K = (x) => (y) => y
+const S = (f) => (g) => (x) => f(x)(g(x))
+const skk = S(K)(K)
+`,
+        `const I = (x) => x
+const K = (x) => (y) => x
+const S = (f) => (g) => (x) => f(g(x))
+const skk = (x) => x
+`,
+        `const I = (x) => x
+const K = (x) => (y) => x
+const S = (f) => (g) => (x) => f(x)(g(x))
+const skk = (x) => x
+`,
+        `const answer = 1
+const I = (x) => x
+const K = (x) => (y) => x
+const S = (f) => (g) => (x) => f(x)(g(x))
+const skk = (x) => answer
+`,
+      ],
+      checks: (T, exp) => {
+        const { I, K, S, skk } = exp;
+
+        T.law('I hands back what it was given', 60, (G) => {
+          const n = G.int();
+          return I(n) === n || `I(${n}) gave ${T.fmt(I(n))}.`;
+        });
+
+        T.law('K keeps the first and discards the second', 60, (G) => {
+          const a = G.int();
+          const b = G.str();
+          const r = K(a)(b);
+          return r === a || `K(${a})(${T.fmt(b)}) gave ${T.fmt(r)}. It keeps the one on the left.`;
+        });
+
+        T.check('K does not evaluate what it discards', () => {
+          const kept = K(1);
+          return typeof kept === 'function' || `K(1) gave ${T.fmt(kept)}. It should still be waiting for the second argument.`;
+        });
+
+        T.check('S hands the argument to both, then applies one to the other', () => {
+          const r = S((a: number) => (b: number) => a + b)((a: number) => a * 10)(3);
+          return r === 33 || `S(add)(times ten)(3) gave ${T.fmt(r)}, expected 33: 3 plus 30.`;
+        });
+
+        T.law('S is not just composition', 40, (G) => {
+          const n = G.int();
+          const r = S((a: number) => (b: number) => a - b)((a: number) => 1)(n);
+          return r === n - 1 || `S with subtract and a constant at ${n} gave ${T.fmt(r)}, expected ${n - 1}.`;
+        });
+
+        T.law('S(K)(K) behaves like I', 80, (G) => {
+          const v = G.bool() ? G.int() : G.str();
+          const r = skk(v);
+          return (
+            r === v ||
+            `skk(${T.fmt(v)}) gave ${T.fmt(r)}. If this fails, one of S, K or I is wrong, because the identity holds whenever they are right.`
+          );
+        });
+
+        T.check('skk was built from the combinators, not written out', () => {
+          const src = T.src.replace(/\/\/[^\n]*/g, '');
+          const line = src.split('\n').find((l) => /const\s+skk\s*=/.test(l)) ?? '';
+          return (
+            /S\s*\(\s*K\s*\)\s*\(\s*K\s*\)/.test(line) ||
+            'skk should be S(K)(K). Writing the identity function out by hand makes the check pass and demonstrates nothing.'
+          );
+        });
+
+        T.check('None of them reaches outside its own arguments', () => {
+          for (const name of ['I', 'K', 'S']) {
+            const r = T.shape.usesOnly(name, []);
+            if (r !== true) return `${name}: ${r} A combinator is closed over nothing.`;
+          }
+          return true;
+        });
+      },
+    },
   ],
 };

@@ -46,6 +46,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Relate every input to exactly one output",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "repair",
+        "role": "apply",
+        "title": "Repair three near-misses",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -89,6 +96,13 @@ export const manifest: ManifestEntry[] = [
         "id": "guided",
         "role": "guided",
         "title": "Inline the named callbacks",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "apply",
+        "role": "apply",
+        "title": "Pass functions around without naming them",
         "kind": "code",
         "lang": "js"
       }
@@ -174,6 +188,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Purify addItem",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "purify",
+        "role": "apply",
+        "title": "Purify three functions",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -210,6 +231,13 @@ export const manifest: ManifestEntry[] = [
         "id": "implement",
         "role": "implement",
         "title": "Find the inputs that break it",
+        "kind": "code",
+        "lang": "js"
+      },
+      {
+        "id": "widen",
+        "role": "apply",
+        "title": "Survey three functions, then make them total",
         "kind": "code",
         "lang": "js"
       }
@@ -249,6 +277,13 @@ export const manifest: ManifestEntry[] = [
         "role": "recognize",
         "title": "Why does a trampoline help?",
         "kind": "choice",
+        "lang": "js"
+      },
+      {
+        "id": "break",
+        "role": "break",
+        "title": "Show the stack running out, then survive it",
+        "kind": "code",
         "lang": "js"
       }
     ]
@@ -314,6 +349,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Where does auto-currying stop working?",
         "kind": "choice",
         "lang": "js"
+      },
+      {
+        "id": "arity",
+        "role": "recognize",
+        "title": "Predict what arity each definition reports",
+        "kind": "expr",
+        "lang": "js"
       }
     ]
   },
@@ -352,6 +394,13 @@ export const manifest: ManifestEntry[] = [
         "title": "Remove the arguments",
         "kind": "code",
         "lang": "js"
+      },
+      {
+        "id": "judgement",
+        "role": "apply",
+        "title": "Go point-free one way, and back the other",
+        "kind": "code",
+        "lang": "js"
       }
     ]
   },
@@ -370,6 +419,13 @@ export const manifest: ManifestEntry[] = [
         "role": "recognize",
         "title": "What disqualifies a combinator?",
         "kind": "choice",
+        "lang": "js"
+      },
+      {
+        "id": "identities",
+        "role": "implement",
+        "title": "Write S, K, I and check that S(K)(K) is I",
+        "kind": "code",
         "lang": "js"
       }
     ]

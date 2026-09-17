@@ -149,9 +149,19 @@ export function evaluateExpr(rung: ExprRung, source: string, seq = 0): RunResult
   } as unknown as Console;
   fakeConsole.info = fakeConsole.warn = fakeConsole.error = fakeConsole.debug = fakeConsole.log;
 
+  // A typed rung's context is a real signature, so it has to be erased before it can run.
+  let context = rung.context ?? '';
+  if (rung.lang === 'ts' && context) {
+    const stripped = stripTypes(context);
+    if ('error' in stripped) {
+      return { seq, results: [], logs: [], fatal: `SyntaxError in the given code: ${stripped.error}` };
+    }
+    context = stripped.code;
+  }
+
   let value: unknown;
   try {
-    const body = `"use strict";\n${rung.context ?? ''}\n;return (${expression});`;
+    const body = `"use strict";\n${context}\n;return (${expression});`;
     let factory: (console: Console) => unknown;
     try {
       factory = new Function('console', body) as typeof factory;
