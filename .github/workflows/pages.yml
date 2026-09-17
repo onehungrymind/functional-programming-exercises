@@ -38,6 +38,10 @@ jobs:
       # app routes on the hash, so the output needs no rewriting and no server rules.
       - name: Skip Jekyll
         run: touch apps/web/dist/.nojekyll
+      # The answer key is a standalone page, and GitHub renders a committed .html file as
+      # source rather than serving it. Publishing it here gives it a URL that works.
+      - name: Publish the solutions page
+        run: cp solutions.html apps/web/dist/solutions.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
