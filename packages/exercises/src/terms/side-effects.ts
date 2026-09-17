@@ -17,6 +17,7 @@ export const sideEffects: ExerciseSet = {
       id: 'push-to-edge',
       statement:
         "Knows effects are not eliminated but relocated, and can say where they should end up.",
+      teaches: ['edge', 'separate'],
     },
   ],
   notes: `A side effect is any interaction with the world outside the function, in **either direction**.

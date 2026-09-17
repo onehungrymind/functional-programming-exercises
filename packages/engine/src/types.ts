@@ -19,6 +19,19 @@ export interface RubricItem {
    * "Can predict what `fn.length` reports for any definition", not "knows about defaults".
    */
   statement: string;
+  /**
+   * Terms the teaching for this item must actually use. Every one has to appear in `notes`
+   * or `typedNotes`, or `npm run verify` fails.
+   *
+   * Optional, because verify otherwise derives candidate terms from the statement and asks
+   * for two of them. Set it where the statement is worded abstractly and that derivation
+   * picks the wrong words: "Can write one that takes a function, walking a structure" yields
+   * `walking` and `structure`, when what the prose owes you is `takes` and an example.
+   *
+   * This cannot tell good teaching from bad. It catches the case that actually happens,
+   * which is a rubric item nobody wrote about at all.
+   */
+  teaches?: string[];
 }
 
 export interface BaseRung {

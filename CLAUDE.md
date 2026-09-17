@@ -27,6 +27,11 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
   Then rungs that demonstrate each item, then notes that teach it. Verify enforces the
   traceability both ways: a rubric item with no rung is a claim nothing checks, and a rung
   covering no item is asking about something we never said mattered.
+- **Verify checks that the notes at least mention each rubric item.** It derives candidate
+  terms from the statement and wants two of them in the prose; set `teaches` on the item where
+  the statement is abstract and that picks the wrong words. This cannot tell good teaching from
+  bad. It catches the case that actually happened: a rung asking about something Learn never
+  covered at all.
 - **A rung may only ask about something the Learn tab has covered.** Upstream is a glossary,
   not a syllabus: 50 of 73 entries are under 400 characters of prose. Diverge from it freely.
 - **The typed material is a second lap, not a continuation.** It lives in `typedNotes`, gets

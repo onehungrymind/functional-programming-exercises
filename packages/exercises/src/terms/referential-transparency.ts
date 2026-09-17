@@ -17,6 +17,7 @@ export const referentialTransparency: ExerciseSet = {
       id: 'repair',
       statement:
         "Can make a call substitutable by taking what it read as an argument and leaving its arguments alone.",
+      teaches: ['substitut', 'replace'],
     },
   ],
   notes: `An expression is referentially transparent when you could **paste its result in its place** and

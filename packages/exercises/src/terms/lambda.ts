@@ -12,6 +12,7 @@ export const lambda: ExerciseSet = {
       id: 'name-is-a-choice',
       statement:
         'Knows a name adds nothing semantically, so can decide when naming a callback helps a reader and when it just adds a hop.',
+      teaches: ['name', 'inline'],
     },
     {
       id: 'inline-it',

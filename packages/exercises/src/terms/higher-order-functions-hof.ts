@@ -10,6 +10,7 @@ export const higherOrderFunctions: ExerciseSet = {
     {
       id: 'takes-one',
       statement: 'Can write one that takes a function, walking a structure and leaving the input alone.',
+      teaches: ['takes', 'filter'],
     },
     {
       id: 'returns-one',

@@ -136,6 +136,59 @@ const note = (msg) => problems.push(msg);
     note('packages/exercises/src/notes.ts has drifted from the exercise sets. Run `npm run build:manifest`.');
   }
 
+  // Verify cannot read prose and decide whether it teaches something. What it can do is
+  // notice that the words are not there at all, which is the failure that actually happened:
+  // a rung asking about something Learn never covered.
+  {
+    const STOP = new Set(
+      ('can could knows say says said able the a an and or of to in for with that this those these it its ' +
+        'is are was be been being on at from by as not no any all every each some one two three what which ' +
+        'when where why how than then so if but do does did doing done has have had hand hands handed name ' +
+        'names named given give gives take takes taken write writes written build builds built read reads ' +
+        'reading tell tells told make makes made use uses used work works working thing things something ' +
+        'anything nothing you your they their them we us our also just only even still yet much many few ' +
+        'several own such too very without within across along around because while until since although ' +
+        'though unless whether both either neither').split(' '),
+    );
+    const stem = (w) => w.replace(/ies$/, 'y').replace(/(es|s)$/, '');
+    const derive = (statement) => {
+      const code = [...statement.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+      const words = (statement.replace(/`[^`]+`/g, ' ').toLowerCase().match(/[a-z][a-z-]{3,}/g) ?? []).filter(
+        (w) => !STOP.has(w),
+      );
+      return [...new Set([...code, ...words])];
+    };
+    const appears = (prose, t) => prose.includes(t.toLowerCase()) || prose.includes(stem(t.toLowerCase()));
+
+    for (const set of Object.values(exerciseSets)) {
+      const prose = `${set.notes ?? ''}\n${set.typedNotes ?? ''}`.toLowerCase();
+      if (!prose.trim()) continue;
+      for (const item of set.rubric) {
+        if (item.teaches?.length) {
+          const missing = item.teaches.filter((t) => !appears(prose, t));
+          if (missing.length) {
+            note(
+              `${set.termId}: the notes never mention ${missing.map((t) => `"${t}"`).join(', ')}, ` +
+                `which "${item.id}" says the teaching has to cover.`,
+            );
+          }
+          continue;
+        }
+        const terms = derive(item.statement);
+        const hits = terms.filter((t) => appears(prose, t));
+        if (hits.length < 2) {
+          note(
+            `${set.termId}: nothing in the notes reads like "${item.id}". ` +
+              `Looked for ${terms.slice(0, 6).map((t) => `"${t}"`).join(', ')} and found ` +
+              `${hits.length === 0 ? 'none of them' : `only "${hits[0]}"`}. ` +
+              `Either the teaching is missing, or the statement is worded so abstractly that this ` +
+              `cannot tell, in which case set \`teaches\` on the item.`,
+          );
+        }
+      }
+    }
+  }
+
   // A hint names the shape or the stuck point. Quoting the answer turns the hint ladder into
   // a slower way of pressing the solution button, and somebody who reads every hint should
   // still have to write the line. Text already visible in the starter is fair game.

@@ -12,6 +12,7 @@ export const functionalCombinator: ExerciseSet = {
       id: 'the-classics',
       statement:
         "Can write I, K, C and S, and say what each does in one sentence.",
+      teaches: ['combinator', 'identity', 'flip'],
     },
     {
       id: 'identities',

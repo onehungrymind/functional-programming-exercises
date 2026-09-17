@@ -28,6 +28,7 @@ export const functor: ExerciseSet = {
       id: 'break-a-law',
       statement:
         "Can construct something that looks like a functor and quietly fails a law, and know which one it failed.",
+      teaches: ['law', 'identity', 'composition'],
     },
   ],
   notes: `A functor is a container with a \`map\` that obeys two laws. The shape requirement comes first:

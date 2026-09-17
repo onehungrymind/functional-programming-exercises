@@ -13,6 +13,7 @@ export const monad: ExerciseSet = {
       id: 'short-circuits',
       statement:
         "Can build a chain where a failure partway through skips the rest.",
+      teaches: ['chain', 'nothing'],
     },
     {
       id: 'flatten-one-level',

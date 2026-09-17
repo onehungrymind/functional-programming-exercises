@@ -17,6 +17,7 @@ export const memoization: ExerciseSet = {
       id: 'needs-purity',
       statement:
         "Knows memoizing an impure function makes it report a stale answer, and can demonstrate it.",
+      teaches: ['referentially transparent', 'cache'],
     },
   ],
   notes: `Memoization trades memory for time: remember what a function returned for each argument, and

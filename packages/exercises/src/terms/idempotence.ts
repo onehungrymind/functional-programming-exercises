@@ -8,6 +8,7 @@ export const idempotence: ExerciseSet = {
       id: 'the-law',
       statement:
         "Can state the law, f(f(x)) equals f(x), and classify a function against it.",
+      teaches: ['idempotent', 'twice'],
     },
     {
       id: 'not-repetition',

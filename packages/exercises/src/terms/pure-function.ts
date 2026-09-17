@@ -11,6 +11,7 @@ export const pureFunction: ExerciseSet = {
     {
       id: 'spot-the-breach',
       statement: 'Given an impure function, can say which of the two it breaks, and name the specific line that breaks it.',
+      teaches: ['breaks one', 'requirements'],
     },
     {
       id: 'purify',
@@ -21,6 +22,7 @@ export const pureFunction: ExerciseSet = {
       id: 'shallow-copy-trap',
       statement:
         'Knows that copying the top level of a structure is not enough, and can spot a copy that still shares a nested reference.',
+      teaches: ['spread', 'top level'],
     },
   ],
   notes: `Two requirements, and it pays to keep them apart because code usually breaks one and not the

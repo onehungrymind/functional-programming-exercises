@@ -7,6 +7,7 @@ export const equationalReasoning: ExerciseSet = {
       id: 'safe-rewrites',
       statement:
         "Can tell a rewrite that preserves meaning from one that quietly changes it, and can say which law licenses it.",
+      teaches: ['rewrite', 'law'],
     },
     {
       id: 'needs-purity',
@@ -17,6 +18,7 @@ export const equationalReasoning: ExerciseSet = {
       id: 'apply-them',
       statement:
         "Can fuse and reorder a pipeline using the laws, and check the result agrees on every input.",
+      teaches: ['law', 'map'],
     },
   ],
   notes: `Equational reasoning is replacing an expression with an equal one, the way you would in algebra.

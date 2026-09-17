@@ -8,6 +8,7 @@ export const naturalTransformation: ExerciseSet = {
       id: 'changes-the-container',
       statement:
         "Can convert one functor into another without touching the values inside.",
+      teaches: ['container', 'shape'],
     },
     {
       id: 'naturality',
