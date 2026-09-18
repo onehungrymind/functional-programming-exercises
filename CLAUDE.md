@@ -8,11 +8,13 @@ Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream 
 
 ## Hard rules
 
-- `../functional-programming-jargon` is READ-ONLY. Never create, edit, delete, or generate files
-  there. Never run npm install, build, parse, or any git command that changes its state.
-  `git log` and `git rev-parse` are fine.
-- Only `scripts/sync-jargons.mjs` reads the sibling folder. No app code, test, or build step
-  may import or read from it. CI runs from a clone of this repo alone.
+- `../functional-programming-jargon` is now a clone of `onehungrymind/functional-programming-jargon`,
+  our fork of Hemanth's repo, with `upstream` pointing at his. It is a working tree: branch it,
+  build it, open pull requests from it. His default branch is `master`, not `main`.
+- Never push to `upstream`. Branches go to `origin`, and changes reach him through a pull
+  request he reviews.
+- Only `scripts/sync-jargons.mjs` reads the sibling folder from this repo. No app code, test, or
+  build step may import or read from it. CI runs from a clone of this repo alone.
 - Every code rung ships `starter`, `solution`, and `broken` variants. `npm run verify` must pass
   before committing exercise changes.
 - Every concept gets at least two rungs and at least one that is code-graded. Enforced by verify.

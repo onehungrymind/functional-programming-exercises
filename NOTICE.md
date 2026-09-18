@@ -2,7 +2,7 @@
 
 The concept data in `data/jargons.json` is a normalized snapshot of
 [hemanth/functional-programming-jargon](https://github.com/hemanth/functional-programming-jargon)
-by Hemanth HM, taken from commit `62a3a2e3f149ba0ac73016f387e7421023a3ff43` on 2026-09-16.
+by Hemanth HM, taken from commit `62a3a2e3f149ba0ac73016f387e7421023a3ff43` on 2026-09-18.
 
 The graph layout approach and the category color table in this app are derived from the
 same project's web app. Everything else here is original work.
