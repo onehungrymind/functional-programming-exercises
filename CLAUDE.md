@@ -4,6 +4,8 @@ Standalone practice app for the 73 concepts on [FP Jargon](https://hemanth.githu
 Plan: `docs/fp-exercises-plan.md`. Progress log: `docs/progress.md`.
 Teaching a day of this: `docs/teaching-day.md`. It names specific rungs to demo, and verify
 fails if any of them stops existing.
+**Picking this up after a break: `docs/handoff.md`.** Current state, the Hemanth thread, and
+the plan for the pull request against his repo.
 Visual reference: `docs/reference/upstream-0*.png` (screenshots of the upstream site).
 
 ## Hard rules
